@@ -23,14 +23,14 @@ export KUBECONFIG=/root/bm/kubeconfig
 
 # https://issues.redhat.com/browse/ACM-3065 
 echo "Patching ACM search-v2-operator indexer image"
-oc image mirror -a /opt/registry/sync/pull-secret-disconnected.acm_d.txt quay.io/stolostron/search-indexer:2.8.0-SNAPSHOT-2023-02-06-21-36-31 e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/stolostron/search-indexer:PR84 --keep-manifest-list
-oc patch search -n open-cluster-management search-v2-operator --type merge -p '{"spec":{"deployments":{"indexer": {"imageOverride": "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/stolostron/search-indexer:PR84" }}}}'
+oc image mirror -a /opt/registry/sync/pull-secret-disconnected.acm_d.txt quay.io/stolostron/search-indexer:2.8.0-SNAPSHOT-2023-02-08-17-27-12 e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/stolostron/search-indexer:2.8.0-SNAPSHOT-2023-02-08-17-27-12 --keep-manifest-list
+oc patch search -n open-cluster-management search-v2-operator --type merge -p '{"spec":{"deployments":{"indexer": {"imageOverride": "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/stolostron/search-indexer:2.8.0-SNAPSHOT-2023-02-08-17-27-12" }}}}'
 echo "Sleep 10"
 sleep 10
 
 
 echo "Applying ACM search-v2-operator collector resources bump"
-oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/collector/resources", "value": {"limits": {"memory": "16Gi"}, "requests": {"memory": "64Mi", "cpu": "25m"}}}]'
+oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/collector/resources", "value": {"limits": {"memory": "8Gi"}, "requests": {"memory": "64Mi", "cpu": "25m"}}}]'
 echo "Sleep 10"
 sleep 10
 echo "Applying ACM search-v2-operator database resources bump"
@@ -38,7 +38,7 @@ oc patch search -n open-cluster-management search-v2-operator --type json -p '[{
 echo "Sleep 10"
 sleep 10
 echo "Applying ACM search-v2-operator indexer resources bump"
-oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/resources", "value": {"limits": {"memory": "16Gi"}, "requests": {"memory": "128Mi", "cpu": "25m"}}}]'
+oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/resources", "value": {"limits": {"memory": "8Gi"}, "requests": {"memory": "128Mi", "cpu": "25m"}}}]'
 echo "Sleep 10"
 sleep 10
 
