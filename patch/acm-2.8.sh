@@ -4,7 +4,6 @@
 export KUBECONFIG=/root/bm/kubeconfig
 
 echo "Create searchscale configmap"
-
 oc create cm -n open-cluster-management searchscale --from-literal POSTGRESQL_SHARED_BUFFERS=512MB --from-literal POSTGRESQL_EFFECTIVE_CACHE_SIZE=1024MB --from-literal WORK_MEM=128MB
 echo "Add searchscale configmap to ACM search-v2-operator"
 oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbConfig", "value": "searchscale"}]'
