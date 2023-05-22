@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-template-map
+  namespace: ztp-common
+data:
+  key1: "value1"
+  key2: "value2"
+  key3: "value3"
+  key4: "value4"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: group-template-map
+  namespace: ztp-group
+data:
+  key1: "group-value1"
+  key2: "group-value2"
+  key3: "group-value3"
+  key4: "group-value4"

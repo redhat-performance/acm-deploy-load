@@ -34,3 +34,4 @@ generators:
 resources:
 - ns.yaml
 - ns-upgrade.yaml
+- hub-template-maps.yaml

@@ -11,64 +11,96 @@ spec:
   sourceFiles:
     # Create operators policies that will be installed in all clusters
     - fileName: SriovSubscription.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         source: {{ common_catalogsource_name }}
     - fileName: SriovSubscriptionNS.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: SriovSubscriptionOperGroup.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: SriovOperatorStatus.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: PtpSubscription.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         source: {{ common_catalogsource_name }}
     - fileName: PtpSubscriptionNS.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: PtpSubscriptionOperGroup.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: PtpOperatorStatus.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
 # Start PAO
 {% if disconnected_operator_index_tag in ["v4.11", "v4.12", "v4.13"] %}
     # - fileName: PaoSubscription.yaml
-    #   policyName: "subscriptions-policy"
+    #   policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
     #   spec:
     #     source: {{ common_catalogsource_name }}
     #   # Changing the channel value will upgrade/downgrade the operator installed version.
     #     channel: "{{ pao_subscription_channel }}"
     # - fileName: PaoSubscriptionNS.yaml
-    #   policyName: "subscriptions-policy"
+    #   policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
     # - fileName: PaoSubscriptionOperGroup.yaml
-    #   policyName: "subscriptions-policy"
+    #   policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
     # - fileName: PaoOperatorStatus.yaml
-    #   policyName: "subscriptions-policy"
+    #   policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
 {% else %}
     - fileName: PaoSubscription.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         source: {{ common_catalogsource_name }}
       # Changing the channel value will upgrade/downgrade the operator installed version.
         channel: "{{ pao_subscription_channel }}"
     - fileName: PaoSubscriptionNS.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: PaoSubscriptionOperGroup.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: PaoOperatorStatus.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'pao-subs' if manyPolicies else 'subscriptions' }}-policy"
 {% endif %}
 # End PAO
     - fileName: ClusterLogNS.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: ClusterLogOperGroup.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: ClusterLogSubscription.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         source: {{ common_catalogsource_name }}
     - fileName: ClusterLogOperatorStatus.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
 {% if include_clo_fix %}
     - fileName: logging-openshift-io_elasticsearches.yaml
       policyName: "config-policy"
@@ -77,17 +109,25 @@ spec:
     #  policyName: "config-policy"
 {% endif %}
     - fileName: StorageNS.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: StorageOperGroup.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: StorageSubscription.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         source: {{ common_catalogsource_name }}
     - fileName: StorageOperatorStatus.yaml
-      policyName: "subscriptions-policy"
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
     - fileName: ReduceMonitoringFootprint.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'monitoring-config' if manyPolicies else 'config' }}-policy"
     #
     # These CRs are in support of installation from a disconnected registry
     #
@@ -101,6 +141,13 @@ spec:
       # these in the same policy orders their application to the cluster.
       metadata:
         name: {{ common_catalogsource_name }}
+{% if extraHubTemplates %}
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         displayName: disconnected-redhat-operators
         image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_operator_index_name }}:{{ disconnected_operator_index_tag }}

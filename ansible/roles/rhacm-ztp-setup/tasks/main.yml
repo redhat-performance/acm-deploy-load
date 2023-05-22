@@ -197,6 +197,8 @@
     dest: "{{ rhacm_install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/common-and-group.yaml"
   - src: logging-openshift-io_elasticsearches.yaml
     dest: "{{ rhacm_install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/logging-openshift-io_elasticsearches.yaml"
+  - src: hub-template-maps.yaml
+    dest: "{{ rhacm_install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/hub-template-maps.yaml"
 
 - name: Commit and push the above changes to cnf-features-deploy
   shell: |

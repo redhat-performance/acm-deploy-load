@@ -12,10 +12,26 @@ spec:
   mcp: "master"
   sourceFiles:
     - fileName: ConsoleOperatorDisable.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'console-config' if manyPolicies else 'config' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
     # Set ClusterLogForwarder & ClusterLogging as example might be better to create another policyTemp-Group
     - fileName: ClusterLogForwarder.yaml
       policyName: "{{ group_policy_logforwarder_name }}"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         outputs:
           - type: "kafka"
@@ -35,6 +51,14 @@ spec:
              - kafka-open
     - fileName: ClusterLogging.yaml
       policyName: "config-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         curation:
           curator:
@@ -44,9 +68,16 @@ spec:
             type: "fluentd"
             fluentd: {}
     - fileName: PtpConfigSlave.yaml   # Change to PtpConfigSlaveCvl.yaml for ColumbiaVille NIC
-      policyName: "config-policy"
+      policyName: "{{ 'ptp-config' if manyPolicies else 'config' }}-policy"
       metadata:
         name: "du-ptp-slave"
+{% if extraHubTemplates %}
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         profile:
         - name: "slave"
@@ -55,11 +86,27 @@ spec:
           ptp4lOpts: "-2 -s --summary_interval 0"
           phc2sysOpts: "-a -r -n 24"
     - fileName: SriovOperatorConfig.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'sriov-config' if manyPolicies else 'config' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         disableDrain: true
     - fileName: StorageLV.yaml
       policyName: "{{ group_policy_storage_name }}"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         storageClassDevices:
           - storageClassName: "example-storage-class-1"
@@ -73,10 +120,18 @@ spec:
             devicePaths:
               - /dev/sdb2
     - fileName: DisableSnoNetworkDiag.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'network-config' if manyPolicies else 'config' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
 {% if setup_ztp_enable_performanceprofile %}
     - fileName: PerformanceProfile.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'tuning-config' if manyPolicies else 'config' }}-policy"
       metadata:
         name: openshift-node-performance-profile
       spec:
@@ -92,7 +147,15 @@ spec:
         realTimeKernel:
           enabled: {{ setup_ztp_perfprofile_realtime | lower }}
     - fileName: TunedPerformancePatch.yaml
-      policyName: "config-policy"
+      policyName: "{{ 'tuning-config' if manyPolicies else 'config' }}-policy"
+{% if extraHubTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
       spec:
         profile:
           - name: performance-patch
@@ -110,7 +173,7 @@ spec:
               service.stalld=start,enable
 {% else %}
 #     - fileName: PerformanceProfile.yaml
-#       policyName: "config-policy"
+#       policyName: "{{ 'tuning-config' if manyPolicies else 'config' }}-policy"
 #       metadata:
 #         name: openshift-node-performance-profile
 #       spec:
@@ -126,7 +189,7 @@ spec:
 #         realTimeKernel:
 #           enabled: {{ setup_ztp_perfprofile_realtime | lower }}
 #     - fileName: TunedPerformancePatch.yaml
-#       policyName: "config-policy"
+#       policyName: "{{ 'tuning-config' if manyPolicies else 'config' }}-policy"
 #       spec:
 #         profile:
 #           - name: performance-patch
