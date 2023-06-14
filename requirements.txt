@@ -1,9 +1,12 @@
 ansible
+docopt
 jinja2
 kaleido
+matplotlib
 numpy
 packaging
 pandas
 plotly
+prettytable
 python-dateutil
 requests

@@ -39,11 +39,20 @@ time ./scripts/post-ztp-install-data-collection.sh -k 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
+time ./scripts/post-ztp-gen-day1-csv.sh ${results_dir} 2>&1 | tee -a ${log_file}
+
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
 time ./acm-deploy-load/analyze-agentclusterinstalls.py ${results_dir} 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
 time ./acm-deploy-load/analyze-clustergroupupgrades.py ${results_dir} 2>&1 | tee -a ${log_file}
+
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
+time ./acm-deploy-load/report-per-cluster.py ${results_dir}/day1-*.csv ${results_dir}/clustergroupupgrades-ztp-install-*.csv --profile combined --writegraph ${results_dir}/graph-combined-per-cluster.png 2>&1 | tee -a ${log_file}
+time ./acm-deploy-load/report-per-cluster.py ${results_dir}/day1-*.csv ${results_dir}/clustergroupupgrades-ztp-install-*.csv --profile all_stages --writegraph ${results_dir}/graph-per-cluster-stage_breakdown.png 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
