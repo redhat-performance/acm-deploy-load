@@ -4,7 +4,7 @@
 
 output_file=/dev/fd/1
 if [[ -d "$1" ]]; then
-  output_file="$1/$(date +%Y%m%d-%H%M%S)"
+  output_file="$1/day1-$(date +%Y%m%d-%H%M%S).csv"
 fi
 
 bmh_tmp=$(mktemp)
