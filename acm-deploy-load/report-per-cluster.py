@@ -14,10 +14,10 @@ Options:
 """
 
 import datetime
-import pandas as pd
-from docopt import docopt
 from itertools import chain
 from prettytable import PrettyTable
+import pandas as pd
+from docopt import docopt
 
 # # Breakdown of different installation stages
 
@@ -129,8 +129,9 @@ reports = {
             "stage_ac_aci_creation_to_host_reg",
         ],
         [
-            "stage_d",
-            "stage_e",
+            # Remove bmh_provision_end checkpoint
+            # "stage_d",
+            # "stage_e",
             "stage_de_ai_duration_since_host_reg",
         ],
         [
@@ -151,8 +152,10 @@ reports = {
             "stage_c",
         ],
         [
-            "stage_d",
-            "stage_e",
+            # Remove bmh_provision_end checkpoint
+            # "stage_d",
+            # "stage_e",
+            "stage_de_ai_duration_since_host_reg",
             "stage_f",
         ],
         [
@@ -199,7 +202,8 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
         )
         day1_03_bmh_provision_start = normalize_date(day1_row["bmh_provision_start"])
         day1_04_ai_host_reg = normalize_date(day1_row["assisted_host_registration"])
-        day1_05_bmh_provision_end = normalize_date(day1_row["bmh_provision_end"])
+        # Remove bmh_provision_end checkpoint
+        # day1_05_bmh_provision_end = normalize_date(day1_row["bmh_provision_end"])
         day1_06_ai_installed = normalize_date(day1_row["assisted_installed"])
         day1_07_aci_installed = normalize_date(day1_row["aci_installed"])
         day1_08_aci_managed = normalize_date(day1_row["managedcluster_imported"])
@@ -213,7 +217,8 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
         day1_02_ai_cluster_reg_ts = date_to_timestamp(day1_02_ai_cluster_reg)
         day1_03_bmh_provision_start_ts = date_to_timestamp(day1_03_bmh_provision_start)
         day1_04_ai_host_reg_ts = date_to_timestamp(day1_04_ai_host_reg)
-        day1_05_bmh_provision_end_ts = date_to_timestamp(day1_05_bmh_provision_end)
+        # Remove bmh_provision_end checkpoint
+        # day1_05_bmh_provision_end_ts = date_to_timestamp(day1_05_bmh_provision_end)
         day1_06_ai_installed_ts = date_to_timestamp(day1_06_ai_installed)
         day1_07_aci_installed_ts = date_to_timestamp(day1_07_aci_installed)
         day1_08_aci_managed_ts = date_to_timestamp(day1_08_aci_managed)
@@ -226,8 +231,10 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
         stage_a = day1_02_ai_cluster_reg_ts - day1_01_aci_created_ts
         stage_b = day1_03_bmh_provision_start_ts - day1_02_ai_cluster_reg_ts
         stage_c = day1_04_ai_host_reg_ts - day1_03_bmh_provision_start_ts
-        stage_d = day1_05_bmh_provision_end_ts - day1_04_ai_host_reg_ts
-        stage_e = day1_06_ai_installed_ts - day1_05_bmh_provision_end_ts
+        # Remove bmh_provision_end checkpoint
+        # stage_d = day1_05_bmh_provision_end_ts - day1_04_ai_host_reg_ts
+        # stage_e = day1_06_ai_installed_ts - day1_05_bmh_provision_end_ts
+        stage_de = day1_06_ai_installed_ts - day1_04_ai_host_reg_ts
         stage_f = day1_07_aci_installed_ts - day1_06_ai_installed_ts
         stage_g = day1_08_aci_managed_ts - day1_07_aci_installed_ts
         stage_h = day2_09_cgu_created_ts - day1_08_aci_managed_ts
@@ -236,23 +243,25 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
 
         # Grouped stages
         stage_ac_aci_creation_to_host_reg = stage_a + stage_b + stage_c
-        stage_af_total_day1 = stage_a + stage_b + stage_c + stage_d + stage_e + stage_f
+
+        stage_af_total_day1 = stage_a + stage_b + stage_c + stage_de + stage_f
+
         stage_aj_total_time_day1_and_day2 = (
             stage_a
             + stage_b
             + stage_c
-            + stage_d
-            + stage_e
+            + stage_de
             + stage_f
             + stage_g
             + stage_h
             + stage_i
             + stage_j
         )
-        stage_be_ai_duration = stage_b + stage_c + stage_d + stage_e
+
+        stage_be_ai_duration = stage_b + stage_c + stage_de
         stage_bc_cluster_reg_to_host_reg = stage_b + stage_c
-        stage_ce_day1_only_installation = stage_c + stage_d + stage_e
-        stage_de_ai_duration_since_host_reg = stage_d + stage_e
+        stage_ce_day1_only_installation = stage_c + stage_de
+        stage_de_ai_duration_since_host_reg = stage_de
         stage_fh_day1_to_day2_start_gap = stage_f + stage_g + stage_h
         stage_fi_day1_to_day2_starts_applying = stage_f + stage_g + stage_h + stage_i
         stage_gh_since_aci_completion_until_cgu_creation = stage_g + stage_h
@@ -266,7 +275,8 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
                 "day1_02_ai_cluster_reg": day1_02_ai_cluster_reg,
                 "day1_03_bmh_provision_start": day1_03_bmh_provision_start,
                 "day1_04_ai_host_reg": day1_04_ai_host_reg,
-                "day1_05_bmh_provision_end": day1_05_bmh_provision_end,
+                # Remove bmh_provision_end checkpoint
+                # "day1_05_bmh_provision_end": day1_05_bmh_provision_end,
                 "day1_06_ai_installed": day1_06_ai_installed,
                 "day1_07_aci_installed": day1_07_aci_installed,
                 "day1_08_aci_managed": day1_08_aci_managed,
@@ -274,7 +284,8 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
                 "day1_02_ai_cluster_reg_ts": day1_02_ai_cluster_reg_ts,
                 "day1_03_bmh_provision_start_ts": day1_03_bmh_provision_start_ts,
                 "day1_04_ai_host_reg_ts": day1_04_ai_host_reg_ts,
-                "day1_05_bmh_provision_end_ts": day1_05_bmh_provision_end_ts,
+                # Remove bmh_provision_end checkpoint
+                # "day1_05_bmh_provision_end_ts": day1_05_bmh_provision_end_ts,
                 "day1_06_ai_installed_ts": day1_06_ai_installed_ts,
                 "day1_07_aci_installed_ts": day1_07_aci_installed_ts,
                 "day1_08_aci_managed_ts": day1_08_aci_managed_ts,
@@ -287,8 +298,10 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
                 "stage_a": stage_a,
                 "stage_b": stage_b,
                 "stage_c": stage_c,
-                "stage_d": stage_d,
-                "stage_e": stage_e,
+                # Remove bmh_provision_end checkpoint
+                # "stage_d": stage_d,
+                # "stage_e": stage_e,
+                "stage_de": stage_de,
                 "stage_f": stage_f,
                 "stage_g": stage_g,
                 "stage_h": stage_h,
