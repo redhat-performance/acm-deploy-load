@@ -187,13 +187,18 @@ def combine_and_extend_dataframes(day1_df, cgu_df):
 
     d = []
     # day1
-    # name, aci_creation, aci_installed, assisted_cluster_registration, assisted_host_registration, assisted_installed, bmh_provision_start, bmh_provision_end
+    # name, cluster_name, aci_creation, aci_installed, assisted_cluster_registration, assisted_host_registration, assisted_installed, bmh_provision_start, bmh_provision_end
     # cgu
     # name,status,creationTimestamp,precacheCompleted,precache_duration,startedAt,completedAt,duration
-    for index, cgu_row in cgu_df.iterrows():
-        name = cgu_row["name"]
+    for index, day1_row in day1_df.iterrows():
+        name = day1_row["name"]
+        cluster_name = day1_row["cluster_name"]
 
-        day1_row = day1_df[day1_df["name"] == name].iloc[0].to_dict()
+        # If cluster is not in status "Completed", skip the row
+        if cluster_name not in cgu_df["name"].values:
+            continue
+
+        cgu_row = cgu_df[cgu_df["name"] == cluster_name].iloc[0].to_dict()
 
         # Checkpoints
         day1_01_aci_created = normalize_date(day1_row["aci_creation"])
