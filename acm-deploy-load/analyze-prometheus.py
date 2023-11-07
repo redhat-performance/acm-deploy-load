@@ -250,6 +250,15 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management',pod=~'search.*'}[5m]))"
   query_thanos(route, q, "ACM - Search", token, end_ts, duration, sub_report_dir, "net-xmt-acm-search", "ACM Search Network Transmit Throughput", "NET", w, h)
 
+  # ACM governance policy propagator CPU/Memory/Network
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management', container='governance-policy-propagator'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-grc-policy-prop", "ACM governance-policy-propagator CPU Cores Usage", "CPU", w, h)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management',container='governance-policy-propagator'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-grc-policy-prop", "ACM governance-policy-propagator Memory Usage", "MEM", w, h)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='open-cluster-management',container='governance-policy-propagator'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-acm-grc-policy-prop", "ACM Governance Policy Propagator Network Receive Throughput", "NET", w, h)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management',container='governance-policy-propagator'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-grc-policy-prop", "ACM Governance Policy Propagator Network Transmit Throughput", "NET", w, h)
 
 def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
   # Cluster CPU/Memory
