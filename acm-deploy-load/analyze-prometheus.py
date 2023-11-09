@@ -152,7 +152,11 @@ acm_data = [
   "cpu-acm-search",
   "mem-acm-search",
   "net-rcv-acm-search",
-  "net-xmt-acm-search"
+  "net-xmt-acm-search",
+  "cpu-acm-grc-policy-prop",
+  "mem-acm-grc-policy-prop",
+  "net-rcv-acm-grc-policy-prop",
+  "net-xmt-acm-grc-policy-prop"
 ]
 talm_data = [
   "talm-cgu",
