@@ -25,6 +25,7 @@ rhacm_quay_pullsecret: ''
 # Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-09-05-07-27-22'
 rhacm_build:
 setup_rhacm_search_pv: false
+setup_rhacm_search_api_route: true
 setup_rhacm_observability: false
 
 # Deploy Topology Aware Lifecycle Manager (TALM)

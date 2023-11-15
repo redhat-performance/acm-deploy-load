@@ -57,6 +57,11 @@
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storageclassname }}"}]'
 
+- name: Create search API Route
+  when: setup_rhacm_search_api_route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management
+
 - name: Template out RHACM Observability
   when: setup_rhacm_observability
   template:

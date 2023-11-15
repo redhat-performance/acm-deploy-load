@@ -47,6 +47,10 @@ time ./acm-deploy-load/analyze-clustergroupupgrades.py ${results_dir} 2>&1 | tee
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
+time ./acm-deploy-load/analyze-search.py ${results_dir} 2>&1 | tee -a ${log_file}
+
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
 time ./scripts/post-ztp-gen-day1-csv.sh ${results_dir} 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
