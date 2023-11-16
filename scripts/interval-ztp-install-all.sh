@@ -47,7 +47,7 @@ time ./acm-deploy-load/analyze-clustergroupupgrades.py ${results_dir} 2>&1 | tee
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
-time ./acm-deploy-load/analyze-search.py ${results_dir} 2>&1 | tee -a ${log_file}
+time ./acm-deploy-load/benchmark-search.py ${results_dir} --sample-count 10 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 

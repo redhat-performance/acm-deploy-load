@@ -18,6 +18,7 @@
 
 import argparse
 from utils.command import command
+from datetime import datetime
 import logging
 import time
 import json
@@ -114,12 +115,13 @@ def main():
   parser = argparse.ArgumentParser(
       description="Benchmark search query response times",
       prog="benchmark-search.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument("-k", "--kubeconfigs", type=str, default="/root/hv-vm/kc", help="The location of the kubeconfigs, nested under each cluster's directory")
   parser.add_argument("results_directory", type=str, help="The location to place benchamrk data")
+  parser.add_argument("--sample-count", type=int, default=10, help="Uses previously stored raw data")
   cliargs = parser.parse_args()
-  search_benchmark_csv_file = "{}/search-benchmark.csv".format(cliargs.results_directory)
+  ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+  search_benchmark_csv_file = "{}/search-benchmark-{}.csv".format(cliargs.results_directory, ts)
   with open(search_benchmark_csv_file, "w") as csv_file:
-    csv_file.write("user,scenario,totalResources,min,max,average\n")
+    csv_file.write("user,scenario,totalResources,sampleCount,min,max,average\n")
 
   # create users
   createUsers()
@@ -139,22 +141,23 @@ def main():
     resourceCount = getTotalResourceCount()
 
     # measure search api performance
+    # Empty cache scenario only runs once as the subsequent queries would have rbac cached already and be more performant. Future iterations could potentially reset the cache each time.
     _, _, emptyCacheAvg = measureQuery(SEARCH_API, TOKEN, 1, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}]}]}}', "query kind:Pod")
-    searchKindMin, searchKindMax, searchKindAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}]}]}}', "query kind:Pod")
-    searchLabelMin, searchLabelMax, searchLabelAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"label","values":["app=search"]}]}]}}', "query label:app=search")
-    searchStatusMin, searchStatusMax, searchStatusAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"status","values":["!=Running"]}]}]}}', "query status!=Running")
-    autoNameMin, autoNameMax, autoNameAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"name","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete name")
-    autoLabelMin, autoLabelMax, autoLabelAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"label","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete label")
-    autoStatusMin, autoStatusMax, autoStatusAvg = measureQuery(SEARCH_API, TOKEN, 10, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"status","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete status")
+    searchKindMin, searchKindMax, searchKindAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}]}]}}', "query kind:Pod")
+    searchLabelMin, searchLabelMax, searchLabelAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"label","values":["app=search"]}]}]}}', "query label:app=search")
+    searchStatusMin, searchStatusMax, searchStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\n    searchResult: search(input: $input) {\n        items\n        }\n    }\n","variables":{"input":[{"keywords":[],"filters":[{"property":"status","values":["!=Running"]}]}]}}', "query status!=Running")
+    autoNameMin, autoNameMax, autoNameAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"name","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete name")
+    autoLabelMin, autoLabelMax, autoLabelAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"label","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete label")
+    autoStatusMin, autoStatusMax, autoStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"status","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete status")
 
     with open(search_benchmark_csv_file, "a") as csv_file:
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", resourceCount, "", "", emptyCacheAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", resourceCount, searchKindMin, searchKindMax, searchKindAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "search [label:app=search]", resourceCount, searchLabelMin, searchLabelMax, searchLabelAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "search [status!=Running]", resourceCount, searchStatusMin, searchStatusMax, searchStatusAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "autocomplete [name]", resourceCount, autoNameMin, autoNameMax, autoNameAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "autocomplete [label]", resourceCount, autoLabelMin, autoLabelMax, autoLabelAvg))
-      csv_file.write("{},{},{},{},{},{}\n".format(user, "autocomplete [status]", resourceCount, autoStatusMin, autoStatusMax, autoStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", resourceCount, 1, "", "", emptyCacheAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", resourceCount, cliargs.sample_count, searchKindMin, searchKindMax, searchKindAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [label:app=search]", resourceCount, cliargs.sample_count, searchLabelMin, searchLabelMax, searchLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [status!=Running]", resourceCount, cliargs.sample_count, searchStatusMin, searchStatusMax, searchStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", resourceCount, cliargs.sample_count, autoNameMin, autoNameMax, autoNameAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", resourceCount, cliargs.sample_count, autoLabelMin, autoLabelMax, autoLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", resourceCount, cliargs.sample_count, autoStatusMin, autoStatusMax, autoStatusAvg))
     
     # todo reset the search-api cache fro new user
 
