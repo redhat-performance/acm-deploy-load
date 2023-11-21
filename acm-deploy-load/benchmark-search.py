@@ -40,23 +40,13 @@ def getUserToken(user):
   return output
 
 def createUsers():
-  # create cluster-admin
+  # create cluster-admin svcAccount
   createAdminSvcAcct_cmd = ["oc", "create", "serviceaccount", testUsers[0], "-n", "open-cluster-management"]
   adminrc1, adminoutput1 = command(createAdminSvcAcct_cmd, False, no_log=True)
   createAdminRoleBinding_cmd = ["oc", "create", "rolebinding", testUsers[0], "--role=cluster-admin", "--serviceaccount=open-cluster-management:{}".format(testUsers[0])]
   adminrc2, adminoutput2 = command(createAdminRoleBinding_cmd, False, no_log=True)
   if (adminrc1 != 0 and adminoutput1.find('already exists') == -1) or (adminrc2 != 0 and adminoutput2.find('already exists') == -1):
     logger.error("Error creating {} test user".format(testUsers[0]))
-
-  # todo create limited access user
-  # oc create serviceaccount search-user-1 -n open-cluster-management
-  # oc create role search-user-1 --verb=list --resource=configmaps -n open-cluster-management (todo what access to give? 10 cluster limit)
-  # oc create rolebinding search-user-1 --role=cluster-admin --serviceaccount=open-cluster-management:search-user-1 -n open-cluster-management
-
-  # todo create wide-access-user
-  # oc create serviceaccount search-user-1 -n open-cluster-management
-  # oc create role search-user-1 --verb=list --resource=configmaps -n open-cluster-management (todo what access to give? all clusters but limit resources?)
-  # oc create rolebinding search-user-1 --role=cluster-admin --serviceaccount=open-cluster-management:search-user-1 -n open-cluster-management
 
 def getTotalResourceCount():
   searchDB_cmd = ["oc", "get", "pods", "-n", "open-cluster-management", "-l", "app=search,name=search-postgres", "-o", "custom-columns=POD:.metadata.name", "--no-headers", "-o", "json"]
@@ -65,9 +55,14 @@ def getTotalResourceCount():
   parsedSearchDBPod = route_data["items"][0]["metadata"]["name"]
   total_resources_cmd = ["oc", "rsh", "-n", "open-cluster-management", parsedSearchDBPod, "psql", "-d", "search", "-U", "searchuser", "-t", "-c", "SELECT count(*) from search.resources;"]
   rc, output = command(total_resources_cmd, False, retries=3, no_log=True)
+  logger.info("getTotalResourceCount command res: {}".format(output))
   if rc != 0:
     logger.error("getTotalResourceCount rc: {}".format(rc))
-  return json.loads(output)
+  try:
+    return int(output.strip())
+  except:
+    logger.error("Error while parsing resource count response")
+    return 0
 
 # measureQuery - run search query numRequest times and calcuate the min, max & avg response times. 
 def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
@@ -158,8 +153,6 @@ def main():
       csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", resourceCount, cliargs.sample_count, autoNameMin, autoNameMax, autoNameAvg))
       csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", resourceCount, cliargs.sample_count, autoLabelMin, autoLabelMax, autoLabelAvg))
       csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", resourceCount, cliargs.sample_count, autoStatusMin, autoStatusMax, autoStatusAvg))
-    
-    # todo reset the search-api cache fro new user
 
 if __name__ == "__main__":
   sys.exit(main())
