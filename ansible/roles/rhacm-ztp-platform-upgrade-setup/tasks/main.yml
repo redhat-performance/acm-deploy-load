@@ -36,8 +36,8 @@
     name: upgrade-graph_fast-4.12
   - url: https://api.openshift.com/api/upgrades_info/v1/graph?channel=fast-4.13
     name: upgrade-graph_fast-4.13
-  - url: https://api.openshift.com/api/upgrades_info/v1/graph?channel=candidate-4.14
-    name: upgrade-graph_candidate-4.14
+  - url: https://api.openshift.com/api/upgrades_info/v1/graph?channel=fast-4.14
+    name: upgrade-graph_fast-4.14
 
 - name: Get list of clusters for upgrade
   shell: |
