@@ -28,7 +28,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(
 logger = logging.getLogger("acm-deploy-load")
 logging.Formatter.converter = time.gmtime
 
-testUsers = ["search-admin"]
+# testUsers = ["search-admin"]
+testUsers = ["search-admin", "search-limited-access-user", "search-wide-access-user"]
+userClusterCounts = [0, 0, 0]
 
 def getUserToken(user):
   # need support for older oc versions? 
@@ -39,6 +41,18 @@ def getUserToken(user):
     output = ""
   return output
 
+def getManagedClusterList():
+  managedClusters = []
+  oc_cmd = ["oc", "get", "managedcluster", "-A", "-o", "json"]
+  rc, output = command(oc_cmd, False, retries=3, no_log=True)
+  if rc != 0:
+    logger.error("benchmark-search, oc get managedcluster rc: {}".format(output))
+  mc_data = json.loads(output)
+  for item in mc_data["items"]:
+    managedClusters.append(item["metadata"]["name"])
+  return managedClusters
+
+
 def createUsers():
   # create cluster-admin svcAccount
   createAdminSvcAcct_cmd = ["oc", "create", "serviceaccount", testUsers[0], "-n", "open-cluster-management"]
@@ -47,6 +61,44 @@ def createUsers():
   adminrc2, adminoutput2 = command(createAdminRoleBinding_cmd, False, no_log=True)
   if (adminrc1 != 0 and adminoutput1.find('already exists') == -1) or (adminrc2 != 0 and adminoutput2.find('already exists') == -1):
     logger.error("Error creating {} test user".format(testUsers[0]))
+  
+  # create limited access svcAccount - user with access to ONLY 10 clusters
+  createLimitedSvcAcct_cmd = ["oc", "create", "serviceaccount", testUsers[1], "-n", "open-cluster-management"]
+  limitedRC, limitedOutput = command(createLimitedSvcAcct_cmd, False, no_log=True)
+  if (limitedRC != 0 and limitedOutput.find('already exists') == -1):
+    logger.error("Error creating {} test user".format(testUsers[1]))
+
+  # create wide access svcAccount - user with access to all BUT 10 clusters
+  createWideSvcAcct_cmd = ["oc", "create", "serviceaccount", testUsers[2], "-n", "open-cluster-management"]
+  wideRC, wideOutput = command(createWideSvcAcct_cmd, False, no_log=True)
+  if (wideRC != 0 and wideOutput.find('already exists') == -1):
+    logger.error("Error creating {} test user".format(testUsers[2]))
+
+  # create Role that gives users access to cluster resources in search
+  createRole_cmd = ["oc", "create", "role", "managed-cluster-access", "--verb", "create,get,list,watch", "--resource", "managedclusterviews.view.open-cluster-management.io", "-n", "open-cluster-management"]
+  roleRC, roleOutput = command(createRole_cmd, False, no_log=True)
+  if (roleRC != 0 and roleOutput.find('already exists') == -1):
+    logger.error("Error creating managedCluster Role: {}".format(roleRC))
+
+  clusterList = getManagedClusterList()
+  userClusterCounts[0] = len(clusterList)
+  for cluster in range(len(clusterList)):
+    # if cluster index is less than 10 create rolebinding for both users
+    if cluster < 10:
+      userClusterCounts[1] += 1
+      userClusterCounts[2] += 1
+      createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[cluster], "--role", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[1]), "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]),  "-n",  clusterList[cluster]]
+      roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
+      if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
+        logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[cluster], roleRC))
+    # if cluster index is >= 10 create rolebinding for only wide access user (user get access to all but 10 clusters)
+    elif cluster >= 10 and (cluster < len(clusterList) - 10):
+      userClusterCounts[2] += 1
+      createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[cluster], "--role", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]),  "-n",  clusterList[cluster]]
+      roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
+      if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
+        logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[cluster], roleRC))
+
 
 def getTotalResourceCount():
   searchDB_cmd = ["oc", "get", "pods", "-n", "open-cluster-management", "-l", "app=search,name=search-postgres", "-o", "custom-columns=POD:.metadata.name", "--no-headers", "-o", "json"]
@@ -116,7 +168,7 @@ def main():
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
   search_benchmark_csv_file = "{}/search-benchmark-{}.csv".format(cliargs.results_directory, ts)
   with open(search_benchmark_csv_file, "w") as csv_file:
-    csv_file.write("user,scenario,totalResources,sampleCount,min,max,average\n")
+    csv_file.write("user,scenario,clusterCount,totalResources,sampleCount,min,max,average\n")
 
   # create users
   createUsers()
@@ -130,9 +182,8 @@ def main():
   searchApiRoute = route_data["spec"]["host"]
   SEARCH_API="https://{}/searchapi/graphql".format(searchApiRoute)
 
-  for user in testUsers:
+  for idx, user in enumerate(testUsers):
     TOKEN = getUserToken(user)
-
     resourceCount = getTotalResourceCount()
 
     # measure search api performance
@@ -146,13 +197,13 @@ def main():
     autoStatusMin, autoStatusMax, autoStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\n    searchComplete(property:$property,query:$query,limit:$limit)\n}\n","variables":{"property":"status","query":{"keywords":[],"filters":[],"limit":10000},"limit":10000}}', "autocomplete status")
 
     with open(search_benchmark_csv_file, "a") as csv_file:
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", resourceCount, 1, "", "", emptyCacheAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", resourceCount, cliargs.sample_count, searchKindMin, searchKindMax, searchKindAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [label:app=search]", resourceCount, cliargs.sample_count, searchLabelMin, searchLabelMax, searchLabelAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "search [status!=Running]", resourceCount, cliargs.sample_count, searchStatusMin, searchStatusMax, searchStatusAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", resourceCount, cliargs.sample_count, autoNameMin, autoNameMax, autoNameAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", resourceCount, cliargs.sample_count, autoLabelMin, autoLabelMax, autoLabelAvg))
-      csv_file.write("{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", resourceCount, cliargs.sample_count, autoStatusMin, autoStatusMax, autoStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", userClusterCounts[idx], resourceCount, 1, "", "", emptyCacheAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchKindMin, searchKindMax, searchKindAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [label:app=search]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchLabelMin, searchLabelMax, searchLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [status!=Running]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchStatusMin, searchStatusMax, searchStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoNameMin, autoNameMax, autoNameAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoLabelMin, autoLabelMax, autoLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoStatusMin, autoStatusMax, autoStatusAvg))
 
 if __name__ == "__main__":
   sys.exit(main())
