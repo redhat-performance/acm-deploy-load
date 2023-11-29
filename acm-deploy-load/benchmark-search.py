@@ -112,7 +112,7 @@ def getTotalResourceCount(URL, TOKEN):
     if "errors" in qd_json:
       logger.error("GraphQL error encountered on resource count query: {}".format(qd_json["errors"][0]["message"]))
     elif "data" in qd_json and "searchResult" in qd_json["data"]:
-      logger.info("TotalResourceCount: {}".format(qd_json["data"]["searchResult"][0]["count"]))
+      logger.info("Total resource count for user: {}".format(qd_json["data"]["searchResult"][0]["count"]))
       return qd_json["data"]["searchResult"][0]["count"]
   else:
     logger.error("Error while parsing resource count response")
@@ -134,9 +134,9 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
       if "errors" in qd_json:
         logger.error("GraphQL error encountered on {} iteration {}: {}".format(qd_json["errors"][0]["message"]))
       elif "data" in qd_json and "searchResult" in qd_json["data"]:
-        logger.info("search query data length: {}".format(len(qd_json["data"]["searchResult"][0]["items"])))
+        logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchResult"][0]["items"])))
       elif "data" in qd_json and "searchComplete" in qd_json["data"]:
-        logger.info("autocomplete data length: {}".format(len(qd_json["data"]["searchComplete"])))
+        logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchComplete"])))
     else:
       logger.error("Search query status code returned: {}".format(query_data.status_code))
       logger.error("Error encountered on {} iteration {}: {}".format(queryName, x, query_data.text.rstrip()))
