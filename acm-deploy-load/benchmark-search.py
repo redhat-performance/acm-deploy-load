@@ -152,7 +152,7 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
 
   avg = tempAvg / len(queryResArray)
   # should error be returned if there is one?
-  return min, max, avg
+  return "{:.3f}".format(min), "{:.3f}".format(max), "{:.3f}".format(avg)
 
 def main():
   # create csv file for results
