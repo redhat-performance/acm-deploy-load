@@ -52,9 +52,10 @@ def getManagedClusterList():
     logger.error("benchmark-search, oc get managedcluster rc: {}".format(output))
   mc_data = json.loads(output)
   for item in mc_data["items"]:
-    managedClusters.append(item["metadata"]["name"])
+    # limited access users will get access to managed clusters only (not the hub - local-cluster)
+    if item["metadata"]["name"] != "local-cluster":
+      managedClusters.append(item["metadata"]["name"])
   return managedClusters
-
 
 def createUsers():
   # create cluster-admin svcAccount
@@ -84,27 +85,25 @@ def createUsers():
     logger.error("Error creating managedCluster Role: {}".format(roleRC))
 
   clusterList = getManagedClusterList()
-  userClusterCounts[0] = len(clusterList)
-  for idx, cluster in enumerate(clusterList):
-    # limited access users will get access to managed clusters only (not the hub - local-cluster)
-    if cluster != 'local-cluster':
-      # if cluster index is less than 10 create rolebinding for both users
-      if idx < 10:
-        userClusterCounts[1] += 1
-        userClusterCounts[2] += 1
-        createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[idx], "--clusterrole", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[1]), "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]), "-n", clusterList[idx]]
-        roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
-        if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
-          logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[idx], roleRC))
-      # if cluster index is >= 10 create rolebinding for only wide access user (user get access to all but 10 clusters)
-      elif idx >= 10 and (idx < len(clusterList) - 10):
-        userClusterCounts[2] += 1
-        createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[idx], "--clusterrole", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]), "-n", clusterList[idx]]
-        roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
-        if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
-          logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[idx], roleRC))
+  userClusterCounts[0] = len(clusterList) + 1 # +1 is to add back local-cluster
+  for idx, _ in enumerate(clusterList):
+    # if cluster index is less than 10 create rolebinding for both users
+    if idx < 10:
+      userClusterCounts[1] += 1
+      userClusterCounts[2] += 1
+      createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[idx], "--clusterrole", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[1]), "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]), "-n", clusterList[idx]]
+      roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
+      if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
+        logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[idx], roleRC))
+    # if cluster index is >= 10 create rolebinding for only wide access user (user get access to all but 10 clusters)
+    elif idx >= 10 and (idx < len(clusterList) - 10):
+      userClusterCounts[2] += 1
+      createManagedClusterRoleBinding_cmd = ["oc", "create", "rolebinding", clusterList[idx], "--clusterrole", "managed-cluster-access", "--serviceaccount", "open-cluster-management:{}".format(testUsers[2]), "-n", clusterList[idx]]
+      roleBindingRC, roleBindingOutput = command(createManagedClusterRoleBinding_cmd, False, no_log=True)
+      if (roleBindingRC != 0 and roleBindingOutput.find('already exists') == -1):
+        logger.error("Error creating RoleBinding for cluster {}: {}".format(clusterList[idx], roleRC))
 
-def getTotalResourceCount(URL, TOKEN):
+def getTotalResourceCount(URL, TOKEN, user):
   headers = {"Authorization": "Bearer {}".format(TOKEN), "Content-Type": "application/json"}
   resource_count_data = requests.post(URL, headers=headers, json=json.loads('{"query":"query searchResultCount($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        count\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"cluster","values":["!not-exists"]}],"limit":-1}]}}'), verify=False)
   if resource_count_data.status_code == 200:
@@ -112,7 +111,7 @@ def getTotalResourceCount(URL, TOKEN):
     if "errors" in qd_json:
       logger.error("GraphQL error encountered on resource count query: {}".format(qd_json["errors"][0]["message"]))
     elif "data" in qd_json and "searchResult" in qd_json["data"]:
-      logger.info("Total resource count for user: {}".format(qd_json["data"]["searchResult"][0]["count"]))
+      logger.debug("Total resource count for user {}: {}".format(user, qd_json["data"]["searchResult"][0]["count"]))
       return qd_json["data"]["searchResult"][0]["count"]
   else:
     logger.error("Error while parsing resource count response")
@@ -193,7 +192,7 @@ def main():
     autoLabelMin, autoLabelMax, autoLabelAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"label","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete label")
     autoStatusMin, autoStatusMax, autoStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"status","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete status")
 
-    resourceCount = getTotalResourceCount(SEARCH_API, TOKEN)
+    resourceCount = getTotalResourceCount(SEARCH_API, TOKEN, user)
 
     with open(search_benchmark_csv_file, "a") as csv_file:
       csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", userClusterCounts[idx], resourceCount, 1, "", "", emptyCacheAvg))
