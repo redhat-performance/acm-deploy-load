@@ -126,7 +126,11 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
   for x in range(numRequests):
     headers = {"Authorization": "Bearer {}".format(TOKEN), "Content-Type": "application/json"}
     start_time = time.perf_counter()
-    query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False)
+    query_data = { "status_code": 500, "text": "requests.post failed for {}".format(queryName) }
+    try:
+      query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False)
+    except:
+      logger.error("Error encountered on {} iteration {}".format(queryName, x))
     requestTime = time.perf_counter() - start_time
     if query_data.status_code == 200:
       qd_json = query_data.json()
