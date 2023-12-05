@@ -149,11 +149,14 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
     except:
       logger.error("Error encountered on {} iteration {}".format(queryName, x))
 
-  tempAvg = 0
+  avg = 0
+  sumOfTimes = 0
   for queryTime in queryResArray:
-    tempAvg = tempAvg + queryTime
+    sumOfTimes = sumOfTimes + queryTime
 
-  avg = tempAvg / len(queryResArray)
+  if len(queryResArray) > 0:
+    logger.debug("No successful query responses available to calculate an average.")
+    avg = sumOfTimes / len(queryResArray)
   # should error be returned if there is one?
   return "{:.3f}".format(min), "{:.3f}".format(max), "{:.3f}".format(avg)
 
