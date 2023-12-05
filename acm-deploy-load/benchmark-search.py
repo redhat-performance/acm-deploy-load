@@ -124,31 +124,30 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
   max = 0
   avg = 0
   for x in range(numRequests):
-    headers = {"Authorization": "Bearer {}".format(TOKEN), "Content-Type": "application/json"}
-    start_time = time.perf_counter()
-    query_data = { "status_code": 500, "text": "requests.post failed for {}".format(queryName) }
     try:
+      headers = {"Authorization": "Bearer {}".format(TOKEN), "Content-Type": "application/json"}
+      start_time = time.perf_counter()
       query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False)
+      requestTime = time.perf_counter() - start_time
+      if query_data.status_code == 200:
+        qd_json = query_data.json()
+        if "errors" in qd_json:
+          logger.error("GraphQL error encountered on {} iteration {}: {}".format(qd_json["errors"][0]["message"]))
+        elif "data" in qd_json:
+          # Only add performance specs if query returns successfully
+          queryResArray.append(requestTime)
+          if requestTime < min:
+            min = requestTime
+          elif requestTime > max:
+            max = requestTime
+          if "searchResult" in qd_json["data"]:
+            logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchResult"][0]["items"])))
+          elif "searchComplete" in qd_json["data"]:
+            logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchComplete"])))
+      else:
+        logger.error("{} iteration {} error: {}".format(queryName, x, query_data.text.rstrip()))
     except:
       logger.error("Error encountered on {} iteration {}".format(queryName, x))
-    requestTime = time.perf_counter() - start_time
-    if query_data.status_code == 200:
-      qd_json = query_data.json()
-      if "errors" in qd_json:
-        logger.error("GraphQL error encountered on {} iteration {}: {}".format(qd_json["errors"][0]["message"]))
-      elif "data" in qd_json and "searchResult" in qd_json["data"]:
-        logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchResult"][0]["items"])))
-      elif "data" in qd_json and "searchComplete" in qd_json["data"]:
-        logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchComplete"])))
-    else:
-      logger.error("Search query status code returned: {}".format(query_data.status_code))
-      logger.error("Error encountered on {} iteration {}: {}".format(queryName, x, query_data.text.rstrip()))
-
-    queryResArray.append(requestTime)
-    if requestTime < min:
-      min = requestTime
-    elif requestTime > max:
-      max = requestTime
 
   tempAvg = 0
   for queryTime in queryResArray:
