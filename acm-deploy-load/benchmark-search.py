@@ -118,7 +118,8 @@ def getTotalResourceCount(URL, TOKEN, user):
     return 0
 
 # measureQuery - run search query numRequest times and calcuate the min, max & avg response times. 
-def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
+def measureQuery(URL, TOKEN, numRequests, queryData, queryName, user):
+  successfulIterations = 0
   queryResArray = []
   min = sys.maxsize
   max = 0
@@ -126,28 +127,31 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
   for x in range(numRequests):
     try:
       headers = {"Authorization": "Bearer {}".format(TOKEN), "Content-Type": "application/json"}
+      # Uses keep-alive...
+      # s = requests.Session()
       start_time = time.perf_counter()
-      query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False)
+      query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False, timeout=30)
       requestTime = time.perf_counter() - start_time
       if query_data.status_code == 200:
         qd_json = query_data.json()
         if "errors" in qd_json:
-          logger.error("GraphQL error encountered on {} iteration {}: {}".format(qd_json["errors"][0]["message"]))
+          logger.error("{} - GraphQL error encountered on {} iteration {}: {}".format(user, qd_json["errors"][0]["message"]))
         elif "data" in qd_json:
           # Only add performance specs if query returns successfully
+          successfulIterations += 1
           queryResArray.append(requestTime)
           if requestTime < min:
             min = requestTime
           elif requestTime > max:
             max = requestTime
           if "searchResult" in qd_json["data"]:
-            logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchResult"][0]["items"])))
+            logger.debug("{} - {} data length: {}".format(user, queryName, len(qd_json["data"]["searchResult"][0]["items"])))
           elif "searchComplete" in qd_json["data"]:
-            logger.debug("{} data length: {}".format(queryName, len(qd_json["data"]["searchComplete"])))
+            logger.debug("{} - {} data length: {}".format(user, queryName, len(qd_json["data"]["searchComplete"])))
       else:
-        logger.error("{} iteration {} error: {}".format(queryName, x, query_data.text.rstrip()))
+        logger.error("{} - {} iteration {} error: {}".format(user, queryName, x, query_data.text.rstrip()))
     except:
-      logger.error("Error encountered on {} iteration {}".format(queryName, x))
+      logger.error("{} - Error encountered on {} iteration {}".format(user, queryName, x))
 
   avg = 0
   sumOfTimes = 0
@@ -158,7 +162,7 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName):
     logger.debug("No successful query responses available to calculate an average.")
     avg = sumOfTimes / len(queryResArray)
   # should error be returned if there is one?
-  return "{:.3f}".format(min), "{:.3f}".format(max), "{:.3f}".format(avg)
+  return "{:.3f}".format(min), "{:.3f}".format(max), "{:.3f}".format(avg), successfulIterations
 
 def main():
   # create csv file for results
@@ -171,7 +175,7 @@ def main():
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
   search_benchmark_csv_file = "{}/search-benchmark-{}.csv".format(cliargs.results_directory, ts)
   with open(search_benchmark_csv_file, "w") as csv_file:
-    csv_file.write("user,scenario,clusterCount,totalAuthorizedResources,sampleCount,min,max,average\n")
+    csv_file.write("user,scenario,clusterCount,totalAuthorizedResources,expectedQueryIterations,successfulQueryIterations,min,max,average\n")
 
   # create users
   createUsers()
@@ -190,24 +194,26 @@ def main():
 
     # measure search api performance
     # Empty cache scenario only runs once as the subsequent queries would have rbac cached already and be more performant. Future iterations could potentially reset the cache each time.
-    _, _, emptyCacheAvg = measureQuery(SEARCH_API, TOKEN, 1, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod")
-    searchKindMin, searchKindMax, searchKindAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod")
-    searchLabelMin, searchLabelMax, searchLabelAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"label","values":["vendor=OpenShift"]}],"limit":-1}]}}', "query label:vendor=OpenShift")
-    searchStatusMin, searchStatusMax, searchStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"status","values":["!=Running"]}],"limit":-1}]}}', "query status!=Running")
-    autoNameMin, autoNameMax, autoNameAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"name","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete name")
-    autoLabelMin, autoLabelMax, autoLabelAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"label","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete label")
-    autoStatusMin, autoStatusMax, autoStatusAvg = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"status","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete status")
+    _, _, emptyCacheAvg, emptyCacheSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, 1, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod", user)
+    searchKindMin, searchKindMax, searchKindAvg, searchKindSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod", user)
+    searchLabelMin, searchLabelMax, searchLabelAvg, searchLabelSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"label","values":["vendor=OpenShift"]}],"limit":-1}]}}', "query label:vendor=OpenShift", user)
+    searchStatusMin, searchStatusMax, searchStatusAvg, searchStatusSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"status","values":["!=Running"]}],"limit":-1}]}}', "query status!=Running", user)
+    autoNameMin, autoNameMax, autoNameAvg, autoNameSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"name","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete name", user)
+    autoKindPodNameMin, autoKindPodNameMax, autoKindPodNameAvg, autoKindPodNameSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"name","query":{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}]},"limit":-1}}', "autocomplete kind:Pod name", user)
+    autoLabelMin, autoLabelMax, autoLabelAvg, autoLabelSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"label","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete label", user)
+    autoStatusMin, autoStatusMax, autoStatusAvg, autoStatusSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchComplete($property:String!,$query:SearchInput,$limit:Int){\\n    searchComplete(property:$property,query:$query,limit:$limit)\\n}\\n","variables":{"property":"status","query":{"keywords":[],"filters":[]},"limit":-1}}', "autocomplete status", user)
 
     resourceCount = getTotalResourceCount(SEARCH_API, TOKEN, user)
 
     with open(search_benchmark_csv_file, "a") as csv_file:
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", userClusterCounts[idx], resourceCount, 1, "", "", emptyCacheAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchKindMin, searchKindMax, searchKindAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [label:vendor=OpenShift]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchLabelMin, searchLabelMax, searchLabelAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "search [status!=Running]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchStatusMin, searchStatusMax, searchStatusAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoNameMin, autoNameMax, autoNameAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoLabelMin, autoLabelMax, autoLabelAvg))
-      csv_file.write("{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoStatusMin, autoStatusMax, autoStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "Empty cache search [kind:Pod]", userClusterCounts[idx], resourceCount, 1, emptyCacheSuccessfulIterations, "", "", emptyCacheAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "search [kind:Pod]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchKindSuccessfulIterations, searchKindMin, searchKindMax, searchKindAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "search [label:vendor=OpenShift]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchLabelSuccessfulIterations, searchLabelMin, searchLabelMax, searchLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "search [status!=Running]", userClusterCounts[idx], resourceCount, cliargs.sample_count, searchStatusSuccessfulIterations, searchStatusMin, searchStatusMax, searchStatusAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [name]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoNameSuccessfulIterations, autoNameMin, autoNameMax, autoNameAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [kind:Pod name]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoKindPodNameSuccessfulIterations, autoKindPodNameMin, autoKindPodNameMax, autoKindPodNameAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [label]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoLabelSuccessfulIterations, autoLabelMin, autoLabelMax, autoLabelAvg))
+      csv_file.write("{},{},{},{},{},{},{},{},{}\n".format(user, "autocomplete [status]", userClusterCounts[idx], resourceCount, cliargs.sample_count, autoStatusSuccessfulIterations, autoStatusMin, autoStatusMax, autoStatusAvg))
 
 if __name__ == "__main__":
   sys.exit(main())
