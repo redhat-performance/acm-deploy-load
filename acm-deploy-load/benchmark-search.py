@@ -130,7 +130,7 @@ def measureQuery(URL, TOKEN, numRequests, queryData, queryName, user):
       # Uses keep-alive...
       # s = requests.Session()
       start_time = time.perf_counter()
-      query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False, timeout=30)
+      query_data = requests.post(URL, headers=headers, json=json.loads(queryData), verify=False, timeout=120)
       requestTime = time.perf_counter() - start_time
       if query_data.status_code == 200:
         qd_json = query_data.json()
@@ -194,7 +194,7 @@ def main():
 
     # measure search api performance
     # Empty cache scenario only runs once as the subsequent queries would have rbac cached already and be more performant. Future iterations could potentially reset the cache each time.
-    _, _, emptyCacheAvg, emptyCacheSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, 1, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod", user)
+    _, _, emptyCacheAvg, emptyCacheSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, 1, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "empty cache query kind:Pod", user)
     searchKindMin, searchKindMax, searchKindAvg, searchKindSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"kind","values":["Pod"]}],"limit":-1}]}}', "query kind:Pod", user)
     searchLabelMin, searchLabelMax, searchLabelAvg, searchLabelSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"label","values":["vendor=OpenShift"]}],"limit":-1}]}}', "query label:vendor=OpenShift", user)
     searchStatusMin, searchStatusMax, searchStatusAvg, searchStatusSuccessfulIterations = measureQuery(SEARCH_API, TOKEN, cliargs.sample_count, '{"query":"query searchResultItems($input: [SearchInput]) {\\n    searchResult: search(input: $input) {\\n        items\\n    }\\n}\\n","variables":{"input":[{"keywords":[],"filters":[{"property":"status","values":["!=Running"]}],"limit":-1}]}}', "query status!=Running", user)
