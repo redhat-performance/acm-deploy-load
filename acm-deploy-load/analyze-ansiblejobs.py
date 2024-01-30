@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 import json
 from utils.command import command
+from utils.common_ocp import get_ocp_namespace_list
 from utils.output import log_write
 import logging
 import numpy as np
@@ -42,12 +43,21 @@ def main():
       description="Analyze AnsibleJobs data",
       prog="analyze-ansiblejobs.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+  parser.add_argument("-k", "--kubeconfig", type=str, default="/root/bm/kubeconfig",
+                      help="Changes which kubeconfig to connect to a cluster")
+
   # Graph size
   parser.add_argument("-w", "--width", type=int, default=1000, help="Sets width of all graphs")
   parser.add_argument("-t", "--height", type=int, default=700, help="Sets height of all graphs")
 
   parser.add_argument("results_directory", type=str, help="The location to place analyzed data")
   cliargs = parser.parse_args()
+
+  # Detect which queries to make based on namespaces present
+  namespaces = get_ocp_namespace_list(cliargs.kubeconfig)
+  if "ansible-automation-platform" not in namespaces:
+      logger.info("ansible-automation-platform namespace not found, skipping ansiblejob analysis")
+      return 0
 
   logger.info("Analyze ansiblejobs")
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
