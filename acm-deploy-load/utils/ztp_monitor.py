@@ -220,7 +220,7 @@ class ZTPMonitor(Thread):
       # Parse baremetalhost data
       for item in bmh_data["items"]:
         if "status" in item and "provisioning" in item["status"] and "state" in item["status"]["provisioning"]:
-          if item["status"]["provisioning"]["state"] == "provisioned":
+          if item["status"]["provisioning"]["state"] in ("inspecting", "provisioning", "preparing", "provisioned"):
             logger.debug("BMH: {} is {}".format(item["metadata"]["name"], item["status"]["provisioning"]["state"]))
             node_booted += 1
         else:
