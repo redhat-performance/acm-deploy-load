@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 # 3500 MC support
 
 export KUBECONFIG=/root/bm/kubeconfig
