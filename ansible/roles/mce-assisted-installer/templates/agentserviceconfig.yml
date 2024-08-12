@@ -8,14 +8,14 @@ spec:
   databaseStorage:
     accessModes:
     - ReadWriteOnce
-    storageClassName: localstorage-sc
+    storageClassName: {{ agentservice_sc }}
     resources:
       requests:
         storage: 20Gi
   filesystemStorage:
     accessModes:
     - ReadWriteOnce
-    storageClassName: localstorage-sc
+    storageClassName: {{ agentservice_sc }}
     resources:
       requests:
         storage: 100Gi

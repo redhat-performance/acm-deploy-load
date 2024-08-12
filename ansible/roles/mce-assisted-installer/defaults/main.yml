@@ -12,3 +12,6 @@ mce_2_1_patch: false
 
 # Enables Converged Flow in Assisted-Installer
 enable_converged_flow: true
+
+# Which Storage Class should the AgentService use
+agentservice_sc: localstorage-sc
