@@ -11,8 +11,8 @@ siteconfigs_per_application: 100
 
 siteconfigs_directories:
 - /root/hv-vm/sno/ai-siteconfig
-- /root/hv-vm/compact/siteconfigs
-- /root/hv-vm/standard/siteconfigs
+- /root/hv-vm/compact/ai-siteconfig
+- /root/hv-vm/standard/ai-siteconfig
 
 gogs_host: "[fc00:1000::1]"
 gogs_port: 10880
