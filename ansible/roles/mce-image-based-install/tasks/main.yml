@@ -5,7 +5,7 @@
 - name: Enable Image Based Install Operator
   shell: |
     export KUBECONFIG={{ hub_cluster_kubeconfig }}
-    oc get mce multiclusterengine -o json | jq '.spec.overrides.components[] |= (select(.name=="image-based-install-operator").enabled = true)' | oc replace -f -
+    oc get mce {{ mce_name }} -o json | jq '.spec.overrides.components[] |= (select(.name=="image-based-install-operator").enabled = true)' | oc replace -f -
   when: mce_enable_ibio
 
 - name: Wait for Image Based Install pod exists

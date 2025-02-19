@@ -34,7 +34,7 @@
 
 - name: Wait until MultiClusterEngine is Available
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} {%raw%}oc get multiclusterengine engine -o go-template='{{ .status.phase }}'{%endraw%}
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterengine {{ mce_name }} -o go-template={%raw%}'{{ .status.phase }}'{%endraw%}
   register: mce_available
   until: mce_available.stdout == "Available"
   retries: 300
