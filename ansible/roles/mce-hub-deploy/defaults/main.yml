@@ -1,0 +1,4 @@
+---
+# mce-hub-deploy default vars
+
+mce_default_channel: stable-2.7
