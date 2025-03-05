@@ -1,0 +1,9 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: seedgen
+  namespace: ztp-platform-upgrade
+data:
+  .dockerconfigjson: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}
+  seedAuth: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}

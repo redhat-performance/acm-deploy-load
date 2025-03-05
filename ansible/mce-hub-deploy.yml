@@ -1,0 +1,17 @@
+---
+# Playbook to deploy and setup MCE
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/mce-hub-deploy.yml
+#
+
+- name: Deploy and setup MCE
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - mce-hub-deploy
+  - mce-assisted-installer
+  - mce-image-based-install
+  - mce-add-clusterimagesets

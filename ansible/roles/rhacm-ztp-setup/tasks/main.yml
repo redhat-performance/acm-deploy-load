@@ -79,6 +79,16 @@
   - replace: "{{ ztp_site_generator_image_tag }}"
     regexp: "4.10.0"
 
+- name: Patch app-project.yaml for clusterinstances (4.15, 4.16)
+  blockinfile:
+    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/app-project.yaml"
+    insertafter: "  kind: SiteConfig"
+    block: |2
+        - group: 'siteconfig.open-cluster-management.io'
+          kind: ClusterInstance
+    marker: "# {mark} ACM-deploy-load appended"
+  when: du_profile_version is version('4.16', '<=')
+
 - name: Remove cnf-tests from cnf-features-deploy
   file:
     state: absent

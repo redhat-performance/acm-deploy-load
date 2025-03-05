@@ -1,0 +1,41 @@
+---
+# mce-hub-deploy tasks - Install MCE from operatorhub to a cluster
+
+- name: Create directory for MCE Operator
+  file:
+    path: "{{ install_directory }}/mce-deploy"
+    state: directory
+
+- name: Create MCE manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: mce-operator.yaml.j2
+    dest: "{{ install_directory }}/mce-deploy/mce-operator.yaml"
+  - src: mce.yaml.j2
+    dest: "{{ install_directory }}/mce-deploy/mce.yaml"
+
+- name: Apply MCE Operator manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/mce-deploy/mce-operator.yaml
+
+- name: Wait until MCE Operator CSV is succeeded
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get csv -n multicluster-engine -o json  | jq -r '.items[].status.phase'
+  register: mce_succeeded
+  until: mce_succeeded.stdout == "Succeeded"
+  retries: 120
+  delay: 1
+
+- name: Apply MCE manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/mce-deploy/mce.yaml
+
+- name: Wait until MultiClusterEngine is Available
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterengine {{ mce_name }} -o go-template={%raw%}'{{ .status.phase }}'{%endraw%}
+  register: mce_available
+  until: mce_available.stdout == "Available"
+  retries: 300
+  delay: 2

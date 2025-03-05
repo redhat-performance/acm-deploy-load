@@ -2,3 +2,5 @@
 # mce-image-based-install default vars
 
 mce_enable_ibio: false
+
+mce_name: multiclusterengine

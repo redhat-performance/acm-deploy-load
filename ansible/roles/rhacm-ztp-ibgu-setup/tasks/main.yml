@@ -21,6 +21,7 @@
     ibgu_action: '["Prep"]'
     ibgu_concurrency: "{{ ibgu_prep_concurrency }}"
     ibgu_timeout: "{{ ibgu_prep_timeout }}"
+    ibgu_label: ""
   template:
     src: ibgu.yml.j2
     dest: "{{ install_directory }}/rhacm-ztp/ibgu/scripts-{{ seed_image_version | replace('.', '-') }}/ibgu-{{ seed_image_version | replace('.', '-') }}-{{ '%04d' | format(item) }}.yml"
@@ -32,10 +33,26 @@
     ibgu_action: '["Rollback"]'
     ibgu_concurrency: "{{ ibgu_rollback_concurrency }}"
     ibgu_timeout: "{{ ibgu_rollback_timeout }}"
+    ibgu_label: "rollback: 'True'"
   template:
     src: ibgu.yml.j2
     dest: "{{ install_directory }}/rhacm-ztp/ibgu/scripts-{{ seed_image_version | replace('.', '-') }}/ibgu-rollback-{{ seed_image_version | replace('.', '-') }}-{{ '%04d' | format(item) }}.yml"
   loop: "{{ range(((ztp_done_clusters.stdout_lines | length) / clusters_per_prep_ibgu) | round(0, 'ceil') | int) | list }}"
+
+- name: Template IBGU seedgen policy and seedgen talm secret
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: seedgen-policy.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/ibgu/scripts-{{ seed_image_version | replace('.', '-') }}/seedgen-policy.yaml"
+  - src: seedgen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/ibgu/scripts-{{ seed_image_version | replace('.', '-') }}/seedgen.yaml"
+
+# Ensures the namespace for the IBGUs have the seedgen secret
+- name: Apply seedgen.yaml to hub cluster
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/ibgu/scripts-{{ seed_image_version | replace('.', '-') }}/seedgen.yaml
 
 - name: Template IBGU apply scripts
   template:

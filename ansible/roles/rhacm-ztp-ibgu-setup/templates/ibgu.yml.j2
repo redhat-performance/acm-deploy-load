@@ -6,6 +6,9 @@ metadata:
   namespace: ztp-platform-upgrade
   labels:
     ibgu: "{{ seed_image_version }}"
+{% if ibgu_label != "" %}
+    {{ ibgu_label }}
+{% endif %}
 spec:
   clusterLabelSelectors:
   - matchExpressions:
@@ -24,8 +27,8 @@ spec:
       pullSecretRef:
         name: seedgen
     oadpContent:
-      - name: oadp-cm
-        namespace: openshift-adp
+    - name: oadp-cm
+      namespace: openshift-adp
   plan:
   - actions: {{ ibgu_action }}
     rolloutStrategy:

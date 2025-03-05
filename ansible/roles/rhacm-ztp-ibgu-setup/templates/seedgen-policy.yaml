@@ -1,0 +1,60 @@
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: placement-seedgen
+  namespace: ztp-platform-upgrade
+spec:
+  clusterSelector:
+    matchExpressions:
+    - key: common
+      operator: In
+      values:
+      - "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-seedgen
+  namespace: ztp-platform-upgrade
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: placement-seedgen
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: policy-seedgen
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: policy-seedgen
+  namespace: ztp-platform-upgrade
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: cfgpolicy-seedgen
+      spec:
+        remediationAction: enforce
+        severity: medium
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            data:
+              .dockerconfigjson: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}
+              seedAuth: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}
+            kind: Secret
+            metadata:
+              name: seedgen
+              namespace: openshift-lifecycle-agent

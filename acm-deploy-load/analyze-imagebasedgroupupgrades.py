@@ -100,6 +100,10 @@ def main():
     logger.error("No ibgu(s) to examine")
     sys.exit(1)
 
+  earliest_PrepStartTime = ""
+  latest_PrepCompletionTime = ""
+  earliest_UpgradeStartTime = ""
+  latest_UpgradeCompletionTime = ""
   ibgus = OrderedDict()
   ibus = []
 
@@ -113,6 +117,10 @@ def main():
     ibgus[ibgu_name]["prepDurations"] = []
     ibgus[ibgu_name]["upgradeDurations"] = []
     ibgus[ibgu_name]["rollbackDurations"] = []
+    ibgus[ibgu_name]["earliestPrepStartTime"] = ""
+    ibgus[ibgu_name]["latestPrepCompletionTime"] = ""
+    ibgus[ibgu_name]["earliestUpgradeStartTime"] = ""
+    ibgus[ibgu_name]["latestUpgradeCompletionTime"] = ""
     logger.info("Found: {}, {}".format(ibgu_name, ibgus[ibgu_name]["creationTimestamp"]))
     for cluster in item["status"]["clusters"]:
       cluster_name = cluster["name"]
@@ -194,7 +202,8 @@ def main():
                 ibu_rollback_completed_time = datetime.strptime(item["completionTime"], "%Y-%m-%dT%H:%M:%SZ")
         else:
           logger.error("History key missing in ibu, check LCA version (Must be 4.17 or newer)")
-          sys.exit(1)
+          # No longer exit on missing history key
+          # sys.exit(1)
 
       # Match timestamps from IBU data to the correct cluster
       cluster_found = False
@@ -206,11 +215,51 @@ def main():
           if ibu_prep_started_time != "" and ibu_prep_completed_time != "":
             ibgus[ibgu]["clusters"][cluster]["prepDuration"] = (ibu_prep_completed_time - ibu_prep_started_time).total_seconds()
             ibgus[ibgu]["prepDurations"].append(ibgus[ibgu]["clusters"][cluster]["prepDuration"])
+            if ibgus[ibgu]["earliestPrepStartTime"] == "":
+              ibgus[ibgu]["earliestPrepStartTime"] = ibu_prep_started_time
+            elif ibu_prep_started_time < ibgus[ibgu]["earliestPrepStartTime"]:
+              ibgus[ibgu]["earliestPrepStartTime"] = ibu_prep_started_time
+            if ibgus[ibgu]["latestPrepCompletionTime"] == "":
+              ibgus[ibgu]["latestPrepCompletionTime"] = ibu_prep_completed_time
+            elif ibu_prep_completed_time > ibgus[ibgu]["latestPrepCompletionTime"]:
+              ibgus[ibgu]["latestPrepCompletionTime"] = ibu_prep_completed_time
+            if earliest_PrepStartTime == "":
+              earliest_PrepStartTime = ibu_prep_started_time
+              logger.info("Set earliest_PrepStartTime: {}".format(earliest_PrepStartTime))
+            elif ibu_prep_started_time < earliest_PrepStartTime:
+              earliest_PrepStartTime = ibu_prep_started_time
+              logger.info("Adjusted earliest_PrepStartTime: {}".format(earliest_PrepStartTime))
+            if latest_PrepCompletionTime == "":
+              latest_PrepCompletionTime = ibu_prep_completed_time
+              logger.info("Set latest_PrepCompletionTime: {}".format(latest_PrepCompletionTime))
+            elif ibu_prep_completed_time > latest_PrepCompletionTime:
+              latest_PrepCompletionTime = ibu_prep_completed_time
+              logger.info("Adjusted latest_PrepCompletionTime: {}".format(latest_PrepCompletionTime))
           ibgus[ibgu]["clusters"][cluster]["upgradeStartTime"] = ibu_upgrade_started_time
           ibgus[ibgu]["clusters"][cluster]["upgradeCompletionTime"] = ibu_upgrade_completed_time
           if ibu_upgrade_started_time != "" and ibu_upgrade_completed_time != "":
             ibgus[ibgu]["clusters"][cluster]["upgradeDuration"] = (ibu_upgrade_completed_time - ibu_upgrade_started_time).total_seconds()
             ibgus[ibgu]["upgradeDurations"].append(ibgus[ibgu]["clusters"][cluster]["upgradeDuration"])
+            if ibgus[ibgu]["earliestUpgradeStartTime"] == "":
+              ibgus[ibgu]["earliestUpgradeStartTime"] = ibu_upgrade_started_time
+            elif ibu_upgrade_started_time < ibgus[ibgu]["earliestUpgradeStartTime"]:
+              ibgus[ibgu]["earliestUpgradeStartTime"] = ibu_upgrade_started_time
+            if ibgus[ibgu]["latestUpgradeCompletionTime"] == "":
+              ibgus[ibgu]["latestUpgradeCompletionTime"] = ibu_upgrade_completed_time
+            elif ibu_upgrade_completed_time > ibgus[ibgu]["latestUpgradeCompletionTime"]:
+              ibgus[ibgu]["latestUpgradeCompletionTime"] = ibu_upgrade_completed_time
+            if earliest_UpgradeStartTime == "":
+              earliest_UpgradeStartTime = ibu_upgrade_started_time
+              logger.info("Set earliest_UpgradeStartTime: {}".format(earliest_UpgradeStartTime))
+            elif ibu_upgrade_started_time < earliest_UpgradeStartTime:
+              earliest_UpgradeStartTime = ibu_upgrade_started_time
+              logger.info("Adjusted earliest_UpgradeStartTime: {}".format(earliest_UpgradeStartTime))
+            if latest_UpgradeCompletionTime == "":
+              latest_UpgradeCompletionTime = ibu_upgrade_completed_time
+              logger.info("Set latest_UpgradeCompletionTime: {}".format(latest_UpgradeCompletionTime))
+            elif ibu_upgrade_completed_time > latest_UpgradeCompletionTime:
+              latest_UpgradeCompletionTime = ibu_upgrade_completed_time
+              logger.info("Adjusted latest_UpgradeCompletionTime: {}".format(latest_UpgradeCompletionTime))
           ibgus[ibgu]["clusters"][cluster]["rollbackStartTime"] = ibu_rollback_started_time
           ibgus[ibgu]["clusters"][cluster]["rollbackCompletionTime"] = ibu_rollback_completed_time
           if ibu_rollback_started_time != "" and ibu_rollback_completed_time != "":
@@ -247,9 +296,12 @@ def main():
     log_write(stats_file, "Expected OCP Version {}".format(cliargs.ocp_version))
     log_write(stats_file, "Total IBGUs: {}".format(len(ibgus)))
     total_clusters = 0
-    total_prep = 0
-    total_upgrade = 0
-    total_rollback = 0
+    total_prep_duration = 0
+    total_upgrade_duration = 0
+    if earliest_PrepStartTime != "" and latest_PrepCompletionTime != "":
+      total_prep_duration = (latest_PrepCompletionTime - earliest_PrepStartTime).total_seconds()
+    if earliest_UpgradeStartTime != "" and latest_UpgradeCompletionTime != "":
+      total_upgrade_duration = (latest_UpgradeCompletionTime - earliest_UpgradeStartTime).total_seconds()
     all_prepDurations = []
     all_upgradeDurations = []
     all_rollbackDurations = []
@@ -262,14 +314,26 @@ def main():
     log_write(stats_file, "(IBU) All IBGU Prepare Actions")
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(all_prepDurations)))
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(all_prepDurations, False)))
+    log_write(stats_file, "(IBU) Earliest Prep Start Time: {}".format(earliest_PrepStartTime))
+    log_write(stats_file, "(IBU) Latest Prep Completion Time: {}".format(latest_PrepCompletionTime))
+    log_write(stats_file, "(IBU) Total Prep Duration Time: {}s :: {}".format(total_prep_duration, str(timedelta(seconds=total_prep_duration))))
     log_write(stats_file, "(IBU) All IBGU Upgrade Actions")
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(all_upgradeDurations)))
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(all_upgradeDurations, False)))
+    log_write(stats_file, "(IBU) Earliest Upgrade Start Time: {}".format(earliest_UpgradeStartTime))
+    log_write(stats_file, "(IBU) Latest Upgrade Completion Time: {}".format(latest_UpgradeCompletionTime))
+    log_write(stats_file, "(IBU) Total Upgrade Duration Time: {}s :: {}".format(total_upgrade_duration, str(timedelta(seconds=total_upgrade_duration))))
     log_write(stats_file, "(IBU) All IBGU Rollback Actions")
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(all_rollbackDurations)))
     log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(all_rollbackDurations, False)))
     log_write(stats_file, "##########################################################################################")
     for ibgu in ibgus:
+      ibgu_prep_duration = 0
+      ibgu_upgrade_duration = 0
+      if ibgus[ibgu]["earliestPrepStartTime"] != "" and ibgus[ibgu]["latestPrepCompletionTime"] != "":
+        ibgu_prep_duration = (ibgus[ibgu]["latestPrepCompletionTime"] - ibgus[ibgu]["earliestPrepStartTime"]).total_seconds()
+      if ibgus[ibgu]["earliestUpgradeStartTime"] != "" and ibgus[ibgu]["latestUpgradeCompletionTime"] != "":
+        ibgu_upgrade_duration = (ibgus[ibgu]["latestUpgradeCompletionTime"] - ibgus[ibgu]["earliestUpgradeStartTime"]).total_seconds()
       log_write(stats_file, "IBGU: {}".format(ibgu))
       log_write(stats_file, "Clusters: {}, Prepared: {}, Upgraded: {}, Rollbacks: {}".format(len(ibgus[ibgu]["clusters"]), len(ibgus[ibgu]["prepDurations"]), len(ibgus[ibgu]["upgradeDurations"]), len(ibgus[ibgu]["rollbackDurations"])))
       log_write(stats_file, "creationTimestamp: {}".format(ibgus[ibgu]["creationTimestamp"]))
@@ -278,9 +342,15 @@ def main():
       log_write(stats_file, "(IBU) Prepare Action")
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(ibgus[ibgu]["prepDurations"])))
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(ibgus[ibgu]["prepDurations"], False)))
+      log_write(stats_file, "(IBU) Earliest Prepare Action Start Time: {}".format(ibgus[ibgu]["earliestPrepStartTime"]))
+      log_write(stats_file, "(IBU) Latest Prepare Action Completion Time: {}".format(ibgus[ibgu]["latestPrepCompletionTime"]))
+      log_write(stats_file, "(IBU) Total Prepare Action Duration Time: {}s :: {}".format(ibgu_prep_duration, str(timedelta(seconds=ibgu_prep_duration))))
       log_write(stats_file, "(IBU) Upgrade Action")
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(ibgus[ibgu]["upgradeDurations"])))
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(ibgus[ibgu]["upgradeDurations"], False)))
+      log_write(stats_file, "(IBU) Earliest Upgrade Action Start Time: {}".format(ibgus[ibgu]["earliestUpgradeStartTime"]))
+      log_write(stats_file, "(IBU) Latest Upgrade Action Completion Time: {}".format(ibgus[ibgu]["latestUpgradeCompletionTime"]))
+      log_write(stats_file, "(IBU) Total Upgrade Action Duration Time: {}s :: {}".format(ibgu_upgrade_duration, str(timedelta(seconds=ibgu_upgrade_duration))))
       log_write(stats_file, "(IBU) Rollback Action")
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max (seconds): {}".format(assemble_stats(ibgus[ibgu]["rollbackDurations"])))
       log_write(stats_file, "(IBU) Recorded Durations Min/Avg/50p/95p/99p/Max: {}".format(assemble_stats(ibgus[ibgu]["rollbackDurations"], False)))
