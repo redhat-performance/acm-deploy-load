@@ -1,0 +1,210 @@
+---
+apiVersion: ran.openshift.io/v1
+kind: PolicyGenTemplate
+metadata:
+  name: "common-latest"
+  namespace: "ztp-common"
+spec:
+  bindingRules:
+    # These policies will correspond to all clusters with this label:
+    common: "true"
+    # du-profile: "latest"
+  sourceFiles:
+    # Create operators policies that will be installed in all clusters
+    - fileName: SriovSubscriptionNS.yaml
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: SriovSubscriptionOperGroup.yaml
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: SriovSubscription.yaml
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubCommonTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      spec:
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: SriovOperatorStatus.yaml
+      policyName: "{{ 'sriov-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: PtpSubscriptionNS.yaml
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: PtpSubscriptionOperGroup.yaml
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: PtpSubscription.yaml
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubCommonTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      spec:
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: PtpOperatorStatus.yaml
+      policyName: "{{ 'ptp-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogNS.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogOperGroup.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogSubscription.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubCommonTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      spec:
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: ClusterLogOperatorStatus.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogServiceAccount.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogServiceAccountAuditBinding.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: ClusterLogServiceAccountInfrastructureBinding.yaml
+      policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: StorageNS.yaml
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: StorageOperGroup.yaml
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: StorageSubscription.yaml
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
+{% if extraHubCommonTemplates %}
+      metadata:
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      spec:
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: StorageOperatorStatus.yaml
+      policyName: "{{ 'storage-subs' if manyPolicies else 'subscriptions' }}-policy"
+    # - fileName: AmqSubscriptionNS.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: AmqSubscriptionOperGroup.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: AmqSubscription.yaml
+    #   policyName: "subscriptions-policy"
+    #
+    # LCA operator is used for orchestrating Image Based Upgrade for SNO
+{% if include_lca_operator %}
+    - fileName: LcaSubscriptionNS.yaml
+      policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: LcaSubscriptionOperGroup.yaml
+      policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: LcaSubscription.yaml
+      policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
+      spec:
+        channel: {{ lifecycle_agent_channel }}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: LcaOperatorStatus.yaml
+      policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
+
+{% else %}
+    # - fileName: LcaSubscriptionNS.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: LcaSubscriptionOperGroup.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: LcaSubscription.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: LcaOperatorStatus.yaml
+    #   policyName: "subscriptions-policy"
+    #
+{% endif %}
+    # OADP operator is used for backing up and restoring application during Image Based Upgrade
+{% if include_oadp_operator %}
+    - fileName: OadpSubscriptionNS.yaml
+      policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: OadpSubscriptionOperGroup.yaml
+      policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
+    - fileName: OadpSubscription.yaml
+      policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
+      spec:
+        channel: stable-1.4
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+        source: {{ common_catalogsource_name }}
+{% endif %}
+    - fileName: OadpOperatorStatus.yaml
+      policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
+
+{% else %}
+    # - fileName: OadpSubscriptionNS.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: OadpSubscriptionOperGroup.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: OadpSubscription.yaml
+    #   policyName: "subscriptions-policy"
+    # - fileName: OadpOperatorStatus.yaml
+    #   policyName: "subscriptions-policy"
+    #
+{% endif %}
+    - fileName: ReduceMonitoringFootprint.yaml
+      policyName: "{{ 'monitoring-config' if manyPolicies else 'config' }}-policy"
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+    #
+    # These CRs are in support of installation from a disconnected registry
+    #
+    - fileName: DefaultCatsrc.yaml
+      policyName: "config-policy"
+      # The Subscriptions all point to redhat-operators-disconnected. The OperatorHub CR
+      # disables the defaults and this CR replaces redhat-operators-disconnected with a
+      # CatalogSource pointing to the disconnected registry. Including both of
+      # these in the same policy orders their application to the cluster.
+      # Tip: for RH sources `image: registry.redhat.io/redhat/redhat-operator-index:v4.xx`
+      metadata:
+        name: {{ common_catalogsource_name }}
+{% if extraHubCommonTemplates %}
+        annotations:
+          {%- raw %}
+          scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key3" hub}}'
+          scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key4" hub}}'
+          {%- endraw +%}
+{% endif %}
+        labels:
+          lca.openshift.io/target-ocp-version: "4.18.0"
+      spec:
+        displayName: disconnected-redhat-operators
+        image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_operator_index_name }}:{{ operator_index_tag }}
+      status:
+        connectionState:
+          lastObservedState: READY
+    - fileName: DisconnectedICSP.yaml
+      policyName: "config-policy"
+      spec:
+        repositoryDigestMirrors:
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+          source: registry.redhat.io
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+          source: brew.registry.redhat.io
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+          source: registry-proxy.engineering.redhat.com
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4
+          source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4
+          source: quay.io/openshift-release-dev/ocp-release
+{% endif %}
