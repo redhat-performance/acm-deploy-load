@@ -1,6 +1,6 @@
 ---
 # mce-hub-deploy default vars
 
-mce_default_channel: stable-2.7
+mce_default_channel: stable-2.8
 
 mce_name: multiclusterengine
