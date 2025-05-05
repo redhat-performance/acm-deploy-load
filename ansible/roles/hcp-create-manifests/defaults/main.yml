@@ -1,0 +1,40 @@
+---
+# hcp-create-manifests default vars
+
+hv_vm_manifests_directory: /root/hv-vm
+
+hcp_namespace: clusters
+
+# Must match DNS records
+hcp_cluster_name: standard-00001
+
+# Provide pull-secret for connected manifests
+hcp_pull_secret: "{{ lookup('file', '../pull_secret.txt') }}"
+
+# SSH key that will be able to access booted HCP worker machines
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
+# OCP version for the hosted cluster
+hcp_release_image: quay.io/openshift-release-dev/ocp-release:4.17.25-x86_64
+
+# Starting count of Hosted Cluster worker replicas
+hcp_nodepool_replicas: 1
+
+hcp_nodeselectors:
+- 'node-role.kubernetes.io/hcp: ""'
+
+hcp_tolerations:
+- effect: NoExecute
+  key: node-role.kubernetes.io/hcp
+  value: reserved
+- effect: NoSchedule
+  key: node-role.kubernetes.io/hcp
+  value: reserved
+
+hcp_etcd_storageclass: localstorage-sc
+
+hcp_vm_offset: 8
+
+# sushy emulator bmc username/password
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"

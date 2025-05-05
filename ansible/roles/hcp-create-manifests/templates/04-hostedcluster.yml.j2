@@ -1,0 +1,71 @@
+---
+apiVersion: hypershift.openshift.io/v1beta1
+kind: HostedCluster
+metadata:
+  name: {{ hcp_cluster_name }}
+  namespace: {{ hcp_namespace }}
+spec:
+{% if hcp_nodeselectors | length > 0 %}
+  nodeSelector:
+{% for nodeselector in hcp_nodeselectors %}
+    {{ nodeselector }}
+{% endfor %}
+{% endif %}
+{% if hcp_tolerations | length > 0 %}
+  tolerations:
+{% for toleration in hcp_tolerations %}
+  - {{ toleration }}
+{% endfor %}
+{% endif %}
+  etcd:
+    managementType: Managed
+    managed:
+      storage:
+        type: PersistentVolume
+        persistentVolume:
+          storageClassName: {{ hcp_etcd_storageclass }}
+  release:
+    image: {{ hcp_release_image }}
+  pullSecret:
+    name: {{ hcp_cluster_name }}-pull-secret
+  sshKey:
+    name: {{ hcp_cluster_name }}-ssh-key
+  networking:
+    machineNetwork:
+    - cidr: "{{ hostvars[groups['hv_vm'][0]]['machine_network'] }}"
+    networkType: OVNKubernetes
+    serviceNetwork:
+    - cidr: "172.31.0.0/16"
+  platform:
+    agent:
+      agentNamespace: {{ hcp_namespace }}
+    type: Agent
+  infraID: {{ hcp_cluster_name }}
+  dns:
+    baseDomain: {{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+  services:
+  - service: APIServer
+    servicePublishingStrategy:
+      nodePort:
+        address: api.{{ hcp_cluster_name }}.{{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+      type: NodePort
+  - service: OAuthServer
+    servicePublishingStrategy:
+      nodePort:
+        address: api.{{ hcp_cluster_name }}.{{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+      type: NodePort
+  - service: OIDC
+    servicePublishingStrategy:
+      # nodePort:
+      #   address: api.{{ hcp_cluster_name }}.{{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+      type: None
+  - service: Konnectivity
+    servicePublishingStrategy:
+      nodePort:
+        address: api.{{ hcp_cluster_name }}.{{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+      type: NodePort
+  - service: Ignition
+    servicePublishingStrategy:
+      nodePort:
+        address: api.{{ hcp_cluster_name }}.{{ hostvars[groups['hv_vm'][0]]['base_domain'] }}
+      type: NodePort

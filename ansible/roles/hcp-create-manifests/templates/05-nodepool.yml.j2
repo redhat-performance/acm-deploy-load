@@ -1,0 +1,16 @@
+---
+apiVersion: hypershift.openshift.io/v1beta1
+kind: NodePool
+metadata:
+  name: {{ hcp_cluster_name }}-workers
+  namespace: {{ hcp_namespace }}
+spec:
+  clusterName: {{ hcp_cluster_name }}
+  replicas: {{ hcp_nodepool_replicas }}
+  management:
+    autoRepair: false
+    upgradeType: InPlace
+  platform:
+    type: Agent
+  release:
+    image: {{ hcp_release_image }}

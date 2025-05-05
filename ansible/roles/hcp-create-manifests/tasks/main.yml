@@ -1,0 +1,32 @@
+---
+# hcp-create-manifests tasks
+
+- name: Create directories for hv-vm HCP manifests on bastion
+  file:
+    path: "{{ item.dir }}"
+    state: directory
+  loop:
+  - dir: "{{ hv_vm_manifests_directory }}/"
+  - dir: "{{ hv_vm_manifests_directory }}/hcp"
+
+- name: Template a manifest per hv-vm on bastion as a SNO
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: 01-namespace.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/01-namespace.yml"
+  - src: 02-secret-ps.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/02-secret-ps.yml"
+  - src: 03-secret-ssh.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/03-secret-ssh.yml"
+  - src: 04-hostedcluster.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/04-hostedcluster.yml"
+  - src: 05-nodepool.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/05-nodepool.yml"
+  - src: 06-nmstateconfig.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/06-nmstateconfig.yml"
+  - src: 07-infraenv.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/07-infraenv.yml"
+  - src: 08-bmh.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/hcp/08-bmh.yml"

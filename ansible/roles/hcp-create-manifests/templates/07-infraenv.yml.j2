@@ -1,0 +1,15 @@
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: {{ hcp_cluster_name }}
+  namespace: {{ hcp_namespace }}
+spec:
+  additionalNTPSources:
+  - {{ hostvars[groups['hv_vm'][0]]['hv_ip'] }}
+  pullSecretRef:
+    name: {{ hcp_cluster_name }}-pull-secret
+  sshAuthorizedKey: {{ lookup('file', ssh_public_key_file) }}
+  nmStateConfigLabelSelector:
+    matchLabels:
+      cluster: {{ hcp_cluster_name }}

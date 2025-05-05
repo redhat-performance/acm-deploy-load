@@ -1,0 +1,15 @@
+---
+# Playbook to create manifests for a Hosted Control Plane deployed by MCE
+#
+# Example Usage:
+#
+# time ansible-playbook -i -i ../jetlag/ansible/inventory/cloud30.local ansible/hcp-manifests.yml
+#
+
+- name: Create manifests for an hcp cluster deployed by MCE
+  hosts: bastion
+  gather_facts: false
+  vars_files:
+  - vars/all.yml
+  roles:
+  - hcp-create-manifests

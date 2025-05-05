@@ -133,3 +133,6 @@ dmypy.json
 
 # Prevent manifest file upload
 aap_manifest.zip
+
+# Prevent pull_secret.txt file upload
+pull_secret.txt

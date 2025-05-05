@@ -1,0 +1,36 @@
+{% for vm in groups['hv_vm'][hcp_vm_offset:] %}
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: {{ vm }}
+  namespace: {{ hcp_namespace }}
+  labels:
+    cluster: {{ hcp_cluster_name }}
+spec:
+  config:
+    interfaces:
+    - name: enp1s0
+      type: ethernet
+      state: up
+      ipv4:
+        enabled: true
+        dhcp: false
+        address:
+        - ip: {{ hostvars[vm]['ip'] }}
+          prefix-length: {{ hostvars[vm]['network_prefix'] }}
+    dns-resolver:
+      config:
+        server:
+        - {{ hostvars[vm]['gateway'] }}
+    routes:
+      config:
+      - destination: 0.0.0.0/0
+        metric: 1
+        next-hop-address: {{ hostvars[vm]['gateway'] }}
+        next-hop-interface: enp1s0
+        table-id: 254
+  interfaces:
+  - name: enp1s0
+    macAddress: {{ hostvars[vm]['mac_address'] }}
+{% endfor %}

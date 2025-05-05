@@ -1,0 +1,32 @@
+{% for vm in groups['hv_vm'][hcp_vm_offset:] %}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ vm }}-bmc-secret
+  namespace: {{ hcp_namespace }}
+type: Opaque
+data:
+  password: {{ bmc_password_base64 }}
+  username: {{ bmc_username_base64 }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ vm }}
+  namespace: {{ hcp_namespace }}
+  annotations:
+    inspect.metal3.io: disabled
+    bmac.agent-install.openshift.io/hostname: "{{ vm }}"
+  labels:
+    infraenvs.agent-install.openshift.io: "{{ hcp_cluster_name }}"
+spec:
+  bootMode: "UEFI"
+  bmc:
+    address: redfish-virtualmedia+http://{{ hostvars[vm]['hv_ip'] }}:9000/redfish/v1/Systems/{{ hostvars[vm]['domain_uuid'] }}
+    disableCertificateVerification: true
+    credentialsName: {{ vm }}-bmc-secret
+  bootMACAddress: {{ hostvars[vm]['mac_address'] }}
+  automatedCleaningMode: disabled
+  online: true
+{% endfor %}
