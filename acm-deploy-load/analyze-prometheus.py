@@ -198,11 +198,13 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='open-cluster-management',pod=~'siteconfig-controller-manager.*'})"
   query_thanos(route, q, "ACM - SiteConfig Operator", token, end_ts, duration, sub_report_dir, "mem-acm-ocm-sco", "ACM siteconfig-controller-manager Memory Usage", "MEM", w, h, q_names)
 
-  # ACM MCE Assisted-installer CPU/Memory
+  # ACM MCE Assisted-installer CPU/Memory/PVC
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'assisted-service.*'})"
   query_thanos(route, q, "ACM - MCE Assisted-Installer", token, end_ts, duration, sub_report_dir, "cpu-acm-mce-ai", "ACM Assisted-Installer CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'assisted-service.*'})"
   query_thanos(route, q, "ACM - MCE Assisted-Installer", token, end_ts, duration, sub_report_dir, "mem-acm-mce-ai", "ACM Assisted-Installer Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace="multicluster-engine"})"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "pv-disk-util-mce-ai", "MCE PVC Usage", "DISK", w, h, q_names)
 
   # ACM MCE Image Based Install Operator CPU/Memory
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'image-based-install-operator.*'})"
