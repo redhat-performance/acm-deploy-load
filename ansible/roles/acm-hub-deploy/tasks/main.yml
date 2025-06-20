@@ -1,0 +1,51 @@
+---
+# acm-hub-deploy tasks - Install ACM from operatorhub on a cluster
+
+- name: Create directory for ACM Operator
+  file:
+    path: "{{ install_directory }}/acm-deploy"
+    state: directory
+
+- name: Create ACM manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: acm-operator.yaml.j2
+    dest: "{{ install_directory }}/acm-deploy/acm-operator.yaml"
+  - src: mch.yaml.j2
+    dest: "{{ install_directory }}/acm-deploy/mch.yaml"
+
+- name: Apply ACM Operator manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/acm-deploy/acm-operator.yaml
+
+- name: Wait until ACM Operator CSV is succeeded
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get csv -n open-cluster-management -o json | jq -r '.items[] | select(.metadata.name|test("advanced-cluster-management")) | .status.phase'
+  register: acm_succeeded
+  until: acm_succeeded.stdout == "Succeeded"
+  retries: 120
+  delay: 1
+
+- name: Apply MCH manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/acm-deploy/mch.yaml
+
+- name: Wait until MultiClusterHub is Running
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterhub -n open-cluster-management {{ mch_name }} -o go-template={%raw%}'{{ .status.phase }}'{%endraw%}
+  register: mch_available
+  until: mch_available.stdout == "Running"
+  retries: 300
+  delay: 2
+
+- name: Configure RHACM search with a PV
+  when: setup_rhacm_search_pv
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storageclassname }}"}]'
+
+- name: Create search API Route
+  when: setup_rhacm_search_api_route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management

@@ -34,15 +34,15 @@ include_varlibcontainers_partitioned_extra_manifests: false
 #####
 # DU Profile Options
 #####
-# Currently can choose between 4.17, 4.16, 4.15, 4.14, 4.13, and 4.12
+# Currently can choose between 4.18, 4.17, 4.16, 4.15, 4.14, 4.13, and 4.12
 du_profile_version: 4.18
 
 disconnected_operator_index_name: olm-mirror/redhat-operator-index
-operator_index_tag: v4.16
+operator_index_tag: v4.18
 
-ztp_site_generator_image_tag: v4.16.0-34
+ztp_site_generator_image_tag: v4.18.1-1
 
-rhacm_policy_generator_image_tag: v2.12.0-15
+rhacm_policy_generator_image_tag: v2.13.4-2
 
 # Initialize the siteconfig list so it can be sorted later
 siteconfig_list: []

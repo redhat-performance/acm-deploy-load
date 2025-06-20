@@ -1,0 +1,10 @@
+---
+# acm-hub-deploy default vars
+
+acm_default_channel: release-2.13
+
+mch_name: multiclusterhub
+
+rhacm_search_storageclass: localstorage2-sc
+# Irrelevent when the PV provided will be larger anyway, applies to OBS PVs too
+rhacm_search_storagesize: 20Gi

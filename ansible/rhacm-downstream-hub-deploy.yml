@@ -1,9 +1,9 @@
 ---
-# Playbook to install RHACM Upstream/Downstream Build
+# Playbook to install RHACM Downstream Build
 #
 # Example Usage:
 #
-# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-hub-deploy.yml
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-hub-deploy.yml
 #
 
 - name: Setup downstream RHACM ICSP
@@ -25,8 +25,14 @@
   vars_files:
   - vars/all.yml
   roles:
-  - rhacm-hub-deploy
-  - rhacm-siteconfig-operator
+  - rhacm-downstream-hub-deploy
+  - role: rhacm-observability
+    when: setup_rhacm_observability
+  - role: rhacm-ztp-patches
+    when: setup_rhacm_ztp_patches
+  - role: rhacm-siteconfig-operator
+    when: acm_enable_siteconfig
   - mce-assisted-installer
-  - mce-image-based-install
+  - role: mce-image-based-install
+    when: mce_enable_ibio
   - mce-add-clusterimagesets

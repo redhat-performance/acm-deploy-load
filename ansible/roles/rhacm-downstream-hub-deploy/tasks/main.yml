@@ -1,0 +1,63 @@
+---
+# rhacm-hub-deploy tasks - Install upstream/downstream RHACM hub onto a cluster
+
+- name: Checkout the latest stolostron/deploy repo
+  git:
+    repo: "{{ rhacm_deploy_repo }}"
+    dest: "{{ install_directory }}/rhacm-deploy/deploy"
+    force: true
+    version: "{{ rhacm_deploy_repo_branch }}"
+
+- name: Create deploy/prereq/pull-secret.yaml
+  template:
+    src: pull-secret.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/deploy/prereqs/pull-secret.yaml"
+
+- name: Create snapshot.ver
+  copy:
+    dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
+    content: "{{ rhacm_build }}"
+
+- name: Run downstream deployment script
+  shell: |
+    export KUBECONFIG={{ hub_cluster_kubeconfig }}
+    export COMPOSITE_BUNDLE=true
+    {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+    export CUSTOM_REGISTRY_REPO="{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
+    {% else %}
+    export CUSTOM_REGISTRY_REPO="quay.io:443/acm-d"
+    {% endif %}
+    export DOWNSTREAM=true
+    {% if rhacm_disableHubSelfManagement %}
+    echo "  disableHubSelfManagement: true" >> {{ install_directory }}/rhacm-deploy/deploy/multiclusterhub/example-multiclusterhub-cr.yaml
+    {% endif %}
+    {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
+  args:
+    chdir: "{{ install_directory }}/rhacm-deploy/deploy"
+  when: rhacm_build is search("DOWNSTREAM")
+
+- name: Run upstream deployment script
+  shell: |
+    export KUBECONFIG={{ hub_cluster_kubeconfig }}
+    {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
+  args:
+    chdir: "{{ install_directory }}/rhacm-deploy/deploy"
+  when: not rhacm_build is search("DOWNSTREAM")
+
+- name: Wait until MultiClusterHub is running status
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} {%raw%}oc get multiclusterhub -n open-cluster-management multiclusterhub -o go-template='{{ .status.phase }}'{%endraw%}
+  register: mch_ready
+  until: mch_ready.stdout == "Running"
+  retries: 300
+  delay: 2
+
+- name: Configure RHACM search with a PV
+  when: setup_rhacm_search_pv
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storageclassname }}"}]'
+
+- name: Create search API Route
+  when: setup_rhacm_search_api_route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management

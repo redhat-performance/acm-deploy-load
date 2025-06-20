@@ -1,0 +1,11 @@
+---
+# rhacm-observability tasks
+
+- name: Template out RHACM Observability
+  template:
+    src: rhacm-observability.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/rhacm-observability.yaml"
+
+- name: Apply RHACM Observability
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/rhacm-observability.yaml

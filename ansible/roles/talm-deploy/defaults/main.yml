@@ -1,0 +1,11 @@
+---
+# talm-deploy default vars
+
+talm_default_channel: stable
+
+# Used with TALM from a repo only
+talm_precache_image_to_replace: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.18.0
+talm_recovery_image_to_replace: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.18.0
+
+# Used with TALM from a repo only
+talm_thread_count: 0

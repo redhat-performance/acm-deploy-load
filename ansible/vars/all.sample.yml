@@ -25,7 +25,7 @@ setup_ztp_sno_site_policy: false
 rhacm_disableHubSelfManagement: false
 hub_cluster_kubeconfig: /root/mno/kubeconfig
 rhacm_icsp_enable_tag_mirror: false
-# When installing RHACM or MCE in a connected environment this pull secret must be populated
+# When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
 rhacm_quay_pullsecret: ''
 # Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
 rhacm_build:
@@ -34,10 +34,11 @@ setup_rhacm_search_api_route: true
 setup_rhacm_observability: false
 
 # Deploy Topology Aware Lifecycle Manager (TALM)
+# Only have one set to true or none (setup_talm_operator or setup_talm_repo)
 # Deploy TALM via Operator Subscription
 setup_talm_operator: false
 # redhat-operator-index = disconnected setup, redhat-operators = connected setup
-talm_operator_source: redhat-operator-index
+talm_operator_source: redhat-operators
 # Deploy TALM via Repo
 setup_talm_repo: true
 talm_repo: https://github.com/openshift-kni/cluster-group-upgrades-operator.git
@@ -48,20 +49,25 @@ talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_re
 
 # Apply ZTP argocd patches and create the argocd applications
 setup_rhacm_ztp_patches: true
+gitops_redis_mem_patch: true
 setup_ztp_cluster_applications: true
 setup_ztp_policy_application: true
-gitops_redis_mem_patch: true
 
 # MCE Assisted-installer items (Installed with RHACM)
 mce_assisted_ocp_versions:
-- quay.io/openshift-release-dev/ocp-release:4.16.1-x86_64
-- quay.io/openshift-release-dev/ocp-release:4.16.3-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.18.17-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.18.18-x86_64
 mce_assisted_service_namespace: multicluster-engine
 mce_clusterimagesets:
-- name: openshift-4.16.1
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.16.1-x86_64
-- name: openshift-4.16.3
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.16.3-x86_64
+- name: openshift-4.18.17
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.18.17-x86_64
+- name: openshift-4.18.18
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.18.18-x86_64
+
+# Enable SiteConfig Operator in ACM (Included since ACM 2.12)
+acm_enable_siteconfig: false
+# Enable IBIO in MCE
+mce_enable_ibio: false
 
 # AAP deploy/configure vars
 # Place the license file in the base directory of the cloned acm-deploy-load repo, Example:

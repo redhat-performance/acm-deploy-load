@@ -1,0 +1,59 @@
+---
+# talm-deploy tasks - Install TALM on a cluster
+
+- name: Deploy TALM via Operator Subscription
+  when: setup_talm_operator
+  block:
+  - name: Create directory for TALM Operator
+    file:
+      path: "{{ install_directory }}/talm-deploy"
+      state: directory
+
+  - name: Create TALM manifests
+    template:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+    - src: talm-operator.yaml.j2
+      dest: "{{ install_directory }}/talm-deploy/talm-operator.yaml"
+
+  - name: Apply TALM Operator manifest
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/talm-deploy/talm-operator.yaml
+
+- name: Deploy TALM via Repo
+  when: setup_talm_repo
+  block:
+  - name: Create directory for TALM
+    file:
+      path: "{{ install_directory }}/rhacm-deploy/cluster-group-upgrades-operator"
+      state: directory
+
+  - name: Clone cluster-group-upgrades-operator (TALM)
+    git:
+      repo: "{{ talm_repo }}"
+      dest: "{{ install_directory }}/rhacm-deploy/cluster-group-upgrades-operator"
+      force: true
+      version: "{{ talm_repo_branch }}"
+
+  - name: Make Deploy TALM
+    shell: |
+      cd {{ install_directory }}/rhacm-deploy/cluster-group-upgrades-operator
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      make deploy IMG={{ talm_image }}
+
+  - name: Patch TALM pre-cache image environment variable
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc get deploy -n openshift-cluster-group-upgrades cluster-group-upgrades-controller-manager-v2 -o json | jq '.spec.template.spec.containers[] |= (select(.name=="manager").env[] |= (select(.value=="{{ talm_precache_image_to_replace }}").value = "{{ talm_precache_image }}"))' | oc replace -f -
+
+  - name: Patch TALM recovery image environment variable
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc get deploy -n openshift-cluster-group-upgrades cluster-group-upgrades-controller-manager-v2 -o json | jq '.spec.template.spec.containers[] |= (select(.name=="manager").env[] |= (select(.value=="{{ talm_recovery_image_to_replace }}").value = "{{ talm_recovery_image }}"))' | oc replace -f -
+
+  - name: Set TALM Thread Count
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc set env deployment/cluster-group-upgrades-controller-manager-v2 -n openshift-cluster-group-upgrades TALM_CGU_CTRL_WORKER_COUNT={{ talm_thread_count }}
+    when: talm_thread_count > 0

@@ -1,5 +1,5 @@
 ---
-# mce-hub-deploy tasks - Install MCE from operatorhub to a cluster
+# mce-hub-deploy tasks - Install MCE from operatorhub on a cluster
 
 - name: Create directory for MCE Operator
   file:

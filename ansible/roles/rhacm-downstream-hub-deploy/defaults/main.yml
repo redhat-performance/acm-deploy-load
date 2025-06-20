@@ -1,0 +1,9 @@
+---
+# rhacm-hub-deploy default vars
+
+rhacm_deploy_repo: https://github.com/stolostron/deploy.git
+rhacm_deploy_repo_branch: master
+
+rhacm_search_storageclass: localstorage2-sc
+# Irrelevent when the PV provided will be larger anyway, applies to OBS PVs too
+rhacm_search_storagesize: 20Gi

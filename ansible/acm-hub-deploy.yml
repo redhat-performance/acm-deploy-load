@@ -1,0 +1,32 @@
+---
+# Playbook to deploy and setup ACM from OperatorHub for RDS
+#
+# Depending on vars set, it can:
+# * Include ACM OBS
+# * Deploy TALM
+# * Apply ZTP patches and apply ArgoCD applications
+# * Deploy SiteConfig Operator and Image-Based Install Operator
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acm-hub-deploy.yml
+#
+
+- name: Deploy and setup ACM
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - acm-hub-deploy
+  - role: rhacm-observability
+    when: setup_rhacm_observability
+  - role: talm-deploy
+    when: setup_talm_operator or setup_talm_repo
+  - role: rhacm-ztp-patches
+    when: setup_rhacm_ztp_patches
+  - role: rhacm-siteconfig-operator
+    when: acm_enable_siteconfig
+  - mce-assisted-installer
+  - role: mce-image-based-install
+    when: mce_enable_ibio
+  - mce-add-clusterimagesets

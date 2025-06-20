@@ -1,0 +1,10 @@
+---
+# rhacm-observability default vars
+
+rhacm_observability_storageclass: localstorage-sc
+
+observability_alertmanagerStorageSize: 1Gi
+observability_compactStorageSize: 100Gi
+observability_receiveStorageSize: 100Gi
+observability_ruleStorageSize: 1Gi
+observability_storeStorageSize: 10Gi

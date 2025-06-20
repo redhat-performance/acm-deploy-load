@@ -6,12 +6,10 @@
   shell: |
     export KUBECONFIG={{ hub_cluster_kubeconfig }}
     oc get mce {{ mce_name }} -o json | jq '.spec.overrides.components[] |= (select(.name=="image-based-install-operator").enabled = true)' | oc replace -f -
-  when: mce_enable_ibio
 
 - name: Wait for Image Based Install pod exists
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n {{ mce_assisted_service_namespace }} -l app=image-based-install-operator
-  when: mce_enable_ibio
   retries: 150
   delay: 2
   register: as_pod
@@ -20,7 +18,6 @@
 - name: Wait for Image Based Install pod running
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n {{ mce_assisted_service_namespace }} -l app=image-based-install-operator -o jsonpath='{.items[0].status.phase}'
-  when: mce_enable_ibio
   retries: 150
   delay: 2
   register: as_pod

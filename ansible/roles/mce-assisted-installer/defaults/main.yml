@@ -17,4 +17,4 @@ enable_converged_flow: true
 agentservice_sc: localstorage-sc
 
 agentservice_database_storage_size: 20Gi
-agentservice_filesystem_storage_size: 100Gi
+agentservice_filesystem_storage_size: 20Gi

@@ -5,8 +5,8 @@ metadata:
   name: openshift-topology-aware-lifecycle-manager
   namespace: openshift-operators
 spec:
-  channel: stable
   installPlanApproval: Automatic
   name: topology-aware-lifecycle-manager
+  channel: {{ talm_default_channel }}
   source: "{{ talm_operator_source }}"
   sourceNamespace: openshift-marketplace
