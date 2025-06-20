@@ -10,8 +10,12 @@ rhacm_disconnected_registry_port: 5000
 registry_user: registry
 registry_password: registry
 
+# ZTP DU Policies
+setup_ztp_sno_policy: true
 setup_ztp_compact_policy: true
 setup_ztp_standard_policy: true
+setup_ztp_common_policy: true
+setup_ztp_sno_site_policy: false
 # ZTP Setup Vars - DU Profile Performance Profile Settings
 setup_ztp_enable_performanceprofile: false
 setup_ztp_perfprofile_isolated_cpus: "4-7"
@@ -19,7 +23,7 @@ setup_ztp_perfprofile_reserved_cpus: "0-3"
 setup_ztp_perfprofile_hugepage_count: 1
 setup_ztp_perfprofile_realtime: true
 setup_ztp_searchcollector_enabled: true
-setup_ztp_sno_site_policy: false
+
 
 # Install ACM/ZTP vars
 rhacm_disableHubSelfManagement: false
