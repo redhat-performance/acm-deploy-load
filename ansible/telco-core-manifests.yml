@@ -1,0 +1,16 @@
+---
+# Playbook to create siteconfig and resource manifests for a telco core cluster
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud18.local ansible/telco-core-manifests.yml
+#
+
+- name: Create siteconfig and resource manifests for a Telco Core Cluster
+  hosts: bastion
+  gather_facts: false
+  vars_files:
+  - vars/all.yml
+  - vars/telco-core.yml
+  roles:
+  - telco-core-manifests

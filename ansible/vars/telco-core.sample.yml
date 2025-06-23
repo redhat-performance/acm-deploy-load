@@ -1,0 +1,37 @@
+---
+# Telco Core vars
+
+ocp_inventory:
+
+# Provide pull-secret for connected manifests
+pull_secret: "{{ lookup('file', '../pull_secret.txt') }}"
+
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
+cluster_name: standard-00001
+
+cluster_image_set: openshift-4.18.17
+
+# Network Settings
+core_cluster_base_domain: example.com
+core_cluster_dns_address: 198.18.0.1
+core_cluster_default_gateway_address: 198.18.0.1
+
+# Cluster network settings
+core_cluster_machine_network: 198.18.0.0/16
+core_cluster_api_address: 198.18.0.5
+core_cluster_ingress_address: 198.18.0.6
+# Make sure to select values which do not produce an ip conflict, Ex offset should be nth host > than api/ingress addresses
+core_cluster_node_ip_offset: 7
+
+core_cluster_cluster_network: 10.128.0.0/14
+core_cluster_host_prefix: 24
+core_cluster_service_network: 172.30.0.0/16
+
+core_cluster_ntp_source: clock.redhat.com
+
+# Corresponds to the index of the ocp_inventory file mac address array, -1 selects last mac address
+core_cluster_network_interface_idx: 0
+
+# Nodes you do not want included in the manifests (Ex: Bastion, hub machines etc)
+denylist_nodes: []

@@ -133,3 +133,9 @@ dmypy.json
 
 # Prevent manifest file upload
 aap_manifest.zip
+
+# Prevent pull_secret file upload
+pull_secret.*
+
+# Ignore local ocp_inventory.json files
+*.json

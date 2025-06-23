@@ -1,0 +1,81 @@
+---
+apiVersion: ran.openshift.io/v1
+kind: SiteConfig
+metadata:
+  name: {{ cluster_name }}
+  namespace: {{ cluster_name }}
+spec:
+  baseDomain: {{ core_cluster_base_domain }}
+  pullSecretRef:
+    name: "assisted-deployment-pull-secret"
+  clusterImageSetNameRef: {{ cluster_image_set }}
+  sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
+  clusters:
+  - clusterName: {{ cluster_name }}
+    networkType: "OVNKubernetes"
+    extraManifestPath: extra-manifests
+    clusterLabels:
+      #common: 'true'
+      #group-du-standard: ''
+      name: {{ cluster_name }}
+      sites: {{ cluster_name }}
+      vendor: OpenShift
+      observability: disabled
+    clusterNetwork:
+    - cidr: {{ core_cluster_cluster_network }}
+      hostPrefix: {{ core_cluster_host_prefix }}
+    apiVIP: {{ core_cluster_api_address }}
+    ingressVIP: {{ core_cluster_ingress_address }}
+    machineNetwork:
+    - cidr: {{ core_cluster_machine_network }}
+    serviceNetwork:
+    - {{ core_cluster_service_network }}
+    additionalNTPSources:
+    - {{ core_cluster_ntp_source }}
+    crTemplates:
+      KlusterletAddonConfig: "KlusterletAddonConfigOverride.yaml"
+    nodes:
+{% for node in core_cluster_nodes %}
+{%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
+{%   set sno_short_hostname=(sno_long_hostname.split('.')[0]) %}
+    - hostName: {{ sno_short_hostname }}
+{%   if loop.index <= 3 %}
+      role: "master"
+{%   else %}
+      role: "worker"
+{%   endif %}
+      ironicInspect: disabled
+      bmcAddress: redfish-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
+      bmcCredentialsName:
+        name: {{ sno_short_hostname }}-bmc-secret
+      bootMACAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+      bootMode: "UEFI"
+      # rootDeviceHints:
+      #   hctl: '0:0:0:0'
+      nodeNetwork:
+        interfaces:
+        - name: eno1
+          macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+        config:
+          interfaces:
+          - name: eno1
+            type: ethernet
+            state: up
+            ipv4:
+              enabled: true
+              address:
+              - ip: {{ core_cluster_machine_network | ansible.utils.nthhost(loop.index0 + core_cluster_node_ip_offset) }}
+                prefix-length: {{ core_cluster_machine_network | ansible.utils.ipaddr('prefix') }}
+            ipv6:
+              enabled: false
+          dns-resolver:
+            config:
+              server:
+              - {{ core_cluster_dns_address }}
+          routes:
+            config:
+            - destination: 0.0.0.0/0
+              next-hop-interface: eno1
+              next-hop-address: {{ core_cluster_default_gateway_address }}
+              table-id: 254
+{% endfor %}

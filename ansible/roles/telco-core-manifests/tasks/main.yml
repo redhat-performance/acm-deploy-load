@@ -1,0 +1,48 @@
+---
+# telco-core-manifests tasks
+
+- name: Download ocpinventory.json
+  uri:
+    url: "{{ ocp_inventory }}"
+    return_content: true
+  register: ocpinventory
+  when: ocp_inventory | regex_search('^http')
+
+- name: Load {{ ocp_inventory }}
+  set_fact:
+    ocpinventory:
+      json: "{{ lookup('file', ocp_inventory) }}"
+  when: "'skipped' in ocpinventory"
+
+- name: Create directory for telco-core manifest files
+  file:
+    path: "{{ install_directory }}/telco-core-manifests"
+    state: directory
+
+- name: Set initial core_cluster_nodes list
+  set_fact:
+    core_cluster_nodes: []
+
+- name: Do not append to list any node on denylist
+  set_fact:
+    core_cluster_nodes: "{{ core_cluster_nodes + [item]}}"
+  when: item.pm_addr not in denylist_nodes
+  loop: "{{ ocpinventory.json.nodes }}"
+
+- name: Original Count of nodes
+  debug:
+    msg: "{{ ocpinventory.json.nodes | length }}"
+
+- name: Remaining nodes after removing denylist nodes
+  debug:
+    msg: "{{ core_cluster_nodes | length }}"
+
+- name: Create telco-core manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: telco-core-siteconfig.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/telco-core-siteconfig.yml"
+  - src: telco-core-resources.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/telco-core-resources.yml"
