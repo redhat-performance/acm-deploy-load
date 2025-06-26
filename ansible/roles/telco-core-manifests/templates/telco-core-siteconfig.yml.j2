@@ -1,3 +1,4 @@
+# Reference - https://github.com/openshift-kni/telco-reference/blob/main/telco-core/install/example-standard-siteconfig.yaml
 ---
 apiVersion: ran.openshift.io/v1
 kind: SiteConfig
@@ -10,30 +11,38 @@ spec:
     name: "assisted-deployment-pull-secret"
   clusterImageSetNameRef: {{ cluster_image_set }}
   sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
+  # Optionally; This can be used to configure desired BIOS setting on all hosts in this site:
+  # biosConfigRef:
+  #   filePath: "example-hw.profile"
   clusters:
   - clusterName: {{ cluster_name }}
     networkType: "OVNKubernetes"
-    extraManifestPath: extra-manifests
+    # extraManifests:
+    #   searchPaths:
+    #     # Reference configuration extra manifests
+    #     - extra-manifests
+    #     # Custom extra manifests if needed
+    #     - custom-manifests
     clusterLabels:
-      #common: 'true'
-      #group-du-standard: ''
+      common: "core"
+      version: "4.18"
+      region: "zone-1"
       name: {{ cluster_name }}
-      sites: {{ cluster_name }}
       vendor: OpenShift
       observability: disabled
     clusterNetwork:
     - cidr: {{ core_cluster_cluster_network }}
       hostPrefix: {{ core_cluster_host_prefix }}
-    apiVIP: {{ core_cluster_api_address }}
-    ingressVIP: {{ core_cluster_ingress_address }}
-    machineNetwork:
-    - cidr: {{ core_cluster_machine_network }}
+    apiVIPs:
+    - {{ core_cluster_api_address }}
+    ingressVIPs:
+    - {{ core_cluster_ingress_address }}
     serviceNetwork:
     - {{ core_cluster_service_network }}
+    machineNetwork:
+    - cidr: {{ core_cluster_machine_network }}
     additionalNTPSources:
     - {{ core_cluster_ntp_source }}
-    crTemplates:
-      KlusterletAddonConfig: "KlusterletAddonConfigOverride.yaml"
     nodes:
 {% for node in core_cluster_nodes %}
 {%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
@@ -44,28 +53,31 @@ spec:
 {%   else %}
       role: "worker"
 {%   endif %}
+      # ironicInspect defaults to enabled and consumes more time for inspection of nodes
       ironicInspect: disabled
-      bmcAddress: redfish-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
+      # bmcAddress: redfish-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
+      bmcAddress: idrac-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
       bmcCredentialsName:
         name: {{ sno_short_hostname }}-bmc-secret
       bootMACAddress: {{ node.mac[core_cluster_network_interface_idx] }}
       bootMode: "UEFI"
+      # bootMode: "UEFISecureBoot"
       # rootDeviceHints:
-      #   hctl: '0:0:0:0'
+      #   deviceName: "/dev/disk/by-path/pci-0000:00:11.5-ata-3.0"
       nodeNetwork:
         interfaces:
-        - name: eno1
-          macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+        - macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+          name: eno1
         config:
           interfaces:
           - name: eno1
             type: ethernet
             state: up
             ipv4:
-              enabled: true
               address:
               - ip: {{ core_cluster_machine_network | ansible.utils.nthhost(loop.index0 + core_cluster_node_ip_offset) }}
                 prefix-length: {{ core_cluster_machine_network | ansible.utils.ipaddr('prefix') }}
+              enabled: true
             ipv6:
               enabled: false
           dns-resolver:
