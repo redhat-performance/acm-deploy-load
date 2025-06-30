@@ -1,0 +1,5 @@
+---
+# telco-core-manifests default vars
+
+telco_core_clusterinstance_extra_manifests: false
+telco_core_clusterinstance_custom_manifests: false

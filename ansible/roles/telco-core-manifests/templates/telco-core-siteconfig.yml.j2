@@ -17,12 +17,12 @@ spec:
   clusters:
   - clusterName: {{ cluster_name }}
     networkType: "OVNKubernetes"
-    # extraManifests:
-    #   searchPaths:
-    #     # Reference configuration extra manifests
-    #     - extra-manifests
-    #     # Custom extra manifests if needed
-    #     - custom-manifests
+    extraManifests:
+      searchPaths:
+        # Reference configuration extra manifests
+        # - extra-manifests
+        # Custom extra manifests if needed
+        # - custom-manifests
     clusterLabels:
       common: "core"
       version: "4.18"

@@ -42,6 +42,8 @@
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
   loop:
+  - src: telco-core-clusterinstance.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/telco-core-clusterinstance.yml"
   - src: telco-core-siteconfig.yml.j2
     dest: "{{ install_directory }}/telco-core-manifests/telco-core-siteconfig.yml"
   - src: telco-core-resources.yml.j2
