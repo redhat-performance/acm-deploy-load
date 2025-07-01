@@ -1,0 +1,58 @@
+---
+# telco-core-ztp tasks
+
+- name: Create cluster and policy directories for Telco Core ZTP
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-core/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+
+- name: Create Telco Core ZTP kustomization files in cnf-features-deploy
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: cluster-kustomization.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-core/kustomization.yaml"
+  - src: policy-kustomization.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/kustomization.yaml"
+
+- name: Create Telco Core ZTP policy and cluster application files in cnf-features-deploy
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: cluster-ns-application.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/ztp-core.yaml"
+  - src: policy-baseline-application.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/ztp-core.yaml"
+
+# https://github.com/openshift-kni/telco-reference/tree/release-4.18/telco-core/configuration
+- name: Template Telco Core Profile policy manifests into cnf-features-deploy
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: release-{{ telco_core_profile_version }}/core-baseline.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+  - src: release-{{ telco_core_profile_version }}/ns.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+
+- name: Copy directory of Telco Core reference CRs into cnf-features-deploy
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/release-{{ telco_core_profile_version }}/reference-crs"
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+
+- name: Commit and push Telco Core ZTP to cnf-features-deploy
+  shell: |
+    cd {{ install_directory }}/rhacm-ztp/cnf-features-deploy
+    git add ztp/gitops-subscriptions/argocd/cluster/ ztp/gitops-subscriptions/argocd/cluster-applications/
+    git add ztp/gitops-subscriptions/argocd/policy/ ztp/gitops-subscriptions/argocd/policy-applications/
+    git commit -a -m "Add Telco Core ZTP"
+    git push origin-gogs

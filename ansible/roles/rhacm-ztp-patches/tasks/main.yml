@@ -33,7 +33,7 @@
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/
 
-- name: Apply the ArgoCD Policy Application
+- name: Apply the ArgoCD Policy Applications
   when: setup_ztp_policy_application
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/common-and-group.yaml
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/

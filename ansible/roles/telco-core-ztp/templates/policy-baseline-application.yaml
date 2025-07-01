@@ -1,0 +1,21 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policy-telco-core-baseline
+  namespace: openshift-gitops
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ztp-site
+  project: policy-app-project
+  source:
+    path: ztp/gitops-subscriptions/argocd/policy/telco-core
+    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
+    targetRevision: {{ cnf_features_deploy_branch }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

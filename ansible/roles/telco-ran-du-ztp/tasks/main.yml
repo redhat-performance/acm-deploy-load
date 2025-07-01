@@ -1,0 +1,184 @@
+---
+# telco-ran-du-ztp tasks
+
+- name: Create cluster and policy directories for RAN DU ZTP
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs"
+
+- name: Create override and extra-manifest files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: KlusterletAddonConfigOverride.yaml.j2
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/KlusterletAddonConfigOverride.yaml"
+  - src: BareMetalHostOverride.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/BareMetalHostOverride.yaml"
+  - src: enable-crun-master.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/enable-crun-master.yaml"
+  - src: enable-crun-worker.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/enable-crun-worker.yaml"
+  - src: 98-var-lib-containers-partitioned.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/98-var-lib-containers-partitioned.yaml"
+  - src: 999-sync-time-once-master.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/999-sync-time-once-master.yaml"
+  - src: 999-sync-time-once-worker.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/999-sync-time-once-worker.yaml"
+
+- name: Create cluster application directories in cnf-features-deploy and copy files for each
+  shell: |
+    {% for item in range(1, cluster_applications_count + 1) %}
+    mkdir -p "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}"
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/BareMetalHostOverride.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/BareMetalHostOverride.yaml
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/KlusterletAddonConfigOverride.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/KlusterletAddonConfigOverride.yaml
+    mkdir -p "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests"
+    {% if include_crun_extra_manifests %}
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/enable-crun-master.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests/enable-crun-master.yaml
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/enable-crun-worker.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests/enable-crun-worker.yaml
+    {% endif %}
+    {% if include_synctimeonce_extra_manifests %}
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/999-sync-time-once-master.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests/999-sync-time-once-master.yaml
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/999-sync-time-once-worker.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests/999-sync-time-once-worker.yaml
+    {% endif %}
+    {% if include_varlibcontainers_partitioned_extra_manifests %}
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/98-var-lib-containers-partitioned.yaml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/extra-manifests/98-var-lib-containers-partitioned.yaml
+    {% endif %}
+    {% endfor %}
+
+- name: Patch app-project.yaml for clusterinstances (4.15, 4.16)
+  blockinfile:
+    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/app-project.yaml"
+    insertafter: "  kind: SiteConfig"
+    block: |2
+        - group: 'siteconfig.open-cluster-management.io'
+          kind: ClusterInstance
+    marker: "# {mark} ACM-deploy-load appended"
+  when: du_profile_version is version('4.16', '<=')
+
+# ignore_errors because not all directories will exist
+- name: Copy siteconfigs
+  copy:
+    src: "{{ item }}"
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/"
+    remote_src: true
+  loop: "{{ siteconfigs_directories }}"
+  ignore_errors: true
+
+- name: Get siteconfig manifest names
+  find:
+    paths:
+    - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig"
+    use_regex: true
+    patterns: ['.*-siteconfig.yml']
+  register: siteconfigs_find
+
+- name: Set siteconfig list
+  set_fact:
+    siteconfig_list: "{{ siteconfig_list + [item.path | basename | replace('-siteconfig.yml', '')] }}"
+  loop: "{{ siteconfigs_find.files }}"
+
+- name: Sort siteconfig list
+  set_fact:
+    siteconfig_list: "{{ siteconfig_list | sort }}"
+
+- name: Create RAN DU cluster kustomization files in cnf-features-deploy
+  template:
+    src: cluster-kustomization.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/kustomization.yaml"
+  loop: "{{ range(1, cluster_applications_count + 1) | list }}"
+
+# Similar to the above kustomization file template, every cluster app's directory must contain the actual siteconfig and not just a relative path "down" to the resource
+- name: Loop through copying correct siteconfigs into each cluster application directory
+  shell: |
+    {% for sc in range((item - 1) * siteconfigs_per_application, item * siteconfigs_per_application ) %}
+    {% if siteconfig_list | length > sc %}
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[sc] }}-siteconfig.yml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/{{ siteconfig_list[sc] }}-siteconfig.yml
+    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[sc] }}-resources.yml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/{{ siteconfig_list[sc] }}-resources.yml
+    {% endif %}
+    {% endfor %}
+  loop: "{{ range(1, cluster_applications_count + 1) | list }}"
+  when: siteconfig_list | length > ((item - 1) * siteconfigs_per_application)
+
+- name: Create RAN DU cluster application files in cnf-features-deploy
+  template:
+    src: cluster-ns-application.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/ztp-clusters-{{ '%02d' | format(item) }}.yaml"
+  loop: "{{ range(1, cluster_applications_count + 1) | list }}"
+
+- name: Template the DU Profile policy manifests into cnf-features-deploy
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: pgt-du-{{ du_profile_version }}/common-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/common-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/common-mno-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/common-mno-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-sno-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-sno-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-sno-validator-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-sno-validator-ranGen.yaml"
+  - src: sno-site.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/sno-site.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-3node-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-3node-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-3node-validator-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-3node-validator-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-standard-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-standard-ranGen.yaml"
+  - src: pgt-du-{{ du_profile_version }}/group-du-standard-validator-ranGen.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-standard-validator-ranGen.yaml"
+  - src: policy-kustomization.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/kustomization.yaml"
+  - src: ns.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/ns.yaml"
+  - src: ns-upgrade.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/ns-upgrade.yaml"
+  - src: policy-common-and-group.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/common-and-group.yaml"
+  - src: hub-template-maps.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/hub-template-maps.yaml"
+  - src: source-crs/OadpSubscriptionNS.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpSubscriptionNS.yaml"
+  - src: source-crs/OadpSubscriptionOperGroup.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpSubscriptionOperGroup.yaml"
+  - src: source-crs/OadpSubscription.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpSubscription.yaml"
+  - src: source-crs/OadpOperatorStatus.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpOperatorStatus.yaml"
+  - src: source-crs/OadpSecret.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpSecret.yaml"
+  - src: source-crs/OadpCm.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpCm.yaml"
+  - src: source-crs/DataProtectionApplication.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/DataProtectionApplication.yaml"
+  - src: source-crs/OadpBackupStorageLocationStatus.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/OadpBackupStorageLocationStatus.yaml"
+  - src: source-crs/LcaSubscriptionNS.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/LcaSubscriptionNS.yaml"
+  - src: source-crs/LcaSubscriptionOperGroup.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/LcaSubscriptionOperGroup.yaml"
+  - src: source-crs/LcaSubscription.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/LcaSubscription.yaml"
+  - src: source-crs/LcaOperatorStatus.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/LcaOperatorStatus.yaml"
+  - src: source-crs/LcaSecret.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/LcaSecret.yaml"
+  - src: source-crs/ImageBasedUpgrade.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/source-crs/ImageBasedUpgrade.yaml"
+
+- name: Commit and push RAN DU ZTP to cnf-features-deploy
+  shell: |
+    cd {{ install_directory }}/rhacm-ztp/cnf-features-deploy
+    git add ztp/gitops-subscriptions/argocd/cluster/ ztp/gitops-subscriptions/argocd/cluster-applications/
+    git add ztp/gitops-subscriptions/argocd/policy/ ztp/gitops-subscriptions/argocd/policy-applications/
+    git commit -a -m "Add RAN DU SiteConfigs, Manifests, and Policies"
+    git push origin-gogs

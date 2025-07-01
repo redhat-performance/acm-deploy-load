@@ -12,3 +12,7 @@
   - vars/all.yml
   roles:
   - rhacm-ztp-setup
+  - role: telco-core-ztp
+    when: setup_core_ztp
+  - role: telco-ran-du-ztp
+    when: setup_ran_du_ztp

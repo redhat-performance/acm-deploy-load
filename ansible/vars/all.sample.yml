@@ -10,6 +10,11 @@ rhacm_disconnected_registry_port: 5000
 registry_user: registry
 registry_password: registry
 
+# Setup ZTP Core Policies
+setup_core_ztp: false
+# Setup ZTP Ran DU Policies
+setup_ran_du_ztp: false
+
 # ZTP DU Policies
 setup_ztp_sno_policy: true
 setup_ztp_compact_policy: true

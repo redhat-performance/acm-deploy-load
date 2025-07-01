@@ -1,0 +1,5 @@
+---
+# telco-core-ztp default vars
+
+# Currently only the 4.18 profile has been placed and adjusted for this testing in this repo
+telco_core_profile_version: 4.18
