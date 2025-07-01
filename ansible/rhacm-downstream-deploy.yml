@@ -3,7 +3,7 @@
 #
 # Example Usage:
 #
-# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-hub-deploy.yml
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-deploy.yml
 #
 
 - name: Setup downstream RHACM ICSP
@@ -25,7 +25,7 @@
   vars_files:
   - vars/all.yml
   roles:
-  - rhacm-downstream-hub-deploy
+  - rhacm-downstream-deploy
   - role: rhacm-observability
     when: setup_rhacm_observability
   - role: rhacm-ztp-patches

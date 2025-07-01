@@ -1,5 +1,5 @@
 ---
-# Playbook to deploy and setup ACM from OperatorHub for RDS
+# Playbook to deploy and setup ACM from OperatorHub
 #
 # Depending on vars set, it can:
 # * Include ACM OBS
@@ -9,7 +9,7 @@
 #
 # Example Usage:
 #
-# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acm-hub-deploy.yml
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-deploy.yml
 #
 
 - name: Deploy and setup ACM
@@ -17,7 +17,7 @@
   vars_files:
   - vars/all.yml
   roles:
-  - acm-hub-deploy
+  - rhacm-deploy
   - role: rhacm-observability
     when: setup_rhacm_observability
   - role: talm-deploy

@@ -3,7 +3,7 @@
 #
 # Example Usage:
 #
-# time ansible-playbook -i ansible/inventory/cloud30.local ansible/mce-hub-deploy.yml
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/mce-deploy.yml
 #
 
 - name: Deploy and setup MCE
@@ -11,7 +11,7 @@
   vars_files:
   - vars/all.yml
   roles:
-  - mce-hub-deploy
+  - mce-deploy
   - mce-assisted-installer
   - mce-image-based-install
   - mce-add-clusterimagesets

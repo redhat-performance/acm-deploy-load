@@ -1,5 +1,5 @@
 ---
-# rhacm-hub-deploy tasks - Install upstream/downstream RHACM hub onto a cluster
+# rhacm-downstream-deploy tasks - Install downstream RHACM hub onto a cluster
 
 - name: Checkout the latest stolostron/deploy repo
   git:
