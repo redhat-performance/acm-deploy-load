@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: policy-telco-core-baseline
+  name: policy-telco-core
   namespace: openshift-gitops
 spec:
   destination:

@@ -41,6 +41,8 @@
   loop:
   - src: release-{{ telco_core_profile_version }}/core-baseline.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+  - src: release-{{ telco_core_profile_version }}/core-overlay.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
   - src: release-{{ telco_core_profile_version }}/ns.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
 

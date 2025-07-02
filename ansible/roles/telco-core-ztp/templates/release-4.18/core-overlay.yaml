@@ -65,11 +65,15 @@ policies:
             name: worker-profile-1
           spec:
             cpu:
+              {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-1-reserved" | toLiteral hub}}'
               isolated: '{{hub fromConfigMap "" "hw-types" "role-worker-1-isolated" | toLiteral hub}}'
+              {%- endraw +%}
             hugepages:
               pages:
+              {%- raw %}
               - count: '{{hub fromConfigMap "" "hw-types" "role-worker-1-hugepg-cnt" | toInt hub}}'
+              {%- endraw +%}
                 size: 1G
             nodeSelector:
               node-role.kubernetes.io/worker-1: ""
@@ -80,12 +84,16 @@ policies:
             name: worker-profile-2
           spec:
             cpu:
+              {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-2-reserved" | toLiteral hub}}'
               isolated: '{{hub fromConfigMap "" "hw-types" "role-worker-2-isolated" | toLiteral hub}}'
+              {%- endraw +%}
             hugepages:
               pages:
+              {%- raw %}
               - count: '{{hub fromConfigMap "" "hw-types" "role-worker-2-hugepg-cnt" | toInt hub}}'
                 size: 1G
+              {%- endraw +%}
             nodeSelector:
               node-role.kubernetes.io/worker-2: ""
 
@@ -95,12 +103,16 @@ policies:
             name: worker-profile-3
           spec:
             cpu:
+              {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-3-reserved" | toLiteral hub}}'
               isolated: '{{hub fromConfigMap "" "hw-types" "role-worker-3-isolated" | toLiteral hub}}'
+              {%- endraw +%}
             hugepages:
               pages:
+              {%- raw %}
               - count: '{{hub fromConfigMap "" "hw-types" "role-worker-3-hugepg-cnt" | toInt hub}}'
                 size: 1G
+              {%- endraw +%}
             nodeSelector:
               node-role.kubernetes.io/worker-3: ""
 
@@ -112,14 +124,18 @@ policies:
             - type: "kafka"
               name: kafka-open
               kafka:
+                {%- raw %}
                 url: '{{hub fromConfigMap "" "regional" (printf "%s-log-url" (index .ManagedClusterLabels "region")) | toLiteral hub}}'
+                {%- endraw +%}
             filters:
             - name: custom-labels
               type: openshiftLabels
               openshiftLabels:
+                {%- raw %}
                 sitename: '{{hub fromConfigMap "" .ManagedClusterName "logging-name" | toLiteral hub}}'
                 siteuuid: '{{hub fromConfigMap "" .ManagedClusterName "logging-uuid" | toLiteral hub}}'
                 label3: 'other data'
+                {%- endraw +%}
             pipelines:
             - name: all-to-default
               inputRefs:
@@ -193,11 +209,15 @@ policies:
             deviceType: netdevice
             nicSelector:
               pfNames:
+                {%- raw %}
                 - '{{hub fromConfigMap "" "hw-types" "nic-config-type-1-sriov-dev1" | toLiteral hub}}'
                 - '{{hub fromConfigMap "" "hw-types" "nic-config-type-1-sriov-dev2" | toLiteral hub}}'
+                {%- endraw +%}
             nodeSelector:
               nic-config: "type-1"
+            {%- raw %}
             numVfs: '{{hub fromConfigMap "" "hw-types" "nic-config-type-1-sriov-numvf" | toInt hub}}'
+            {%- endraw +%}
             priority: 99
             # excludeTopology: true
             resourceName: testSignaling
