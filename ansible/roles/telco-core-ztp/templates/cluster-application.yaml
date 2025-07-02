@@ -1,18 +1,13 @@
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ztp-core
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ztp-core
+  name: ztp-core-cluster
   namespace: openshift-gitops
 spec:
   destination:
     server: https://kubernetes.default.svc
-    namespace: ztp-core
+    namespace: ztp-core-cluster
   project: ztp-app-project
   source:
     path: ztp/gitops-subscriptions/argocd/cluster/ztp-core

@@ -40,7 +40,11 @@ policies:
               - kind: ClusterServiceVersion
                 namespace: openshift-logging
                 # Update with specific target version
-                name: cluster-logging.v6.0.0
+{% if telco_core_cluster_logging_version_enable %}
+                name: {{ telco_core_cluster_logging_version }}
+{% else %}
+                # name: {{ telco_core_cluster_logging_version }}
+{% endif %}
                 conditions:
                   - type: Succeeded
                     status: "True"

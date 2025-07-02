@@ -2,4 +2,9 @@
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: ztp-core-cluster
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: ztp-core-policies

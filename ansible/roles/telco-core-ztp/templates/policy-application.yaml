@@ -2,12 +2,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: policy-telco-core
+  name: ztp-core-policies
   namespace: openshift-gitops
 spec:
   destination:
     server: https://kubernetes.default.svc
-    namespace: ztp-site
+    namespace: ztp-core-policies
   project: policy-app-project
   source:
     path: ztp/gitops-subscriptions/argocd/policy/telco-core
