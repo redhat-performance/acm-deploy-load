@@ -32,6 +32,15 @@ policies:
       - path: reference-crs/optional/logging/ClusterLogNS.yaml
       - path: reference-crs/optional/logging/ClusterLogOperGroup.yaml
       - path: reference-crs/optional/logging/ClusterLogSubscription.yaml
+{% if telco_core_reference_cluster_logging_channel_override_enable %}
+        patches:
+        - spec:
+            channel: "{{ telco_core_reference_cluster_logging_channel_override }}"
+{% else %}
+        # patches:
+        # - spec:
+        #     channel: "{{ telco_core_reference_cluster_logging_channel_override }}"
+{% endif %}
       - path: reference-crs/optional/logging/ClusterLogOperatorStatus.yaml
         patches:
         - status:
