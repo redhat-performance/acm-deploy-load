@@ -1,0 +1,11 @@
+    - path: source-crs/LcaSubscriptionNS.yaml
+    - path: source-crs/LcaSubscriptionOperGroup.yaml
+    - path: source-crs/LcaSubscription.yaml
+      patches:
+      - spec:
+          channel: {{ lifecycle_agent_channel }}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/LcaOperatorStatus.yaml
+

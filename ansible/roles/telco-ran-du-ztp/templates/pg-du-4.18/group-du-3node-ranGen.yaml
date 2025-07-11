@@ -1,0 +1,56 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: group-du-3node-latest
+placementBindingDefaults:
+  name: group-du-3node-placement-binding
+policyDefaults:
+  # categories: []
+  #controls:
+  #  - PR.DS-1 Data-at-rest
+  namespace: ztp-group
+  # Use an existing placement rule so that placement bindings can be consolidated
+  placement:
+    labelSelector:
+      group-du-3node: ""
+  remediationAction: inform
+  severity: low
+  # standards: []
+  namespaceSelector:
+    exclude:
+      - kube-*
+    include:
+      - '*'
+  evaluationInterval:
+    compliant: 10m
+    noncompliant: 10s
+policies:
+{% if manyPolicies %}
+- name: group-du-3node-latest-ptp-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/ptp-config.yaml" %}
+- name: group-du-3node-latest-sriov-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/sriov-operator-config-3node.yaml" %}
+{% if setup_ztp_enable_performanceprofile %}
+- name: group-du-3node-latest-tuning-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/performance-profile-3node.yaml" %}
+{% endif %}
+{% else %}
+- name: group-du-3node-latest-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/ptp-config.yaml" %}
+{% include "group-du/sriov-operator-config-3node.yaml" %}
+{% if setup_ztp_enable_performanceprofile %}
+{% include "group-du/performance-profile-3node.yaml" %}
+{% endif %}
+{% endif %}

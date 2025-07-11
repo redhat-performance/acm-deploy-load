@@ -3,6 +3,7 @@
 apiVersion: velero.io/v1
 kind: BackupStorageLocation
 metadata:
+  name: dataprotectionapplication-1
   namespace: openshift-adp
   annotations:
     ran.openshift.io/ztp-deploy-wave: "10"

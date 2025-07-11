@@ -1,0 +1,21 @@
+    - path: source-crs/ClusterLogNS.yaml
+    - path: source-crs/ClusterLogOperGroup.yaml
+    - path: source-crs/ClusterLogSubscription.yaml
+      patches:
+{% if extraHubCommonTemplates %}
+      - metadata:
+          annotations:
+          {%- raw %}
+            scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+            scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/ClusterLogOperatorStatus.yaml
+    - path: source-crs/ClusterLogServiceAccount.yaml
+    - path: source-crs/ClusterLogServiceAccountAuditBinding.yaml
+    - path: source-crs/ClusterLogServiceAccountInfrastructureBinding.yaml
+

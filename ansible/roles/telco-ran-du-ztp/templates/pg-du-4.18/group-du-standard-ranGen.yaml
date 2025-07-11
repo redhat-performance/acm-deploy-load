@@ -1,0 +1,59 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: group-du-standard-latest
+placementBindingDefaults:
+  name: group-du-standard-placement-binding
+policyDefaults:
+  # categories: []
+  #controls:
+  #  - PR.DS-1 Data-at-rest
+  namespace: ztp-group
+  # Use an existing placement rule so that placement bindings can be consolidated
+  placement:
+    labelSelector:
+      group-du-standard: ""
+      du-profile: "latest"
+  remediationAction: inform
+  severity: low
+  # standards: []
+  namespaceSelector:
+    exclude:
+      - kube-*
+    include:
+      - '*'
+  evaluationInterval:
+    compliant: 10m
+    noncompliant: 10s
+policies:
+{% if manyPolicies %}
+- name: group-du-standard-ptp-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/ptp-operator-config-standard.yaml" %}
+{% include "group-du/ptp-config.yaml" %}
+- name: group-du-standard-sriov-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/sriov-operator-config-standard.yaml" %}
+{% if setup_ztp_enable_performanceprofile %}
+- name: group-du-standard-tuning-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/performance-profile-standard.yaml" %}
+{% endif %}
+{% else %}
+- name: group-du-standard-latest-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "10"
+  manifests:
+{% include "group-du/ptp-operator-config-standard.yaml" %}
+{% include "group-du/ptp-config.yaml" %}
+{% include "group-du/sriov-operator-config-standard.yaml" %}
+{% if setup_ztp_enable_performanceprofile %}
+{% include "group-du/performance-profile-standard.yaml" %}
+{% endif %}
+{% endif %}

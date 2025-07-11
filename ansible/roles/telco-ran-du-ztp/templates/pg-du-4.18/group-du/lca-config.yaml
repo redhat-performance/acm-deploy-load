@@ -1,0 +1,6 @@
+    - path: source-crs/LcaSecret.yaml
+      patches:
+      - data:
+            seedAuth: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}
+            .dockerconfigjson: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}
+

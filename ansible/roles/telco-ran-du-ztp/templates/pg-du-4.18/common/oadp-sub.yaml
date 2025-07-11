@@ -1,0 +1,11 @@
+    - path: source-crs/OadpSubscriptionNS.yaml
+    - path: source-crs/OadpSubscriptionOperGroup.yaml
+    - path: source-crs/OadpSubscription.yaml
+      patches:
+      - spec:
+          channel: stable-1.4
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/OadpOperatorStatus.yaml
+

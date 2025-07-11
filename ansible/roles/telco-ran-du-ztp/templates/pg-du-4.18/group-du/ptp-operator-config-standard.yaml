@@ -1,0 +1,6 @@
+    - path: source-crs/PtpOperatorConfig-SetSelector.yaml
+      patches:
+      - spec:
+          daemonNodeSelector:
+            node-role.kubernetes.io/worker: ""
+

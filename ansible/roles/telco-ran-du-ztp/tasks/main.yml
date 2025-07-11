@@ -113,28 +113,41 @@
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/ztp-clusters-{{ '%02d' | format(item) }}.yaml"
   loop: "{{ range(1, cluster_applications_count + 1) | list }}"
 
+- name: Copy files required when using PolicyGenerator
+  block:
+    - name: Copy source-crs when using PolicyGenerator
+      copy:
+        src: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/source-crs"
+        dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/"
+
+    - name: Copy schema.openapi when using PolicyGenerator
+      copy:
+        src: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/example/acmpolicygenerator/schema.openapi"
+        dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/"
+  when: acm_policygenerator
+
 - name: Template the DU Profile policy manifests into cnf-features-deploy
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
   loop:
-  - src: pgt-du-{{ du_profile_version }}/common-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/common-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/common-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/common-mno-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/common-mno-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/common-mno-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-sno-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-sno-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-sno-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-sno-validator-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-sno-validator-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-sno-validator-ranGen.yaml"
   - src: sno-site.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/sno-site.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-3node-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-3node-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-3node-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-3node-validator-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-3node-validator-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-3node-validator-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-standard-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-standard-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-standard-ranGen.yaml"
-  - src: pgt-du-{{ du_profile_version }}/group-du-standard-validator-ranGen.yaml
+  - src: "{{ acm_policygenerator | ternary('pg','pgt') }}-du-{{ du_profile_version }}/group-du-standard-validator-ranGen.yaml"
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/group-du-standard-validator-ranGen.yaml"
   - src: policy-kustomization.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/common-and-group/kustomization.yaml"

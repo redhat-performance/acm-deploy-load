@@ -1,0 +1,45 @@
+    - path: source-crs/PerformanceProfile-SetSelector.yaml
+      patches:
+      - spec:
+          cpu:
+            # These must be tailored for the specific hardware platform
+            isolated: "{{ setup_ztp_perfprofile_isolated_cpus }}"
+            reserved: "{{ setup_ztp_perfprofile_reserved_cpus }}"
+          hugepages:
+            defaultHugepagesSize: 1G
+            pages:
+            - size: 1G
+              count: {{ setup_ztp_perfprofile_hugepage_count | int }}
+          machineConfigPoolSelector:
+            pools.operator.machineconfiguration.openshift.io/master: ""
+          nodeSelector:
+            node-role.kubernetes.io/master: ''
+          realTimeKernel:
+            enabled: {{ setup_ztp_perfprofile_realtime | bool }}
+    - path: source-crs/TunedPerformancePatch.yaml
+      patches:
+{%- if extraHubGroupTemplates or extraHubSiteTemplates +%}
+      - metadata:
+          annotations:
+{%- if extraHubGroupTemplates %}
+          {% raw %}
+            scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
+            scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
+          {%- endraw %}
+{% endif %}
+{% if extraHubSiteTemplates %}
+          {% raw %}
+            site-test-label-1: '{{hub fromConfigMap "" (printf "site-%s" .ManagedClusterName) "sitekey1" hub}}'
+            site-test-label-2: '{{hub fromConfigMap "" (printf "site-%s" .ManagedClusterName) "sitekey2" hub}}'
+          {%- endraw %}
+{% endif %}
+        spec:
+{% else +%}
+      - spec:
+{% endif +%}
+          recommend:
+          - machineConfigLabels:
+              machineconfiguration.openshift.io/role: "master"
+            priority: 19
+            profile: performance-patch
+

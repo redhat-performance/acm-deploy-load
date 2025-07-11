@@ -69,3 +69,6 @@ extraHubCommonTemplates: false
 extraHubGroupTemplates: false
 # When enabled, creates extra annotations from site specific ConfigMaps on hub in group PGT
 extraHubSiteTemplates: false
+
+# When enabled use ACM PolicyGenerator instead of RAN PolicyGenTemplate to generate ACM policies
+acm_policygenerator: false

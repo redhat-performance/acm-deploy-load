@@ -1,0 +1,25 @@
+    - path: source-crs/PerformanceProfile-SetSelector.yaml
+      patches:
+      - spec:
+          cpu:
+            # These must be tailored for the specific hardware platform
+            isolated: "2-19,22-39"
+            reserved: "0-1,20-21"
+          hugepages:
+            defaultHugepagesSize: 1G
+            pages:
+            - size: 1G
+              count: 32
+          machineConfigPoolSelector:
+            pools.operator.machineconfiguration.openshift.io/worker: ""
+          nodeSelector:
+            node-role.kubernetes.io/worker: ''
+    - path: source-crs/TunedPerformancePatch.yaml
+      patches:
+      - spec:
+          recommend:
+          - machineConfigLabels:
+              machineconfiguration.openshift.io/role: "worker"
+            priority: 19
+            profile: performance-patch
+
