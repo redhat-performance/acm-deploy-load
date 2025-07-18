@@ -96,16 +96,12 @@
   loop: "{{ range(1, cluster_applications_count + 1) | list }}"
 
 # Similar to the above kustomization file template, every cluster app's directory must contain the actual siteconfig and not just a relative path "down" to the resource
-- name: Loop through copying correct siteconfigs into each cluster application directory
-  shell: |
-    {% for sc in range((item - 1) * siteconfigs_per_application, item * siteconfigs_per_application ) %}
-    {% if siteconfig_list | length > sc %}
-    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[sc] }}-siteconfig.yml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/{{ siteconfig_list[sc] }}-siteconfig.yml
-    cp {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[sc] }}-resources.yml {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}/{{ siteconfig_list[sc] }}-resources.yml
-    {% endif %}
-    {% endfor %}
+- name: Copy siteconfig and resources files for each cluster application
+  include_tasks: copy_siteconfigs_for_cluster.yml
   loop: "{{ range(1, cluster_applications_count + 1) | list }}"
-  when: siteconfig_list | length > ((item - 1) * siteconfigs_per_application)
+  loop_control:
+    loop_var: cluster_app_num
+  when: siteconfig_list | length > ((cluster_app_num - 1) * siteconfigs_per_application)
 
 - name: Create RAN DU cluster application files in cnf-features-deploy
   template:

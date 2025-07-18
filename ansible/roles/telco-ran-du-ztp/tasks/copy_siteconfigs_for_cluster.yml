@@ -1,0 +1,27 @@
+---
+# Copy siteconfigs for a single cluster application
+# This file is included by main.yml for each cluster application
+
+- name: Set cluster application variables
+  set_fact:
+    cluster_dir: "ztp-clusters-{{ '%02d' | format(cluster_app_num) }}"
+    start_index: "{{ (cluster_app_num - 1) * siteconfigs_per_application }}"
+    end_index: "{{ cluster_app_num * siteconfigs_per_application }}"
+
+- name: Copy siteconfig files for cluster application {{ cluster_dir }}
+  copy:
+    src: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[item] }}-siteconfig.yml"
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/{{ cluster_dir }}/{{ siteconfig_list[item] }}-siteconfig.yml"
+    remote_src: true
+  loop: "{{ range(start_index | int, [end_index | int, siteconfig_list | length] | min) | list }}"
+  loop_control:
+    label: "{{ cluster_dir }}/{{ siteconfig_list[item] }}-siteconfig.yml"
+
+- name: Copy resources files for cluster application {{ cluster_dir }}
+  copy:
+    src: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ai-siteconfig/{{ siteconfig_list[item] }}-resources.yml"
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/{{ cluster_dir }}/{{ siteconfig_list[item] }}-resources.yml"
+    remote_src: true
+  loop: "{{ range(start_index | int, [end_index | int, siteconfig_list | length] | min) | list }}"
+  loop_control:
+    label: "{{ cluster_dir }}/{{ siteconfig_list[item] }}-resources.yml" 
