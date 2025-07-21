@@ -36,8 +36,13 @@ hub_cluster_kubeconfig: /root/mno/kubeconfig
 rhacm_icsp_enable_tag_mirror: false
 # When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
 rhacm_quay_pullsecret: ''
+# Install from Konflux build  or not
+is_konflux_build: false
+acm_channel: release-2.14
 # Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
 rhacm_build:
+# Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
+mce_build:
 setup_rhacm_search_pv: false
 setup_rhacm_search_api_route: true
 setup_rhacm_observability: false

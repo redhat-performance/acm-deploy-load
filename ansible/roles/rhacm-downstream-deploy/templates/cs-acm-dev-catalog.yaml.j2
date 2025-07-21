@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: cs-acm-dev-catalog
+  namespace: openshift-marketplace
+spec:
+  image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d/acm-dev-catalog:{{ rhacm_build }}
+  sourceType: grpc

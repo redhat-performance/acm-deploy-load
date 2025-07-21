@@ -1,0 +1,52 @@
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: ImageContentSourcePolicy
+metadata:
+  name: rhacm-repo
+spec:
+  repositoryDigestMirrors:
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift
+    source: quay.io/openshift
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/kubebuilder
+    source: gcr.io/kubebuilder
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni
+    source: quay.io/openshift-kni
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}//rhacm2
+    source: registry.redhat.io/rhacm2
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d
+    source: quay.io/acm-d
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}//multicluster-engine
+    source: registry.redhat.io/multicluster-engine
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4/ose-oauth-proxy
+    source: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d/ose-oauth-proxy
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4
+    source: registry.redhat.io/openshift4
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel8
+    source: registry.redhat.io/rhel8
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel9
+    source: registry.redhat.io/rhel9
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhem
+    source: registry.redhat.io/rhem
+{% else %}
+  - mirrors:
+    - quay.io:443/acm-d
+    source: registry.redhat.io/rhacm2
+  - mirrors:
+    - quay.io:443/acm-d
+    source: registry.redhat.io/multicluster-engine
+  - mirrors:
+    - registry.redhat.io/openshift4/ose-oauth-proxy
+    source: registry.access.redhat.com/openshift4/ose-oauth-proxy
+{% endif %}

@@ -1,48 +1,130 @@
 ---
 # rhacm-downstream-deploy tasks - Install downstream RHACM hub onto a cluster
 
-- name: Checkout the latest stolostron/deploy repo
-  git:
-    repo: "{{ rhacm_deploy_repo }}"
-    dest: "{{ install_directory }}/rhacm-deploy/deploy"
-    force: true
-    version: "{{ rhacm_deploy_repo_branch }}"
+- name: Install from Cpaas rhacm_build
+  when: not is_konflux_build
+  block:
+  - name: Checkout the latest stolostron/deploy repo
+    git:
+      repo: "{{ rhacm_deploy_repo }}"
+      dest: "{{ install_directory }}/rhacm-deploy/deploy"
+      force: true
+      version: "{{ rhacm_deploy_repo_branch }}"
 
-- name: Create deploy/prereq/pull-secret.yaml
-  template:
-    src: pull-secret.yaml.j2
-    dest: "{{ install_directory }}/rhacm-deploy/deploy/prereqs/pull-secret.yaml"
+  - name: Create deploy/prereq/pull-secret.yaml
+    template:
+      src: pull-secret.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/deploy/prereqs/pull-secret.yaml"
 
-- name: Create snapshot.ver
-  copy:
-    dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
-    content: "{{ rhacm_build }}"
+  - name: Create snapshot.ver
+    copy:
+      dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
+      content: "{{ rhacm_build }}"
 
-- name: Run downstream deployment script
-  shell: |
-    export KUBECONFIG={{ hub_cluster_kubeconfig }}
-    export COMPOSITE_BUNDLE=true
-    {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
-    export CUSTOM_REGISTRY_REPO="{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
-    {% else %}
-    export CUSTOM_REGISTRY_REPO="quay.io:443/acm-d"
-    {% endif %}
-    export DOWNSTREAM=true
-    {% if rhacm_disableHubSelfManagement %}
-    echo "  disableHubSelfManagement: true" >> {{ install_directory }}/rhacm-deploy/deploy/multiclusterhub/example-multiclusterhub-cr.yaml
-    {% endif %}
-    {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
-  args:
-    chdir: "{{ install_directory }}/rhacm-deploy/deploy"
-  when: rhacm_build is search("DOWNSTREAM")
+  - name: Run downstream deployment script
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      export COMPOSITE_BUNDLE=true
+      {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      export CUSTOM_REGISTRY_REPO="{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
+      {% else %}
+      export CUSTOM_REGISTRY_REPO="quay.io:443/acm-d"
+      {% endif %}
+      export DOWNSTREAM=true
+      {% if rhacm_disableHubSelfManagement %}
+      echo "  disableHubSelfManagement: true" >> {{ install_directory }}/rhacm-deploy/deploy/multiclusterhub/example-multiclusterhub-cr.yaml
+      {% endif %}
+      {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
+    args:
+      chdir: "{{ install_directory }}/rhacm-deploy/deploy"
+    when: rhacm_build is search("DOWNSTREAM")
 
-- name: Run upstream deployment script
-  shell: |
-    export KUBECONFIG={{ hub_cluster_kubeconfig }}
-    {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
-  args:
-    chdir: "{{ install_directory }}/rhacm-deploy/deploy"
-  when: not rhacm_build is search("DOWNSTREAM")
+  - name: Run upstream deployment script
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      {{ install_directory }}/rhacm-deploy/deploy/start.sh --silent 2>&1 | tee {{ install_directory }}/rhacm-deploy/$(date -u +%Y%m%d-%H%M%S)-start.log
+    args:
+      chdir: "{{ install_directory }}/rhacm-deploy/deploy"
+    when: not rhacm_build is search("DOWNSTREAM")
+
+- name: Install from Konflux rhacm_build
+  when: is_konflux_build
+  block:
+  - name: Create deploy/prereq/pull-secret.yaml
+    template:
+      src: pull-secret.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/pull-secret.yaml"
+
+  - name: Create catalog source for ACM 
+    template:
+      src: cs-acm-dev-catalog.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml"
+
+  - name: Create catalog source for  MCE
+    template:
+      src: cs-mce-dev-catalog.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml"
+
+  - name: Install rhacm operator
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc apply -f {{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml
+      oc apply -f {{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml
+      echo {{ rhacm_build }}  >{{ install_directory }}/snapshot.ver
+      export ACM_CHANNEL={{ acm_channel }}
+      oc create namespace open-cluster-management
+      oc project open-cluster-management
+      echo "
+      apiVersion: operators.coreos.com/v1
+      kind: OperatorGroup
+      metadata:
+        name: open-cluster-management-operator-group
+      spec:
+        targetNamespaces:
+        - open-cluster-management" | kubectl apply -f -
+      echo "
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: acm-operator-subscription
+      spec:
+        sourceNamespace: openshift-marketplace
+        source: cs-acm-dev-catalog
+        channel: $ACM_CHANNEL
+        installPlanApproval: Automatic
+        name: advanced-cluster-management" | kubectl apply -f -
+      sleep 60
+  
+  - name: Create multiclusterhub with pull secret for connected hub cluster
+    when: not rhacm_disconnected_registry or rhacm_disconnected_registry|length <= 1 
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc project open-cluster-management
+      oc create secret generic -n open-cluster-management open-cluster-management-pull-secret \
+          --from-file=.dockerconfigjson={{ install_directory }}/rhacm-deploy/pull-secret.yaml \
+          --type=kubernetes.io/dockerconfigjson
+      echo "
+      apiVersion: operator.open-cluster-management.io/v1
+      kind: MultiClusterHub
+      metadata:
+        name: multiclusterhub
+        namespace: open-cluster-management
+      spec:
+        imagePullSecret: open-cluster-management-pull-secret" | kubectl apply -f -
+
+  - name: Create multiclusterhub without pull secret for disconnected hub cluster
+    when: rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 
+    shell: |
+      export KUBECONFIG={{ hub_cluster_kubeconfig }}
+      oc project open-cluster-management
+      echo "
+      apiVersion: operator.open-cluster-management.io/v1
+      kind: MultiClusterHub
+      metadata:
+        name: multiclusterhub
+        namespace: open-cluster-management
+      spec:
+        {}" | kubectl apply -f -
 
 - name: Wait until MultiClusterHub is running status
   shell: |
