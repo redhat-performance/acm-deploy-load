@@ -16,13 +16,13 @@ spec:
     - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni
     source: quay.io/openshift-kni
   - mirrors:
-    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}//rhacm2
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2
     source: registry.redhat.io/rhacm2
   - mirrors:
     - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d
     source: quay.io/acm-d
   - mirrors:
-    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}//multicluster-engine
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine
     source: registry.redhat.io/multicluster-engine
   - mirrors:
     - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4/ose-oauth-proxy

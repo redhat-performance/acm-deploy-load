@@ -13,7 +13,7 @@
     dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"
 
 - name: Create ImageContentSourcePolicy on hub cluster
-  when: not is_konflux_build
+  when: is_konflux_build
   template:
     src: icsp-konflux.yaml.j2
     dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"

@@ -55,6 +55,11 @@
       src: pull-secret.yaml.j2
       dest: "{{ install_directory }}/rhacm-deploy/pull-secret.yaml"
 
+  - name: Create snapshot.ver
+    copy:
+      dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
+      content: "{{ rhacm_build }}"
+      
   - name: Create catalog source for ACM 
     template:
       src: cs-acm-dev-catalog.yaml.j2
