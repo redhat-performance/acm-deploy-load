@@ -48,10 +48,14 @@
     git remote add origin-gogs http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
     git push -u origin-gogs --all --force
 
-- name: Remove cnf-tests directory from cnf-features-deploy
+- name: Remove directories from cnf-features-deploy that prevent argocd app from syncing
   file:
     state: absent
-    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/cnf-tests"
+    path: "{{ item }}"
+  loop:
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/cnf-tests"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/telco5g-konflux"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/resource-generator/"
 
 - name: Patches for cnf-features-deploy argocd-openshift-gitops-patch.json
   replace:
