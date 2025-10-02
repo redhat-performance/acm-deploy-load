@@ -1,0 +1,12 @@
+---
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: {{ mch_name }}
+  namespace: open-cluster-management
+{% if rhacm_disconnected_registry or rhacm_disconnected_registry|length > 1 %}
+spec: {}
+{% else %}
+spec:
+  imagePullSecret: open-cluster-management-pull-secret
+{% endif %}

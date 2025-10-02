@@ -69,9 +69,9 @@
   - replace: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
     regexp: "registry.redhat.io"
     enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
-  - replace: "acm-d"
-    regexp: "rhacm2"
-    enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
+  # - replace: "acm-d"
+  #   regexp: "rhacm2"
+  #   enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
   # release-4.17 cnf-features-deploy
   - replace: "{{ rhacm_policy_generator_image_tag }}"
     regexp: "v2.11"

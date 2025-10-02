@@ -28,6 +28,8 @@
   - rhacm-downstream-deploy
   - role: rhacm-observability
     when: setup_rhacm_observability
+  - role: talm-deploy
+    when: setup_talm_operator or setup_talm_repo
   - role: rhacm-ztp-patches
     when: setup_rhacm_ztp_patches
   - role: rhacm-siteconfig-operator

@@ -31,18 +31,19 @@ setup_ztp_searchcollector_enabled: true
 
 
 # Install ACM/ZTP vars
+is_konflux_build: false
+# Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
+rhacm_build:
+# Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
+mce_build:
+acm_channel: release-2.14
+
 rhacm_disableHubSelfManagement: false
 hub_cluster_kubeconfig: /root/mno/kubeconfig
 rhacm_icsp_enable_tag_mirror: false
 # When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
 rhacm_quay_pullsecret: ''
-# Install from Konflux build  or not
-is_konflux_build: false
-acm_channel: release-2.14
-# Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
-rhacm_build:
-# Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
-mce_build:
+
 setup_rhacm_search_pv: false
 setup_rhacm_search_api_route: true
 setup_rhacm_observability: false
@@ -56,10 +57,10 @@ talm_operator_source: redhat-operators
 # Deploy TALM via Repo
 setup_talm_repo: true
 talm_repo: https://github.com/openshift-kni/cluster-group-upgrades-operator.git
-talm_repo_branch: release-4.16
-talm_image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.16.0
-talm_precache_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-precache:4.16.0"
-talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-recovery:4.16.0"
+talm_repo_branch: release-4.19
+talm_image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.19.0
+talm_precache_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-precache:4.19.0"
+talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-recovery:4.19.0"
 
 # Apply ZTP argocd patches and create the argocd applications
 setup_rhacm_ztp_patches: true
@@ -69,14 +70,14 @@ setup_ztp_policy_application: true
 
 # MCE Assisted-installer items (Installed with RHACM)
 mce_assisted_ocp_versions:
-- quay.io/openshift-release-dev/ocp-release:4.18.17-x86_64
-- quay.io/openshift-release-dev/ocp-release:4.18.18-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.19.13-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
 mce_assisted_service_namespace: multicluster-engine
 mce_clusterimagesets:
-- name: openshift-4.18.17
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.18.17-x86_64
-- name: openshift-4.18.18
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.18.18-x86_64
+- name: openshift-4.19.13
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.19.13-x86_64
+- name: openshift-4.19.14
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
 
 # Enable SiteConfig Operator in ACM (Included since ACM 2.12)
 acm_enable_siteconfig: false

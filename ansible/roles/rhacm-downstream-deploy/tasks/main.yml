@@ -1,7 +1,7 @@
 ---
 # rhacm-downstream-deploy tasks - Install downstream RHACM hub onto a cluster
 
-- name: Install from Cpaas rhacm_build
+- name: Install ACM from Cpaas
   when: not is_konflux_build
   block:
   - name: Checkout the latest stolostron/deploy repo
@@ -47,89 +47,58 @@
       chdir: "{{ install_directory }}/rhacm-deploy/deploy"
     when: not rhacm_build is search("DOWNSTREAM")
 
-- name: Install from Konflux rhacm_build
+- name: Install ACM from Konflux
   when: is_konflux_build
   block:
-  - name: Create deploy/prereq/pull-secret.yaml
+  - name: Create ACM Konflux install manifests
     template:
-      src: pull-secret.yaml.j2
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+    - src: pull-secret.yaml.j2
       dest: "{{ install_directory }}/rhacm-deploy/pull-secret.yaml"
+    - src: cs-acm-dev-catalog.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml"
+    - src: cs-mce-dev-catalog.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml"
+    - src: acm-operator.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/acm-operator.yaml"
+    - src: mch.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/mch.yaml"
 
   - name: Create snapshot.ver
     copy:
-      dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
+      dest: "{{ install_directory }}/snapshot.ver"
       content: "{{ rhacm_build }}"
-      
-  - name: Create catalog source for ACM 
-    template:
-      src: cs-acm-dev-catalog.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml"
 
-  - name: Create catalog source for  MCE
-    template:
-      src: cs-mce-dev-catalog.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml"
-
-  - name: Install rhacm operator
+  - name: Apply ACM and MCE CatalogSource Manifests
     shell: |
-      export KUBECONFIG={{ hub_cluster_kubeconfig }}
-      oc apply -f {{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml
-      oc apply -f {{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml
-      echo {{ rhacm_build }}  >{{ install_directory }}/snapshot.ver
-      export ACM_CHANNEL={{ acm_channel }}
-      oc create namespace open-cluster-management
-      oc project open-cluster-management
-      echo "
-      apiVersion: operators.coreos.com/v1
-      kind: OperatorGroup
-      metadata:
-        name: open-cluster-management-operator-group
-      spec:
-        targetNamespaces:
-        - open-cluster-management" | kubectl apply -f -
-      echo "
-      apiVersion: operators.coreos.com/v1alpha1
-      kind: Subscription
-      metadata:
-        name: acm-operator-subscription
-      spec:
-        sourceNamespace: openshift-marketplace
-        source: cs-acm-dev-catalog
-        channel: $ACM_CHANNEL
-        installPlanApproval: Automatic
-        name: advanced-cluster-management" | kubectl apply -f -
-      sleep 60
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml
   
-  - name: Create multiclusterhub with pull secret for connected hub cluster
+  - name: Apply ACM Operator manifest
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/acm-operator.yaml
+
+  - name: Wait until ACM Operator CSV is succeeded
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get csv -n open-cluster-management -o json | jq -r '.items[] | select(.metadata.name|test("advanced-cluster-management")) | .status.phase'
+    register: acm_succeeded
+    until: acm_succeeded.stdout == "Succeeded"
+    retries: 120
+    delay: 1
+
+  - name: Create pull secret for connected hub cluster
     when: not rhacm_disconnected_registry or rhacm_disconnected_registry|length <= 1 
     shell: |
       export KUBECONFIG={{ hub_cluster_kubeconfig }}
-      oc project open-cluster-management
       oc create secret generic -n open-cluster-management open-cluster-management-pull-secret \
           --from-file=.dockerconfigjson={{ install_directory }}/rhacm-deploy/pull-secret.yaml \
           --type=kubernetes.io/dockerconfigjson
-      echo "
-      apiVersion: operator.open-cluster-management.io/v1
-      kind: MultiClusterHub
-      metadata:
-        name: multiclusterhub
-        namespace: open-cluster-management
-      spec:
-        imagePullSecret: open-cluster-management-pull-secret" | kubectl apply -f -
 
-  - name: Create multiclusterhub without pull secret for disconnected hub cluster
-    when: rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 
+  - name: Apply MCH manifest
     shell: |
-      export KUBECONFIG={{ hub_cluster_kubeconfig }}
-      oc project open-cluster-management
-      echo "
-      apiVersion: operator.open-cluster-management.io/v1
-      kind: MultiClusterHub
-      metadata:
-        name: multiclusterhub
-        namespace: open-cluster-management
-      spec:
-        {}" | kubectl apply -f -
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/mch.yaml
 
 - name: Wait until MultiClusterHub is running status
   shell: |
