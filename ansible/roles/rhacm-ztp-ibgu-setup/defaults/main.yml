@@ -3,7 +3,7 @@
 
 clusters_label: "ztp-done="
 
-seed_image_version: "4.17.3"
+seed_image_version: "4.19.14"
 
 # How many clusters to place in each IBGU
 clusters_per_prep_ibgu: 500

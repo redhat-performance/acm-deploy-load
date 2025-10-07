@@ -32,7 +32,7 @@
   gather_facts: false
   vars:
     hv_ibi_disk_dir: /mnt/disk2/libvirt/ibi-disk
-    seed_image_version: 4.17.0
+    seed_image_version: 4.19.14
   vars_files:
   - vars/all.yml
   tasks:

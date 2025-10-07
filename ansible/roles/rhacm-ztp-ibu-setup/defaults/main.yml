@@ -3,7 +3,7 @@
 
 clusters_label: "ztp-done="
 
-ibu_seed_image_version: "4.16.3"
+ibu_seed_image_version: "4.19.14"
 
 # Use ibu/ImageBasedUpgrade.yaml for IBU in ztp-site-generator, and just ImageBasedUpgrade.yaml to use the IBU source-cr included in rhacm-ztp-setup role
 ibu_filename: ImageBasedUpgrade.yaml

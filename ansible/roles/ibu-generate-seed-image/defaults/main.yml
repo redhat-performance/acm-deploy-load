@@ -11,7 +11,7 @@ seed_cluster: ""
 seedcluster_kubeconfig: "{{ install_directory }}/rhacm-ztp/ibu/seed/{{ seed_cluster }}.kubeconfig"
 
 # Version of OCP we are turning into a seed image (The cluster should be this version already)
-ibu_seed_image_version: 4.16.1
+ibu_seed_image_version: 4.19.14
 
 recert_image_override: false
 recert_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/edge-infrastructure/recert:latest"
