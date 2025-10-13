@@ -83,3 +83,4 @@
   delay: 2
   register: as_pod
   until: as_pod.stdout == "Running"
+  when: wait_for_assisted_service_pod

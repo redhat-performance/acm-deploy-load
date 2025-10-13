@@ -18,3 +18,5 @@ agentservice_sc: localstorage-sc
 
 agentservice_database_storage_size: 20Gi
 agentservice_filesystem_storage_size: 20Gi
+
+wait_for_assisted_service_pod: true
