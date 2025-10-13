@@ -1,0 +1,59 @@
+---
+# rhacm-global-hub-deploy tasks - Install ACM Global Hub from operatorhub on a cluster
+
+- name: Create directory for ACM Global Hub Operator
+  file:
+    path: "{{ install_directory }}/rhacm-global-hub-deploy"
+    state: directory
+
+- name: Create ACM Global Hub manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: acm-global-hub-operator.yaml.j2
+    dest: "{{ install_directory }}/rhacm-global-hub-deploy/acm-global-hub-operator.yaml"
+  - src: mcgh.yaml.j2
+    dest: "{{ install_directory }}/rhacm-global-hub-deploy/mcgh.yaml"
+
+- name: Apply ACM Global Hub Operator manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-global-hub-deploy/acm-global-hub-operator.yaml
+
+- name: Get ACM Global Hub Operator CSV Name
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get csv -n {{ acm_global_hub_namespace }} -o json | jq -r '.items[] | select(.metadata.name|test("multicluster-global-hub-operator-rh")) | .metadata.name'
+  register: acm_global_hub_operator_csv_name
+  until: acm_global_hub_operator_csv_name.stdout != ""
+  retries: 120
+  delay: 1
+
+- name: Wait until ACM Global Hub Operator CSV is succeeded
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get csv -n {{ acm_global_hub_namespace }} {{ acm_global_hub_operator_csv_name.stdout }} -o json | jq -r '.status.phase'
+  register: acm_global_hub_operator_succeeded
+  until: acm_global_hub_operator_succeeded.stdout == "Succeeded"
+  retries: 120
+  delay: 1
+
+- name: Patch ACM Global Hub Operator CSV
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch csv -n {{ acm_global_hub_namespace }} {{ acm_global_hub_operator_csv_name.stdout }} --type json -p '[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/image", "value": "{{ acm_global_hub_operator_image }}"}]'
+  when: acm_global_hub_operator_image_patch
+
+  # The MulticlusterGlobalHub resource will not be instantly available, thus retry for around 5 minutes
+- name: Apply MCGH manifest
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-global-hub-deploy/mcgh.yaml
+  register: mcgh_result
+  until: not mcgh_result.failed
+  retries: 150
+  delay: 2
+
+- name: Wait until MulticlusterGlobalHub is Running
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterglobalhub -n {{ acm_global_hub_namespace }} {{ mcgh_name }} -o go-template={%raw%}'{{ .status.phase }}'{%endraw%}
+  register: mcgh_available
+  until: mcgh_available.stdout == "Running"
+  retries: 300
+  delay: 2

@@ -1,0 +1,20 @@
+---
+apiVersion: operator.open-cluster-management.io/v1alpha4
+kind: MulticlusterGlobalHub
+metadata:
+  annotations:
+    global-hub.open-cluster-management.io/strimzi-catalog-source-name: "{{ strimzi_catalog_source }}"
+  name: {{ mcgh_name }}
+  namespace: {{ acm_global_hub_namespace }}
+spec:
+  enableMetrics: true
+  installAgentOnLocal: true
+  dataLayer:
+    kafka:
+      topics:
+        specTopic: gh-spec
+        statusTopic: gh-status.*
+    postgres:
+      retention: 18m
+    storageClass: {{ mcgh_storageclass }}
+  availabilityConfig: High

@@ -1,0 +1,16 @@
+---
+# rhacm-global-hub-deploy default vars
+
+acm_global_hub_namespace: multicluster-global-hub
+
+acm_global_hub_default_channel: release-1.5
+# Use redhat-operators for connected environment
+acm_global_hub_source: cs-redhat-operator-index-v4-19
+strimzi_catalog_source: cs-redhat-operator-index-v4-19
+
+mcgh_name: multiclusterglobalhub
+
+mcgh_storageclass: localstorage-sc
+
+acm_global_hub_operator_image_patch: false
+acm_global_hub_operator_image: quay.io/org/multicluster-globalhub-rhel9-operator:1.5

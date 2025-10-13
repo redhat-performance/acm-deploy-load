@@ -1,8 +1,6 @@
 ---
 # rhacm-deploy default vars
 
-acm_default_channel: release-2.13
-
 mch_name: multiclusterhub
 
 rhacm_search_storageclass: localstorage2-sc

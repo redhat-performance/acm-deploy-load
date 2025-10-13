@@ -1,0 +1,14 @@
+---
+# Playbook to deploy and setup ACM Global Hub from OperatorHub
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-global-hub-deploy.yml
+#
+
+- name: Deploy and setup ACM Global Hub
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - rhacm-global-hub-deploy

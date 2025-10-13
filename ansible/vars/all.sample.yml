@@ -36,7 +36,9 @@ is_konflux_build: false
 rhacm_build:
 # Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
 mce_build:
-acm_channel: release-2.14
+# Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
+acm_source: cs-redhat-operator-index-v4-19
+acm_channel: release-2.15
 
 rhacm_disableHubSelfManagement: false
 hub_cluster_kubeconfig: /root/mno/kubeconfig
