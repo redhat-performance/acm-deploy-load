@@ -7,8 +7,7 @@ metadata:
   name: {{ mcgh_name }}
   namespace: {{ acm_global_hub_namespace }}
 spec:
-  enableMetrics: true
-  installAgentOnLocal: true
+  availabilityConfig: High
   dataLayer:
     kafka:
       topics:
@@ -17,4 +16,5 @@ spec:
     postgres:
       retention: 18m
     storageClass: {{ mcgh_storageclass }}
-  availabilityConfig: High
+  enableMetrics: true
+  installAgentOnLocal: true
