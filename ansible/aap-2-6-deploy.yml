@@ -1,0 +1,15 @@
+---
+# Playbook to deploy and configure Ansible Automation Platform 2.6
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/aap-2-6-deploy.yml
+#
+
+- name: Deploy and configure ansible-automation-platform 2.6
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - aap-2-6-deploy
+  - aap-2-6-configure

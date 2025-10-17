@@ -1,0 +1,29 @@
+---
+# aap-2-6-configure default vars
+
+aap_eda_for_ztp_repo: https://github.com/akrzos/aap-eda-for-ztp.git
+aap_eda_for_ztp_repo_branch: main
+
+aap_namespace: ansible-automation-platform
+acm_global_hub_namespace: multicluster-global-hub
+
+aap_name: aap
+aap_controller_name: aap-controller
+aap_eda_name: aap-eda
+aap_hub_name: aap-hub
+
+aap_admin_username: admin
+aap_controller_admin_username: admin
+aap_eda_admin_username: admin
+aap_hub_admin_username: admin
+
+de_image_tag: 1.2.0-75
+global_hub_kafka_topic: gh-status.local-cluster
+eda_rulebook_name: eda-test.yml
+
+aap_controller_template_playbook: playbooks/ztp-test.yml
+
+gogs_host: "[fc00:1000::1]"
+gogs_port: 10880
+gogs_username: testadmin
+gogs_password: testadmin

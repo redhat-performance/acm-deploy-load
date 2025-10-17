@@ -1,0 +1,289 @@
+---
+# aap-2-6-configure tasks
+
+- name: Copy aap license manifest file to aap-deploy directory
+  copy:
+    dest: "{{ install_directory }}/aap-deploy/aap_manifest.zip"
+    content: "{{ aap_license_manifest }}"
+
+# aap-eda-for-ztp repo contains the rulebook and playbooks for aap with eda
+- name: Clone aap-eda-for-ztp to bastion
+  git:
+    repo: "{{ aap_eda_for_ztp_repo }}"
+    dest: "{{ install_directory }}/aap-deploy/aap-eda-for-ztp"
+    force: true
+    version: "{{ aap_eda_for_ztp_repo_branch }}"
+
+- name: Create aap-eda-for-ztp repo in gogs
+  uri:
+    url: "http://{{ gogs_host }}:{{ gogs_port }}/api/v1/admin/users/{{ gogs_username }}/repos"
+    user: "{{ gogs_username }}"
+    password: "{{ gogs_password }}"
+    force_basic_auth: true
+    method: POST
+    headers:
+      content-type: application/json
+      Accept: application/json
+    body: {"name": "aap-eda-for-ztp", "description": "test repo", "private": false}
+    body_format: json
+    validate_certs: no
+    status_code: 201
+    return_content: yes
+  ignore_errors: true
+
+- name: Push aap-eda-for-ztp into gogs
+  shell: |
+    cd {{ install_directory }}/aap-deploy/aap-eda-for-ztp
+    git remote add origin-gogs http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/aap-eda-for-ztp.git
+    git push -u origin-gogs --all --force
+
+- name: Get the aap admin password
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ aap_namespace }} {{ aap_name }}-admin-password -o jsonpath='{.data.password}' | base64 -d
+  register: get_aap_admin_pw
+
+- name: Get the aap route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n {{ aap_namespace }} get route {{ aap_name }} -o jsonpath='{.spec.host}'
+  register: get_aap_route
+
+- name: Get the automation controller admin password
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ aap_namespace }} {{ aap_controller_name }}-admin-password -o jsonpath='{.data.password}' | base64 -d
+  register: get_controller_admin_pw
+
+- name: Get the automation controller route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n {{ aap_namespace }} get route {{ aap_controller_name }} -o jsonpath='{.spec.host}'
+  register: get_controller_route
+
+- name: Get the eda admin password
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ aap_namespace }} {{ aap_eda_name }}-admin-password -o jsonpath='{.data.password}' | base64 -d
+  register: get_eda_admin_pw
+
+- name: Get the eda route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n {{ aap_namespace }} get route {{ aap_eda_name }} -o jsonpath='{.spec.host}'
+  register: get_eda_route
+
+- name: Get the automation hub admin password
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ aap_namespace }} {{ aap_hub_name }}-admin-password -o jsonpath='{.data.password}' | base64 -d
+  register: get_hub_admin_pw
+
+- name: Get the automation hub route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n {{ aap_namespace }} get route {{ aap_hub_name }} -o jsonpath='{.spec.host}'
+  register: get_hub_route
+
+- name: Set vars for configuration
+  set_fact:
+    aap_admin_pw: "{{ get_aap_admin_pw.stdout }}"
+    aap_url: "https://{{ get_aap_route.stdout }}"
+    aap_controller_admin_pw: "{{ get_controller_admin_pw.stdout }}"
+    aap_controller_url: "https://{{ get_controller_route.stdout }}"
+    aap_eda_admin_pw: "{{ get_eda_admin_pw.stdout }}"
+    aap_eda_url: "https://{{ get_eda_route.stdout }}"
+    aap_hub_admin_pw: "{{ get_hub_admin_pw.stdout }}"
+    aap_hub_url: "https://{{ get_hub_route.stdout }}"
+
+- name: Get Global Hub Kafka ca.crt
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ acm_global_hub_namespace }} global-hub-kafka-user -o jsonpath='{.data.ca\.crt}' | base64 -d
+  register: get_global_hub_kafka_ca_crt
+
+- name: Get Global Hub Kafka user.crt
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ acm_global_hub_namespace }} global-hub-kafka-user -o jsonpath='{.data.user\.crt}' | base64 -d
+  register: get_global_hub_kafka_user_crt
+
+- name: Get Global Hub Kafka user.key
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ acm_global_hub_namespace }} global-hub-kafka-user -o jsonpath='{.data.user\.key}' | base64 -d
+  register: get_global_hub_kafka_user_key
+
+- name: Get Global Hub Kafka broker URL
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get route kafka-kafka-tls-bootstrap -n {{ acm_global_hub_namespace }} -o json | jq -r '.spec.host'
+  register: get_global_hub_kafka_broker_url
+
+- name: Create text files with ansible component credentials
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    content: "{{ item.content }}"
+  loop:
+  - dest: "{{ install_directory }}/aap-deploy/aap_admin_pw.txt"
+    content: "{{ aap_admin_pw }}"
+  - dest: "{{ install_directory }}/aap-deploy/aap_controller_admin_pw.txt"
+    content: "{{ aap_controller_admin_pw }}"
+  - dest: "{{ install_directory }}/aap-deploy/aap_eda_admin_pw.txt"
+    content: "{{ aap_eda_admin_pw }}"
+  - dest: "{{ install_directory }}/aap-deploy/aap_hub_admin_pw.txt"
+    content: "{{ aap_hub_admin_pw }}"
+  - dest: "{{ install_directory }}/aap-deploy/global_hub_kafka_ca.crt"
+    content: "{{ get_global_hub_kafka_ca_crt.stdout }}"
+  - dest: "{{ install_directory }}/aap-deploy/global_hub_kafka_user.crt"
+    content: "{{ get_global_hub_kafka_user_crt.stdout }}"
+  - dest: "{{ install_directory }}/aap-deploy/global_hub_kafka_user.key"
+    content: "{{ get_global_hub_kafka_user_key.stdout }}"
+
+- name: Set aap subscription manifest (license zip file)
+  awx.awx.license:
+    controller_host: "{{ aap_controller_url }}"
+    validate_certs: false
+    manifest: "{{ install_directory }}/aap-deploy/aap_manifest.zip"
+    controller_username: "{{ aap_controller_admin_username }}"
+    controller_password: "{{ aap_controller_admin_pw }}"
+
+# EDA Configuration
+- name: EDA - Create a decision project
+  ansible.eda.project:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    description: "ZTP Decision Project"
+    name: "ZTP Decision Project"
+    organization: Default
+    url: "http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/aap-eda-for-ztp.git"
+    scm_branch: "{{ aap_eda_for_ztp_repo_branch }}"
+    state: present
+    validate_certs: false
+
+- name: EDA - Create Kafka mTLS Credentials eda credential_type
+  ansible.eda.credential_type:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    description: "Kafka mTLS Credentials for EDA"
+    inputs: "{{ lookup('file', 'credential_inputs_kafka_mtls_credentials.yaml') | from_yaml }}"
+    injectors: "{{ lookup('file', 'credential_injector_kafka_mtls_credentials.yaml') | from_yaml }}"
+    name: "Kafka mTLS Credentials"
+    state: present
+    validate_certs: false
+
+- name: EDA - Instantiate Kafka mTLS Credentials eda credential
+  ansible.eda.credential:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    credential_type_name: "Kafka mTLS Credentials"
+    inputs:
+      ca_cert: "{{ get_global_hub_kafka_ca_crt.stdout }}"
+      client_cert: "{{ get_global_hub_kafka_user_crt.stdout }}"
+      client_key: "{{ get_global_hub_kafka_user_key.stdout }}"
+      host: "{{ get_global_hub_kafka_broker_url.stdout }}"
+    name: global-hub-kafka-credentials
+    organization: Default
+    state: present
+    validate_certs: false
+
+- name: EDA - Instantiate AAP Controller Credential in EDA
+  ansible.eda.credential:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    credential_type_name: "Red Hat Ansible Automation Platform"
+    inputs:
+      host: "{{ aap_url }}/api/controller/"
+      username: "{{ aap_admin_username }}"
+      password: "{{ aap_admin_pw }}"
+      verify_ssl: false
+    name: aap-controller-credentials
+    organization: Default
+    state: present
+    validate_certs: false
+
+- name: EDA - Create a decision environment
+  ansible.eda.decision_environment:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    image_url: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ansible-automation-platform-26/de-supported-rhel9:{{ de_image_tag }}"
+    name: "ZTP Decision Environment"
+    organization: Default
+    state: present
+    validate_certs: false
+
+- name: EDA - Create a rulebook activation
+  ansible.eda.rulebook_activation:
+    controller_host: "{{ aap_eda_url }}"
+    controller_username: "{{ aap_eda_admin_username }}"
+    controller_password: "{{ aap_eda_admin_pw }}"
+    credentials:
+    - aap-controller-credentials
+    - global-hub-kafka-credentials
+    decision_environment_name: "ZTP Decision Environment"
+    extra_vars:
+      TOPIC: "{{ global_hub_kafka_topic }}"
+    name: "ZTP Rulebook Activation"
+    organization: Default
+    project_name: "ZTP Decision Project"
+    rulebook_name: "{{ eda_rulebook_name }}"
+    state: present
+    validate_certs: false
+# End EDA Configuration
+
+# Configure AAP Controller
+- name: AAP Controller - Create a project
+  awx.awx.project:
+    controller_host: "{{ aap_controller_url }}"
+    controller_username: "{{ aap_controller_admin_username }}"
+    controller_password: "{{ aap_controller_admin_pw }}"
+    description: "ZTP Day 2 Automation Project"
+    name: ztp-day2-aap-controller-project
+    organization: Default
+    scm_branch: "{{ aap_eda_for_ztp_repo_branch }}"
+    # scm_update_on_launch: true
+    scm_url: "http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/aap-eda-for-ztp.git"
+    scm_type: git
+    validate_certs: false
+
+- name: AAP Controller - Configure kubeconfig credential_type
+  awx.awx.credential_type:
+    controller_host: "{{ aap_controller_url }}"
+    controller_username: "{{ aap_controller_admin_username }}"
+    controller_password: "{{ aap_controller_admin_pw }}"
+    description: "Kubeconfig Credentials"
+    inputs: "{{ lookup('file', 'credential_inputs_kubeconfig.yaml') | from_yaml }}"
+    injectors: "{{ lookup('file', 'credential_injector_kubeconfig.yaml') | from_yaml }}"
+    kind: cloud
+    name: kubeconfig
+    state: present
+    validate_certs: false
+
+- name: AAP Controller - Fetch the hub kubeconfig
+  slurp:
+    src: "{{ hub_cluster_kubeconfig }}"
+  register: fetched_hub_kubeconfig
+
+- name: AAP Controller - Instantiate hub kubeconfig credential
+  awx.awx.credential:
+    controller_host: "{{ aap_controller_url }}"
+    controller_username: "{{ aap_controller_admin_username }}"
+    controller_password: "{{ aap_controller_admin_pw }}"
+    credential_type: kubeconfig
+    description: "Hub Kubeconfig"
+    inputs:
+      kubeconfig: "{{ fetched_hub_kubeconfig.content | b64decode }}"
+    name: hub-kubeconfig
+    organization: Default
+    state: present
+    validate_certs: false
+
+- name: AAP Controller - Create job template
+  awx.awx.job_template:
+    ask_variables_on_launch: true
+    allow_simultaneous: false
+    controller_host: "{{ aap_controller_url }}"
+    controller_username: "{{ aap_controller_admin_username }}"
+    controller_password: "{{ aap_controller_admin_pw }}"
+    credentials:
+    - hub-kubeconfig
+    description: "ZTP Day 2 Automation Job Template"
+    inventory: Demo Inventory
+    name: ztp-day2-aap-controller-job-template
+    playbook: "{{ aap_controller_template_playbook }}"
+    project: ztp-day2-aap-controller-project
+    validate_certs: false
+# End AAP Controller Configuration

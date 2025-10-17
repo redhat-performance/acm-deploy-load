@@ -1,0 +1,40 @@
+---
+# aap-2-6-deploy tasks
+
+- name: Create directory for aap deployment
+  file:
+    path: "{{ install_directory }}/aap-deploy"
+    state: directory
+
+- name: Template ansibleautomationplatform CR for aap deployment
+  template:
+    src: ansibleautomationplatform.yml.j2
+    dest: "{{ install_directory }}/aap-deploy/ansibleautomationplatform.yml"
+
+- name: Deploy ansibleautomationplatform to cluster
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/aap-deploy/ansibleautomationplatform.yml"
+
+- name: Wait until automationhub completely deployed
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get automationhub -n {{ aap_namespace }} {{ aap_hub_name }} -o json | jq '.status.conditions[] | select(.type=="Automationhub-Operator-Finished-Execution").status' -r
+  register: result
+  until: result.stdout == "True"
+  retries: 120
+  delay: 5
+
+- name: Wait until automationcontroller completely deployed
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get automationcontroller -n {{ aap_namespace }} {{ aap_controller_name }} -o json | jq '.status.conditions[] | select(.type=="Successful").status' -r
+  register: result
+  until: result.stdout == "True"
+  retries: 120
+  delay: 5
+
+- name: Wait until aap completely deployed
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get aap -n {{ aap_namespace }} {{ aap_name }} -o json | jq '.status.conditions[] | select(.type=="Running").status' -r
+  register: result
+  until: result.stdout == "True"
+  retries: 120
+  delay: 5

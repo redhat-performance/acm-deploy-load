@@ -1,0 +1,20 @@
+---
+# aap-2-6-deploy default vars
+
+aap_namespace: ansible-automation-platform
+
+aap_name: aap
+aap_controller_name: aap-controller
+aap_hub_name: aap-hub
+
+aap_database_postgres_storage_class: localstorage-sc
+
+aap_controller_postgres_storage_class: localstorage-sc
+
+aap_hub_file_storage_storage_class: localstorage-sc
+aap_hub_postgres_storage_class: localstorage-sc
+aap_hub_redis_storage_class: localstorage-sc
+
+aap_feature_flags:
+- key: FEATURE_GATEWAY_IPV6_USAGE_ENABLED
+  value: true
