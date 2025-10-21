@@ -5,6 +5,29 @@ metadata:
   name: {{ inventory_hostname }}
   labels:
     name: {{ inventory_hostname }}
+{% if ai_clusterinstance_include_managedcluster_manifest %}
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: {{ inventory_hostname }}
+  annotations:
+    siteconfig.open-cluster-management.io/sync-wave: "2"
+  labels:
+    cloud: auto-detect
+    common: 'true'
+{% if sno_du_profile in ["4.15", "4.16", "4.17", "4.18", "4.19"] %}
+    du-profile: "{{ sno_du_profile }}"
+{% endif %}
+    global-hub.open-cluster-management.io/deploy-mode: default
+    group-du-sno: ''
+    name: {{ inventory_hostname }}
+    observability: enabled
+    sites: {{ inventory_hostname }}
+    vendor: auto-detect
+spec:
+  hubAcceptsClient: true
+{% endif %}
 ---
 apiVersion: v1
 kind: Secret

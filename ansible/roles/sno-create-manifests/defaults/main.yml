@@ -47,6 +47,8 @@ ai_site_data_namespace: ztp-group
 ai_siteconfig_fips: false
 # Used when converged flow is enabled
 ai_siteconfig_ironic_inspect: true
+# Include a manifest to create a ManagedCluster resource for the SNO (Issue with MCGH)
+ai_clusterinstance_include_managedcluster_manifest: false
 ai_clusterinstance_ironic_inspect: true
 # Used in conjunction with including the PerformanceProfile in the DU profile
 ai_siteconfig_enable_cpuset: false
