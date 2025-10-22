@@ -11,6 +11,7 @@
   gather_facts: false
   vars_files:
   - vars/all.yml
+  - vars/lab.yml
   - vars/telco-core.yml
   roles:
   - telco-core-manifests

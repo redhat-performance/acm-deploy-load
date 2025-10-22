@@ -102,6 +102,7 @@ spec:
 {% for node in core_cluster_nodes %}
 {%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
 {%   set sno_short_hostname=(sno_long_hostname.split('.')[0]) %}
+{%   set lab_mac=(cluster_foreman_data.results|selectattr('json.name', 'eq', sno_long_hostname)|first) | json_query(mac_query) | join(', ') %}
   - hostName: {{ sno_short_hostname }}
 {%   if loop.index <= 3 %}
     role: "master"
@@ -124,6 +125,8 @@ spec:
       interfaces:
       - macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
         name: eno1
+      - macAddress: {{ lab_mac | upper }}
+        name: eno2
       config:
         interfaces:
         - name: eno1
@@ -134,6 +137,13 @@ spec:
             - ip: {{ core_cluster_machine_network | ansible.utils.nthhost(loop.index0 + core_cluster_node_ip_offset) }}
               prefix-length: {{ core_cluster_machine_network | ansible.utils.ipaddr('prefix') }}
             enabled: true
+          ipv6:
+            enabled: false
+        - name: eno2
+          type: ethernet
+          state: down
+          ipv4:
+            enabled: false
           ipv6:
             enabled: false
         dns-resolver:

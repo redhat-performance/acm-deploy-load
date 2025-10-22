@@ -90,3 +90,13 @@ mce_enable_ibio: false
 # Place the license file in the base directory of the cloned acm-deploy-load repo, Example:
 # (.venv) [user@fedora acm-deploy-load]$ ls aap_manifest.zip
 aap_license_manifest: "{{ lookup('file', '../aap_manifest.zip') }}"
+
+################################################################################
+# Lab & cluster infrastructure vars
+################################################################################
+# Which lab to be deployed into (Ex scalelab)
+lab:
+# Which cloud in the lab environment (Ex cloud42)
+lab_cloud:
+# Password to get access to FOREMAN URL
+foreman_password:

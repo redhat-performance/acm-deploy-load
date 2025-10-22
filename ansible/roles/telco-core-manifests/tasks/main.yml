@@ -37,6 +37,20 @@
   debug:
     msg: "{{ core_cluster_nodes | length }}"
 
+- name: Get lab mac address for core cluster nodes
+  uri:
+    url: "https://{{ labs[lab]['foreman'] }}/api/hosts/{{ item.pm_addr | replace('mgmt-','') }}"
+    force_basic_auth: yes
+    user: "{{ lab_cloud }}"
+    password: "{{ foreman_password }}"
+    validate_certs: false
+  loop: "{{ core_cluster_nodes }}"
+  register: cluster_foreman_data
+
+- name: Set json query fact for mac address extraction
+  set_fact:
+    mac_query: "json.interfaces[?type=='interface'].mac"
+
 - name: Create telco-core manifests
   template:
     src: "{{ item.src }}"
