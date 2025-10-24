@@ -1,0 +1,18 @@
+---
+# aap-2-6-deploy default vars
+
+aap_name: aap
+aap_automationcontroller_name: aap-controller
+aap_automationhub_name: aap-hub
+
+aap_database_postgres_storage_class: localstorage-sc
+
+automationcontroller_postgres_storage_class: localstorage-sc
+
+automationhub_file_storage_storage_class: localstorage-sc
+automationhub_postgres_storage_class: localstorage-sc
+automationhub_redis_storage_class: localstorage-sc
+
+aap_feature_flags:
+- key: FEATURE_GATEWAY_IPV6_USAGE_ENABLED
+  value: true

@@ -1,0 +1,15 @@
+[ansible-tower-cli]
+name=Ansible Tower CLI Repository - EL8 $basearch
+baseurl=https://releases.ansible.com/ansible-tower/rpm/epel-8-$basearch
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+includepkgs=ansible-tower-cli
+
+[ansible-tower-cli-dependencies]
+name=Ansible Tower CLI Dependencies Repository - EL8 $basearch
+baseurl=https://releases.ansible.com/ansible-tower/rpm/dependencies/3.8/epel-8-$basearch
+gpgcheck=1
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+includepkgs=python3-pyyaml,python3-requests,python3-urllib3,python3-pysocks,python3-idna,python3-chardet,python3-six
