@@ -21,12 +21,12 @@ spec:
 {% if sno_du_profile == "4.15" %}
     # 4.15
     installConfigOverrides:  "{\"capabilities\":{\"baselineCapabilitySet\": \"None\", \"additionalEnabledCapabilities\": [ \"OperatorLifecycleManager\", \"NodeTuning\" ] }}"
-    # 4.16, 4.17, 4.18, 4.19
+    # 4.16, 4.17, 4.18, 4.19, 4.20
     # installConfigOverrides:  "{\"capabilities\":{\"baselineCapabilitySet\": \"None\", \"additionalEnabledCapabilities\": [ \"OperatorLifecycleManager\", \"Ingress\", \"NodeTuning\" ] }}"
-{% elif sno_du_profile in ["4.16", "4.17", "4.18", "4.19"] %}
+{% elif sno_du_profile in ["4.16", "4.17", "4.18", "4.19", "4.20"] %}
     # 4.15
     # installConfigOverrides:  "{\"capabilities\":{\"baselineCapabilitySet\": \"None\", \"additionalEnabledCapabilities\": [ \"OperatorLifecycleManager\", \"NodeTuning\" ] }}"
-    # 4.16, 4.17, 4.18, 4.19
+    # 4.16, 4.17, 4.18, 4.19, 4.20
     installConfigOverrides:  "{\"capabilities\":{\"baselineCapabilitySet\": \"None\", \"additionalEnabledCapabilities\": [ \"OperatorLifecycleManager\", \"Ingress\", \"NodeTuning\" ] }}"
     ignitionConfigOverride: "{\"ignition\":{\"version\":\"3.2.0\"},\"storage\":{\"files\":[{\"path\":\"/etc/containers/policy.json\",\"mode\":420,\"overwrite\":true,\"contents\":{\"source\":\"data:text/plain;charset=utf-8;base64,ewogICAgImRlZmF1bHQiOiBbCiAgICAgICAgewogICAgICAgICAgICAidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIgogICAgICAgIH0KICAgIF0sCiAgICAidHJhbnNwb3J0cyI6CiAgICAgICAgewogICAgICAgICAgICAiZG9ja2VyLWRhZW1vbiI6CiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgIiI6IFt7InR5cGUiOiJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIn1dCiAgICAgICAgICAgICAgICB9CiAgICAgICAgfQp9\"}}]}}"
 {% else %}
@@ -37,7 +37,7 @@ spec:
     clusterLabels:
       cloud: auto-detect
       common: 'true'
-{% if sno_du_profile in ["4.15", "4.16", "4.17", "4.18", "4.19"] %}
+{% if sno_du_profile in ["4.15", "4.16", "4.17", "4.18", "4.19", "4.20"] %}
       du-profile: "{{ sno_du_profile }}"
 {% endif %}
       group-du-sno: ''

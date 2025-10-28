@@ -26,14 +26,14 @@ disconnected_pull_secret: ' {"auths": {"{{ rhacm_disconnected_registry }}:{{ rha
 # Enable observability for SNOs installed via these manifests
 sno_mc_observability: true
 
-cluster_image_set: openshift-4.19.14
+cluster_image_set: openshift-4.20.1
 
 # 64 is a prefix for ipv6, 24 for ipv4
 sno_cluster_network_host_prefix: 64
 
 # Enable DU profile SNO installConfigOverrides
-# Can be set to "none", "4.15", "4.16", "4.17", "4.18", or "4.19"
-sno_du_profile: "4.19"
+# Can be set to "none", "4.15", "4.16", "4.17", "4.18", "4.19", or "4.20"
+sno_du_profile: "4.20"
 
 # SSH Key to access machine thathas booted IBI Prep ISO
 ssh_public_key_file: ~/.ssh/id_rsa.pub
