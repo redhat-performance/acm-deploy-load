@@ -1,6 +1,11 @@
 ---
 # rhacm-downstream-deploy tasks - Install downstream RHACM hub onto a cluster
 
+- name: Create snapshot.ver for run script
+  copy:
+    dest: "{{ install_directory }}/snapshot.ver"
+    content: "{{ rhacm_build }}"
+
 - name: Install ACM from Cpaas
   when: not is_konflux_build
   block:
@@ -16,7 +21,7 @@
       src: pull-secret.yaml.j2
       dest: "{{ install_directory }}/rhacm-deploy/deploy/prereqs/pull-secret.yaml"
 
-  - name: Create snapshot.ver
+  - name: Create snapshot.ver for stolostron/deploy
     copy:
       dest: "{{ install_directory }}/rhacm-deploy/deploy/snapshot.ver"
       content: "{{ rhacm_build }}"
@@ -65,11 +70,6 @@
       dest: "{{ install_directory }}/rhacm-deploy/acm-operator.yaml"
     - src: mch.yaml.j2
       dest: "{{ install_directory }}/rhacm-deploy/mch.yaml"
-
-  - name: Create snapshot.ver
-    copy:
-      dest: "{{ install_directory }}/snapshot.ver"
-      content: "{{ rhacm_build }}"
 
   - name: Apply ACM and MCE CatalogSource Manifests
     shell: |

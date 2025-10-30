@@ -28,7 +28,7 @@ wan_em="(None)"
 
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="iz-all-${ts}.log"
-acm_ver=$(cat /root/rhacm-deploy/deploy/snapshot.ver)
+acm_ver=$(cat /root/snapshot.ver)
 aap_csv=$(oc get csv -n ansible-automation-platform -l operators.coreos.com/ansible-automation-platform-operator.ansible-automation-platfor= -o json | jq '.items[0].metadata.name' -r)
 test_ver="ZTP Scale Run ${iteration}"
 hub_ocp=$(oc version -o json | jq -r '.openshiftVersion')

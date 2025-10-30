@@ -255,7 +255,7 @@ class ZTPMonitor(Thread):
           elif mc_aap_label == "completed":
             cluster_playbook_completed += 1
           else:
-            logger.warning("Unexpected ztp-ansible vacluster_notstartedlue: {}".format(mc_aap_label))
+            logger.warning("Unexpected ztp-ansible value: {}".format(mc_aap_label))
 
       # Parse clustergroupupgrades data
       for item in cgu_data["items"]:
