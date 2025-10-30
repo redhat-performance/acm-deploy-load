@@ -274,7 +274,7 @@
 - name: AAP Controller - Create job template
   awx.awx.job_template:
     ask_variables_on_launch: true
-    allow_simultaneous: false
+    allow_simultaneous: true
     controller_host: "{{ aap_controller_url }}"
     controller_username: "{{ aap_controller_admin_username }}"
     controller_password: "{{ aap_controller_admin_pw }}"
