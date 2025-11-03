@@ -1,0 +1,5 @@
+---
+# rhacm-siteconfig-operator default vars
+
+tune_sco_threads: false
+siteconfig_max_concurrent_reconciles: 10  

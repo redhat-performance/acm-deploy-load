@@ -22,3 +22,13 @@
   delay: 2
   register: as_pod
   until: as_pod.stdout == "Running"
+
+- name: Patch SiteConfig Operator maxConcurrentReconciles to {{ siteconfig_max_concurrent_reconciles }}
+  when: tune_sco_threads
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch configmap siteconfig-operator-configuration -n open-cluster-management --type=merge -p '{"data":{"maxConcurrentReconciles":"{{ siteconfig_max_concurrent_reconciles }}"}}'
+
+- name: Restart SiteConfig Operator Pod
+  when: tune_sco_threads
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc rollout restart deployment -n open-cluster-management siteconfig-controller-manager
