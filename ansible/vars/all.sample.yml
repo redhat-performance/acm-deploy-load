@@ -42,6 +42,7 @@ acm_channel: release-2.15
 
 rhacm_disableHubSelfManagement: false
 hub_cluster_kubeconfig: /root/mno/kubeconfig
+# Configuring ICSP for tag mirroring does not apply to konflux builds
 rhacm_icsp_enable_tag_mirror: false
 # When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
 rhacm_quay_pullsecret: ''
