@@ -16,6 +16,11 @@
   - src: mcgh.yaml.j2
     dest: "{{ install_directory }}/rhacm-global-hub-deploy/mcgh.yaml"
 
+- name: Apply ACM Global Hub ImageDigestMirrorSet
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ acm_global_hub_idms_manifest }}
+  when: apply_acm_global_hub_catalog_source_manifest
+
 - name: Apply ACM Global Hub Catalog Source Manifest
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ acm_global_hub_catalog_source_manifest }}
@@ -31,7 +36,7 @@
   register: acm_global_hub_operator_csv_name
   until: acm_global_hub_operator_csv_name.stdout != ""
   retries: 120
-  delay: 1
+  delay: 2
 
 - name: Wait until ACM Global Hub Operator CSV is succeeded
   shell: |

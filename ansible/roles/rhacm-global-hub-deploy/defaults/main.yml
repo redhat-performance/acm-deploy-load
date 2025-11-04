@@ -5,6 +5,7 @@ acm_global_hub_namespace: multicluster-global-hub
 
 # If using a pre-release ACM Global Hub Build, apply the catalog source manifest
 apply_acm_global_hub_catalog_source_manifest: false
+acm_global_hub_idms_manifest: /opt/registry/sync/mcgh/working-dir/cluster-resources/idms-oc-mirror.yaml
 acm_global_hub_catalog_source_manifest: /opt/registry/sync/mcgh/working-dir/cluster-resources/cs-mcgh-v419-sha256-0602c.yaml
 
 acm_global_hub_default_channel: release-1.5
