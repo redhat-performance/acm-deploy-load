@@ -150,36 +150,51 @@ cat ${output_dir}/cgu.status | grep "TimedOut"  | awk '{print $1}' > ${output_di
 
 
 # Only collect AAP data if automation hub exists
-ztp_day2_ns_exists=$(oc get ns ztp-day2-automation --no-headers | wc -l)
+ztp_day2_ns_exists=$(oc get aap -A --no-headers | wc -l)
 if [[ $ztp_day2_ns_exists > 0 ]]; then
   echo "$(date -u) :: Collecting ACM application hook data"
 
-  oc get applications.app.k8s.io -n ztp-day2-automation > ${output_dir}/applications.app.k8s.io
-  oc get applications.app.k8s.io -n ztp-day2-automation -o yaml > ${output_dir}/applications.app.k8s.io.yaml
-  oc describe applications.app.k8s.io -n ztp-day2-automation > ${output_dir}/applications.app.k8s.io.describe
+  # AAP without EDA Data
+  # oc get applications.app.k8s.io -n ztp-day2-automation > ${output_dir}/applications.app.k8s.io
+  # oc get applications.app.k8s.io -n ztp-day2-automation -o yaml > ${output_dir}/applications.app.k8s.io.yaml
+  # oc describe applications.app.k8s.io -n ztp-day2-automation > ${output_dir}/applications.app.k8s.io.describe
 
-  oc get subscriptions.apps.open-cluster-management.io -n ztp-day2-automation > ${output_dir}/subscriptions.apps.open-cluster-management.io
-  oc get subscriptions.apps.open-cluster-management.io -n ztp-day2-automation -o yaml > ${output_dir}/subscriptions.apps.open-cluster-management.io.yaml
-  oc describe subscriptions.apps.open-cluster-management.io -n ztp-day2-automation > ${output_dir}/subscriptions.apps.open-cluster-management.io.describe
+  # oc get subscriptions.apps.open-cluster-management.io -n ztp-day2-automation > ${output_dir}/subscriptions.apps.open-cluster-management.io
+  # oc get subscriptions.apps.open-cluster-management.io -n ztp-day2-automation -o yaml > ${output_dir}/subscriptions.apps.open-cluster-management.io.yaml
+  # oc describe subscriptions.apps.open-cluster-management.io -n ztp-day2-automation > ${output_dir}/subscriptions.apps.open-cluster-management.io.describe
 
-  oc get placementrules -n ztp-day2-automation > ${output_dir}/placementrules
-  oc get placementrules -n ztp-day2-automation -o yaml > ${output_dir}/placementrules.yaml
-  oc describe placementrules -n ztp-day2-automation > ${output_dir}/placementrules.describe
+  # oc get placementrules -n ztp-day2-automation > ${output_dir}/placementrules
+  # oc get placementrules -n ztp-day2-automation -o yaml > ${output_dir}/placementrules.yaml
+  # oc describe placementrules -n ztp-day2-automation > ${output_dir}/placementrules.describe
+
+  # oc get ansiblejobs -A > ${output_dir}/ansiblejobs
+  # oc get ansiblejobs -A --no-headers | wc -l > ${output_dir}/ansiblejobs.count
+  # oc get ansiblejobs -A -o yaml > ${output_dir}/ansiblejobs.yaml
+  # oc describe ansiblejobs -A > ${output_dir}/ansiblejobs.describe
 
   echo "$(date -u) :: Collecting aap data"
 
-  oc get automationhub -n ansible-automation-platform > ${output_dir}/automationhub
-  oc get automationhub -n ansible-automation-platform -o yaml > ${output_dir}/automationhub.yaml
-  oc describe automationhub -n ansible-automation-platform  > ${output_dir}/automationhub.describe
+  oc get aap -n ansible-automation-platform > ${output_dir}/aap
+  oc get aap -n ansible-automation-platform -o yaml > ${output_dir}/aap.yaml
+  oc describe aap -n ansible-automation-platform > ${output_dir}/aap.describe
 
-  oc get automationcontroller -n ansible-automation-platform > ${output_dir}/automationcontroller
-  oc get automationcontroller -n ansible-automation-platform -o yaml > ${output_dir}/automationcontroller.yaml
-  oc describe automationcontroller -n ansible-automation-platform  > ${output_dir}/automationcontroller.describe
+  oc get automationhub -n ansible-automation-platform > ${output_dir}/aap.automationhub
+  oc get automationhub -n ansible-automation-platform -o yaml > ${output_dir}/aap.automationhub.yaml
+  oc describe automationhub -n ansible-automation-platform  > ${output_dir}/aap.automationhub.describe
 
-  oc get ansiblejobs -A > ${output_dir}/ansiblejobs
-  oc get ansiblejobs -A --no-headers | wc -l > ${output_dir}/ansiblejobs.count
-  oc get ansiblejobs -A -o yaml > ${output_dir}/ansiblejobs.yaml
-  oc describe ansiblejobs -A > ${output_dir}/ansiblejobs.describe
+  oc get automationcontroller -n ansible-automation-platform > ${output_dir}/aap.automationcontroller
+  oc get automationcontroller -n ansible-automation-platform -o yaml > ${output_dir}/aap.automationcontroller.yaml
+  oc describe automationcontroller -n ansible-automation-platform  > ${output_dir}/aap.automationcontroller.describe
+
+  oc get eda -n ansible-automation-platform > ${output_dir}/aap.eda
+  oc get eda -n ansible-automation-platform -o yaml > ${output_dir}/aap.eda.yaml
+  oc describe eda -n ansible-automation-platform > ${output_dir}/aap.eda.describe
+
+  oc get managedclusters -l ztp-ansible=running > ${output_dir}/aap.mc.ztp-ansible-running
+  oc get managedclusters -l ztp-ansible=completed > ${output_dir}/aap.mc.ztp-ansible-completed
+  oc get managedclusters -l ztp-ansible=running --no-headers | wc -l > ${output_dir}/aap.mc.ztp-ansible-running.count
+  oc get managedclusters -l ztp-ansible=completed --no-headers | wc -l > ${output_dir}/aap.mc.ztp-ansible-completed.count
+
 fi
 
 echo "$(date -u) :: Inspecting failed cluster installs"
