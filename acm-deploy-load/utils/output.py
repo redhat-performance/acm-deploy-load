@@ -47,13 +47,14 @@ def assemble_stats(the_list, seconds=True):
 
 
 def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
-    wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time, available_clusters, monitor_data,
-    cliargs, total_intervals, report_dir):
+    wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time, wait_playbook_start_time,
+    wait_playbook_end_time, available_clusters, monitor_data, cliargs, total_intervals, report_dir):
 
   # Determine result data
   total_deploy_time = round(deploy_end_time - deploy_start_time)
   total_cluster_install_time = round(wait_cluster_end_time - wait_cluster_start_time)
   total_duprofile_time = round(wait_du_profile_end_time - wait_du_profile_start_time)
+  total_playbook_time = round(wait_playbook_end_time - wait_playbook_start_time)
   total_time = round(end_time - start_time)
   success_cluster_percent = 0
   failed_cluster_percent = 0
@@ -61,6 +62,8 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
   failed_managed_percent = 0
   success_du_percent = 0
   failed_du_percent = 0
+  success_playbook_percent = 0
+  failed_playbook_percent = 0
   success_overall_percent = 0
   failed_overall_percent = 0
   if monitor_data["cluster_applied_committed"] > 0:
@@ -73,6 +76,11 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
     success_du_percent = round((monitor_data["policy_compliant"] / monitor_data["policy_init"]) * 100, 1)
     failed_du_percent = round(100 - success_du_percent, 1)
     success_overall_percent = round((monitor_data["policy_compliant"] / monitor_data["cluster_applied_committed"]) * 100, 1)
+    failed_overall_percent = round(100 - success_overall_percent, 1)
+  if monitor_data["policy_compliant"] > 0:
+    success_playbook_percent = round((monitor_data["playbook_completed"] / monitor_data["policy_compliant"]) * 100, 1)
+    failed_playbook_percent = round(100 - success_playbook_percent, 1)
+    success_overall_percent = round((monitor_data["playbook_completed"] / monitor_data["cluster_applied_committed"]) * 100, 1)
     failed_overall_percent = round(100 - success_overall_percent, 1)
 
   # Log the report and output to report.txt in results directory
@@ -109,9 +117,7 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
     log_write(report, " * DU Profile Timeout: {}".format(monitor_data["policy_timedout"]))
     log_write(report, " * DU Profile Successful Percent: {}%".format(success_du_percent))
     log_write(report, " * DU Profile Failed Percent: {}%".format(failed_du_percent))
-    if monitor_data["playbook_running"] > 0 or monitor_data["playbook_completed"] > 0:
-      success_playbook_percent = round((monitor_data["playbook_completed"] / monitor_data["policy_compliant"]) * 100, 1)
-      failed_playbook_percent = round(100 - success_playbook_percent, 1)
+    if cliargs.wait_playbook:
       log_write(report, "ZTP Day2 Playbook Results")
       log_write(report, " * ZTP Day2 Targets: {}".format(monitor_data["policy_compliant"]))
       log_write(report, " * ZTP Day2 Running: {}".format(monitor_data["playbook_running"]))
@@ -119,7 +125,10 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
       log_write(report, " * ZTP Day2 Successful Percent: {}%".format(success_playbook_percent))
       log_write(report, " * ZTP Day2 Failed Percent: {}%".format(failed_playbook_percent))
     log_write(report, "Overall Results")
-    log_write(report, " * Overall Success (DU Compliant / Deployed): {} / {}".format(monitor_data["policy_compliant"], monitor_data["cluster_applied_committed"]))
+    if cliargs.wait_playbook:
+      log_write(report, " * Overall Success (Playbook Completed / Deployed): {} / {}".format(monitor_data["playbook_completed"], monitor_data["cluster_applied_committed"]))
+    else:
+      log_write(report, " * Overall Success (DU Compliant / Deployed): {} / {}".format(monitor_data["policy_compliant"], monitor_data["cluster_applied_committed"]))
     log_write(report, " * Overall Success Percent: {}%".format(success_overall_percent))
     log_write(report, " * Overall Failed Percent: {}%".format(failed_overall_percent))
     log_write(report, "Deployed Cluster Orchestration")
@@ -141,6 +150,8 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
       log_write(report, " * Cluster Install wait duration: {}s :: {}".format(total_cluster_install_time, str(timedelta(seconds=total_cluster_install_time))))
     if cliargs.wait_du_profile:
       log_write(report, " * DU Profile wait duration: {}s :: {}".format(total_duprofile_time, str(timedelta(seconds=total_duprofile_time))))
+    if cliargs.wait_playbook:
+      log_write(report, " * Playbook wait duration: {}s :: {}".format(total_playbook_time, str(timedelta(seconds=total_playbook_time))))
     log_write(report, " * Total duration: {}s :: {}".format(total_time, str(timedelta(seconds=total_time))))
   # Done outputing the report card
 

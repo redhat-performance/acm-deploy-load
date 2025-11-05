@@ -23,6 +23,27 @@ import sys
 logger = logging.getLogger("acm-deploy-load")
 
 
+def detect_aap_install(kubeconfig=None, dry_run=False):
+  logger.info("Detecting AAP install by checking count of aap objects in ansible-automation-platform namespace")
+  if kubeconfig is None:
+    oc_cmd = ["oc", "get", "aap", "-n", "ansible-automation-platform", "-o", "json"]
+  else:
+    oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "aap", "-n", "ansible-automation-platform", "-o", "json"]
+  rc, output = command(oc_cmd, dry_run, no_log=True)
+  if rc != 0:
+    logger.error("oc get aap rc: {}".format(rc))
+    sys.exit(1)
+  if not dry_run:
+    aap_data = json.loads(output)
+    if len(aap_data["items"]) > 0:
+      return True
+    else:
+      return False
+  else:
+    # Pretend AAP install detected for dry-run
+    return True
+
+
 def get_ocp_namespace_list(kubeconfig):
   logger.info("Getting OCP namespace list")
   oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "namespace", "-o", "json"]

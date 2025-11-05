@@ -22,7 +22,7 @@ import datetime
 from datetime import timedelta
 import glob
 from jinja2 import Template
-import json
+from utils.common_ocp import detect_aap_install
 from utils.command import command
 from utils.output import generate_report
 from utils.output import phase_break
@@ -260,8 +260,12 @@ def main():
                       help="Maximum amount of time to wait for cluster install completion (seconds)")
   parser.add_argument("--wait-du-profile-max", type=int, default=18000,
                       help="Maximum amount of time to wait for DU Profile completion (seconds)")
+  parser.add_argument("--wait-playbook-max", type=int, default=1200,
+                      help="Maximum amount of time to wait for Playbook completion (seconds)")
   parser.add_argument("-w", "--wait-du-profile", action="store_true", default=False,
                       help="Waits for du profile to complete after all expected clusters installed")
+  parser.add_argument("-wp", "--wait-playbook", action="store_true", default=False,
+                      help="Waits for playbook to complete after DU Profile completion")
   parser.add_argument("--ztp-client-templates", action="store_true", default=False,
                       help="If ztp method, include client templates")
 
@@ -322,6 +326,13 @@ def main():
   talm_minor = int(detect_talm_minor(cliargs.talm_version, cliargs.dry_run))
   logger.info("Using TALM cgu monitoring based on TALM minor version: {}".format(talm_minor))
 
+  # Detect AAP install
+  if detect_aap_install(dry_run=cliargs.dry_run):
+    logger.info("AAP install detected, waiting for playbook completion")
+    cliargs.wait_playbook = True
+  else:
+    logger.info("AAP install not detected")
+
   # Validate parameters and display rate and method plan
   logger.info("Deploying Clusters rate: {}".format(cliargs.rate))
   logger.info("Deploying Clusters method: {}".format(cliargs.method))
@@ -360,6 +371,13 @@ def main():
       logger.info(" * Wait for DU Profile completion (Max {}s)".format(cliargs.wait_du_profile_max))
     else:
       logger.info(" * Wait for DU Profile completion (Infinite wait)")
+  if not cliargs.wait_playbook:
+    logger.info(" * Skip waiting for Playbook completion")
+  else:
+    if cliargs.wait_playbook_max > 0:
+      logger.info(" * Wait for Playbook completion (Max {}s)".format(cliargs.wait_playbook_max))
+    else:
+      logger.info(" * Wait for Playbook completion (Infinite wait)")
 
   # Determine where the report directory will be located
   base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -606,6 +624,41 @@ def main():
 
   end_time = time.time()
 
+  #############################################################################
+  # Wait for Playbook Completion Phase
+  #############################################################################
+  wait_playbook_start_time = time.time()
+  if cliargs.wait_playbook:
+    phase_break()
+    logger.info("Waiting for Playbook completion - {}".format(int(time.time() * 1000)))
+    phase_break()
+
+    wait_logger = 4
+    while True:
+      time.sleep(30)
+      # Break from phase if playbook completed is greater than or equal to policy compliant
+      if monitor_data["playbook_completed"] >= monitor_data["policy_compliant"]:
+        logger.info("Playbook completion")
+        log_monitor_data(monitor_data, round(time.time() - start_time))
+        break
+
+      # Break from phase if we exceed the timeout
+      if cliargs.wait_playbook_max > 0 and ((time.time() - wait_playbook_start_time) > cliargs.wait_playbook_max):
+        logger.info("Playbook completion exceeded timeout: {}s".format(cliargs.wait_playbook_max))
+        log_monitor_data(monitor_data, round(time.time() - start_time))
+        break
+
+      wait_logger += 1
+      if wait_logger >= 5:
+        logger.info("Waiting for Playbook completion")
+        e_time = round(time.time() - wait_playbook_start_time)
+        logger.info("Elapsed Playbook completion time: {}s :: {} / {}s :: {}".format(
+            e_time, str(timedelta(seconds=e_time)), cliargs.wait_playbook_max,
+            str(timedelta(seconds=cliargs.wait_playbook_max))))
+        log_monitor_data(monitor_data, round(time.time() - start_time))
+        wait_logger = 0
+  wait_playbook_end_time = time.time()
+
   # End of Workload delay
   if cliargs.end_delay > 0:
     phase_break()
@@ -621,7 +674,8 @@ def main():
   # Report Card / Graph Phase
   #############################################################################
   generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
-      wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time, available_clusters, monitor_data,
+      wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time,
+      wait_playbook_start_time, wait_playbook_end_time, available_clusters, monitor_data,
       cliargs, total_intervals, report_dir)
 
 if __name__ == "__main__":
