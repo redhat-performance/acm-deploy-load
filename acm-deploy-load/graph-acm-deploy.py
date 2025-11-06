@@ -104,7 +104,7 @@ def main():
       "cluster_install_completed", "managed"]
   y_policy = ["cluster_init", "cluster_install_completed", "managed", "policy_init", "policy_applying", "policy_timedout",
       "policy_compliant"]
-  y_playbook = ["cluster_init", "managed", "playbook_running", "playbook_completed"]
+  y_playbook = ["cluster_init", "managed", "playbook_notstarted", "playbook_running", "playbook_completed"]
   y_share = ["cluster_applied", "cluster_init", "node_booted", "node_discovered", "cluster_installing",
       "cluster_install_failed", "cluster_install_completed", "managed", "policy_applying", "policy_timedout",
       "policy_compliant"]
@@ -112,7 +112,7 @@ def main():
       "cluster_install_completed", "managed", "policy_applying", "policy_timedout", "policy_compliant"]
   y_share_playbook = ["cluster_applied", "cluster_init", "cluster_installing", "cluster_install_failed",
       "cluster_install_completed", "managed", "policy_applying", "policy_timedout", "policy_compliant",
-      "playbook_running", "playbook_completed"]
+      "playbook_notstarted", "playbook_running", "playbook_completed"]
 
   l = {"value" : "# clusters", "date" : ""}
   l2 = {"value" : "# clusters or # nodes", "date" : ""}

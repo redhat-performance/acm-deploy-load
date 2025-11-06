@@ -120,6 +120,7 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
     if cliargs.wait_playbook:
       log_write(report, "ZTP Day2 Playbook Results")
       log_write(report, " * ZTP Day2 Targets: {}".format(monitor_data["policy_compliant"]))
+      log_write(report, " * ZTP Day2 Not Started: {}".format(monitor_data["playbook_notstarted"]))
       log_write(report, " * ZTP Day2 Running: {}".format(monitor_data["playbook_running"]))
       log_write(report, " * ZTP Day2 Completed: {}".format(monitor_data["playbook_completed"]))
       log_write(report, " * ZTP Day2 Successful Percent: {}%".format(success_playbook_percent))

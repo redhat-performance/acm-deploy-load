@@ -209,7 +209,7 @@ def deploy_ztp_clusters(clusters, manifest_type, ztp_deploy_apps, start_index, e
   rc, output = command(["git", "push"], dry_run, cmd_directory=argocd_dir)
 
 
-def log_monitor_data(data, elapsed_seconds):
+def log_monitor_data(data, elapsed_seconds, cliargs):
   logger.info("Elapsed total time: {}s :: {}".format(elapsed_seconds, str(timedelta(seconds=elapsed_seconds))))
   logger.info("Applied/Committed Clusters: {}".format(data["cluster_applied_committed"]))
   logger.info("Initialized Clusters: {}".format(data["cluster_init"]))
@@ -225,8 +225,10 @@ def log_monitor_data(data, elapsed_seconds):
   logger.info("Policy Applying Clusters: {}".format(data["policy_applying"]))
   logger.info("Policy Timedout Clusters: {}".format(data["policy_timedout"]))
   logger.info("Policy Compliant Clusters: {}".format(data["policy_compliant"]))
-  logger.info("Playbook Running Clusters: {}".format(data["playbook_running"]))
-  logger.info("Playbook Completed Clusters: {}".format(data["playbook_completed"]))
+  if cliargs.wait_playbook:
+    logger.info("Playbook Not Started Clusters: {}".format(data["playbook_notstarted"]))
+    logger.info("Playbook Running Clusters: {}".format(data["playbook_running"]))
+    logger.info("Playbook Completed Clusters: {}".format(data["playbook_completed"]))
 
 
 def main():
@@ -479,6 +481,7 @@ def main():
     "policy_applying": 0,
     "policy_timedout": 0,
     "policy_compliant": 0,
+    "playbook_notstarted": 0,
     "playbook_running": 0,
     "playbook_completed": 0
   }
@@ -540,7 +543,7 @@ def main():
         # Approximately display this every 300s
         if wait_logger >= 3000:
           logger.info("Remaining interval time: {}s".format(round(expected_interval_end_time - current_time)))
-          log_monitor_data(monitor_data, round(time.time() - start_time))
+          log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
           wait_logger = 0
         current_time = time.time()
 
@@ -564,13 +567,13 @@ def main():
       if ((monitor_data["cluster_init"] >= monitor_data["cluster_applied_committed"]) and
           ((monitor_data["cluster_install_failed"] + monitor_data["cluster_install_completed"]) == monitor_data["cluster_init"])):
         logger.info("Clusters install completion")
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       # Break from phase if we exceed the timeout
       if cliargs.wait_cluster_max > 0 and ((time.time() - wait_cluster_start_time) > cliargs.wait_cluster_max):
         logger.info("Clusters install completion exceeded timeout: {}s".format(cliargs.wait_cluster_max))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       wait_logger += 1
@@ -579,7 +582,7 @@ def main():
         e_time = round(time.time() - wait_cluster_start_time)
         logger.info("Elapsed cluster install completion time: {}s :: {} / {}s :: {}".format(
             e_time, str(timedelta(seconds=e_time)), cliargs.wait_cluster_max, str(timedelta(seconds=cliargs.wait_cluster_max))))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         wait_logger = 0
 
   wait_cluster_end_time = time.time()
@@ -602,13 +605,13 @@ def main():
       if ((monitor_data["policy_init"] >= monitor_data["cluster_install_completed"]) and
           ((monitor_data["policy_timedout"] + monitor_data["policy_compliant"]) == monitor_data["policy_init"])):
         logger.info("DU Profile completion")
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       # Break from phase if we exceed the timeout
       if cliargs.wait_du_profile_max > 0 and ((time.time() - wait_du_profile_start_time) > cliargs.wait_du_profile_max):
         logger.info("DU Profile completion exceeded timeout: {}s".format(cliargs.wait_du_profile_max))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       wait_logger += 1
@@ -618,7 +621,7 @@ def main():
         logger.info("Elapsed DU Profile completion time: {}s :: {} / {}s :: {}".format(
             e_time, str(timedelta(seconds=e_time)), cliargs.wait_du_profile_max,
             str(timedelta(seconds=cliargs.wait_du_profile_max))))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         wait_logger = 0
   wait_du_profile_end_time = time.time()
 
@@ -639,13 +642,13 @@ def main():
       # Break from phase if playbook completed is greater than or equal to policy compliant
       if monitor_data["playbook_completed"] >= monitor_data["policy_compliant"]:
         logger.info("Playbook completion")
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       # Break from phase if we exceed the timeout
       if cliargs.wait_playbook_max > 0 and ((time.time() - wait_playbook_start_time) > cliargs.wait_playbook_max):
         logger.info("Playbook completion exceeded timeout: {}s".format(cliargs.wait_playbook_max))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         break
 
       wait_logger += 1
@@ -655,7 +658,7 @@ def main():
         logger.info("Elapsed Playbook completion time: {}s :: {} / {}s :: {}".format(
             e_time, str(timedelta(seconds=e_time)), cliargs.wait_playbook_max,
             str(timedelta(seconds=cliargs.wait_playbook_max))))
-        log_monitor_data(monitor_data, round(time.time() - start_time))
+        log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         wait_logger = 0
   wait_playbook_end_time = time.time()
 
