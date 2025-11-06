@@ -4,7 +4,7 @@
 ocp_inventory:
 
 # Provide pull-secret for connected manifests
-pull_secret: "{{ lookup('file', '../pull_secret.txt') }}"
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
 
 ssh_public_key_file: ~/.ssh/id_rsa.pub
 

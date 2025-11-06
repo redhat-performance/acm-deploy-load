@@ -18,7 +18,7 @@ bmc_password_base64: "{{ 'password' | b64encode }}"
 sno_nic_interface: enp1s0
 
 # Provide pull-secret for connected manifests
-pull_secret: "{{ lookup('file', '../pull_secret.txt') }}"
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
 
 auth_encoded: "{{ (registry_user + ':' + registry_password) | b64encode }}"
 disconnected_pull_secret: ' {"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}": {"auth": "{{ auth_encoded }}"}}}'

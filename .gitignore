@@ -136,6 +136,7 @@ aap_manifest.zip
 
 # Prevent pull_secret file upload
 pull_secret.*
+pull-secret.*
 
 # Ignore local ocp_inventory.json files
 *.json
