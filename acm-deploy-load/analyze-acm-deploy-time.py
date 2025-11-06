@@ -45,6 +45,9 @@ import time
 # 12 policy_applying
 # 13 policy_timedout
 # 14 policy_compliant
+# 15 playbook_notstarted
+# 16 playbook_running
+# 17 playbook_completed
 INDEX_DATE = 0
 INDEX_CLUSTER_APPLIED = 1
 INDEX_CLUSTER_INSTALLING = 6
@@ -52,6 +55,8 @@ INDEX_CLUSTER_INSTALL_COMPLETED = 8
 INDEX_POLICY_APPLYING = 12
 INDEX_POLICY_TIMEDOUT = 13
 INDEX_POLICY_COMPLIANT = 14
+INDEX_PLAYBOOK_RUNNING = 16
+INDEX_PLAYBOOK_COMPLETED = 17
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
 logger = logging.getLogger("acm-deploy-load")
@@ -82,6 +87,7 @@ def main():
   start_ts = ""
   peak_cluster_installing = 0
   peak_du_applying = 0
+  peak_playbook_running = 0
   peak_concurrency = 0
   data = []
   with open(md_csv_file, "r") as cluster_cv_csv:
@@ -93,11 +99,13 @@ def main():
     if header is not None:
       for row in csv_reader:
         row_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
-        concurrency = int(row[INDEX_CLUSTER_INSTALLING]) + int(row[INDEX_POLICY_APPLYING])
+        concurrency = int(row[INDEX_CLUSTER_INSTALLING]) + int(row[INDEX_POLICY_APPLYING]) + int(row[INDEX_PLAYBOOK_RUNNING])
         if int(row[INDEX_CLUSTER_INSTALLING]) > peak_cluster_installing:
           peak_cluster_installing = int(row[INDEX_CLUSTER_INSTALLING])
         if int(row[INDEX_POLICY_APPLYING]) > peak_du_applying:
           peak_du_applying = int(row[INDEX_POLICY_APPLYING])
+        if int(row[INDEX_PLAYBOOK_RUNNING]) > peak_playbook_running:
+          peak_playbook_running = int(row[INDEX_PLAYBOOK_RUNNING])
         if concurrency > peak_concurrency:
           peak_concurrency = concurrency
         if (start_ts == "") and (int(row[INDEX_CLUSTER_APPLIED]) > 0):
@@ -106,37 +114,43 @@ def main():
 
     cluster_installed = int(data[-1][INDEX_CLUSTER_INSTALL_COMPLETED])
     deployment_completed = int(data[-1][INDEX_POLICY_COMPLIANT])
+    playbook_completed = int(data[-1][INDEX_PLAYBOOK_COMPLETED])
     cluster_completed = int(data[-1][INDEX_POLICY_TIMEDOUT]) + int(data[-1][INDEX_POLICY_COMPLIANT])
 
     last_ts = datetime.strptime(data[-1][INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
     cluster_installed_ts = datetime.strptime(data[-1][INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
     deployment_completed_ts = datetime.strptime(data[-1][INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
+    playbook_completed_ts = datetime.strptime(data[-1][INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
     completed_ts = datetime.strptime(data[-1][INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
-
-  # Find when test was completed with max du compliant+du_timeout reached
-  for row in reversed(data):
-    if (int(row[INDEX_POLICY_TIMEDOUT]) + int(row[INDEX_POLICY_COMPLIANT])) < cluster_completed:
-      completed_ts = completed_ts
-      break
-    completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
-
-  # Find when test is considered deployment completed by first time we reach max du compliant
-  for row in reversed(data):
-    if int(row[INDEX_POLICY_COMPLIANT]) < deployment_completed:
-      deployment_completed_ts = deployment_completed_ts
-      break
-    deployment_completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
 
   # Find when test is considered cluster install completed by first time we reach max clusters installed
   for row in reversed(data):
     if int(row[INDEX_CLUSTER_INSTALL_COMPLETED]) < cluster_installed:
-      cluster_installed_ts = cluster_installed_ts
       break
     cluster_installed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
+
+  # Find when test is considered deployment completed by first time we reach max du compliant
+  for row in reversed(data):
+    if int(row[INDEX_POLICY_COMPLIANT]) < deployment_completed:
+      break
+    deployment_completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
+
+  # Find when test was completed with max du compliant+du_timeout reached
+  for row in reversed(data):
+    if (int(row[INDEX_POLICY_TIMEDOUT]) + int(row[INDEX_POLICY_COMPLIANT])) < cluster_completed:
+      break
+    completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
+
+  # Find when test is considered playbook completed by first time we reach max playbook completed
+  for row in reversed(data):
+    if (int(row[INDEX_PLAYBOOK_COMPLETED])) < playbook_completed:
+      break
+    playbook_completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
 
   cluster_install_duration = int((cluster_installed_ts - start_ts).total_seconds())
   deployed_complete_duration = int((deployment_completed_ts - start_ts).total_seconds())
   completed_duration = int((completed_ts - start_ts).total_seconds())
+  playbook_duration = int((playbook_completed_ts - start_ts).total_seconds())
   full_duration = int((last_ts - start_ts).total_seconds())
 
   with open(deploy_time_file, "w") as time_file:
@@ -144,19 +158,24 @@ def main():
     log_write(time_file, "Cluster Install TS: {}".format(cluster_installed_ts))
     log_write(time_file, "Deployment Complete TS: {}".format(deployment_completed_ts))
     log_write(time_file, "Completed TS: {}".format(completed_ts))
+    log_write(time_file, "Playbook Completed TS: {}".format(playbook_completed_ts))
     log_write(time_file, "Last TS: {}".format(last_ts))
     log_write(time_file, "################################################################")
     log_write(time_file, "Cluster Install Duration (Cluster Install Completed): {}s :: {}".format(cluster_install_duration, str(timedelta(seconds=cluster_install_duration))))
     log_write(time_file, "Deployment Complete Duration (DU Compliant): {}s :: {}".format(deployed_complete_duration, str(timedelta(seconds=deployed_complete_duration))))
     log_write(time_file, "Completed Duration (DU Timeout+Compliant): {}s :: {}".format(completed_duration, str(timedelta(seconds=completed_duration))))
+    log_write(time_file, "Playbook Duration (Playbook Completed): {}s :: {}".format(playbook_duration, str(timedelta(seconds=playbook_duration))))
     log_write(time_file, "Full Duration: {}s :: {}".format(full_duration, str(timedelta(seconds=full_duration))))
     log_write(time_file, "################################################################")
     deployed_installed_time_diff = deployed_complete_duration - cluster_install_duration
+    playbook_deployed_time_diff = playbook_duration - deployed_complete_duration
     log_write(time_file, "Deployment Complete - Cluster Install Completed: {}s :: {}".format(deployed_installed_time_diff, str(timedelta(seconds=deployed_installed_time_diff))))
+    log_write(time_file, "Playbook Complete - Deployment Complete: {}s :: {}".format(playbook_deployed_time_diff, str(timedelta(seconds=playbook_deployed_time_diff))))
     log_write(time_file, "################################################################")
     log_write(time_file, "Peak Cluster Installing: {}".format(peak_cluster_installing))
     log_write(time_file, "Peak DU Applying: {}".format(peak_du_applying))
-    log_write(time_file, "Peak Concurrency (cluster_installing + policy_applying): {}".format(peak_concurrency))
+    log_write(time_file, "Peak Playbook Running: {}".format(peak_playbook_running))
+    log_write(time_file, "Peak Concurrency (cluster_installing + policy_applying + playbook_running): {}".format(peak_concurrency))
 
   end_time = time.time()
   logger.info("Took {}s".format(round(end_time - start_time, 1)))
