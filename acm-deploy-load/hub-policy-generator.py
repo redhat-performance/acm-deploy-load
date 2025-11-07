@@ -17,7 +17,7 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from jinja2 import Template
 import logging
 import os
@@ -270,7 +270,7 @@ def main():
       base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
       base_dir_down = os.path.dirname(base_dir)
       base_dir_manifests = os.path.join(base_dir_down, "manifests")
-      manifests_dir_name = "hub-policies-{}".format(datetime.utcfromtimestamp(start_time).strftime("%Y%m%d-%H%M%S"))
+      manifests_dir_name = "hub-policies-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
       manifests_dir = os.path.join(base_dir_manifests, manifests_dir_name)
       os.mkdir(manifests_dir)
       logger.info("Using created manifests directory: {}".format(manifests_dir))

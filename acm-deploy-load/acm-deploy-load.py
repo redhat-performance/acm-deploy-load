@@ -18,8 +18,7 @@
 
 import argparse
 from collections import OrderedDict
-import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import glob
 from jinja2 import Template
 from utils.common_ocp import detect_aap_install
@@ -213,7 +212,7 @@ def log_monitor_data(data, elapsed_seconds, cliargs):
   logger.info("Elapsed total time: {}s :: {}".format(elapsed_seconds, str(timedelta(seconds=elapsed_seconds))))
   logger.info("Applied/Committed Clusters: {}".format(data["cluster_applied_committed"]))
   logger.info("Initialized Clusters: {}".format(data["cluster_init"]))
-  logger.info("Not Started Clusters: {}".format(data["cluster_notstarted"]))
+  logger.info("Install Not Started Clusters: {}".format(data["cluster_notstarted"]))
   logger.info("Booted Nodes: {}".format(data["node_booted"]))
   logger.info("Discovered Nodes: {}".format(data["node_discovered"]))
   logger.info("Installing Clusters: {}".format(data["cluster_installing"]))
@@ -385,7 +384,7 @@ def main():
   base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
   base_dir_down = os.path.dirname(base_dir)
   base_dir_results = os.path.join(base_dir_down, "results")
-  report_dir_name = "{}-{}-{}".format(datetime.datetime.utcfromtimestamp(start_time).strftime("%Y%m%d-%H%M%S"), cliargs.method, cliargs.results_dir_suffix)
+  report_dir_name = "{}-{}-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"), cliargs.method, cliargs.results_dir_suffix)
   report_dir = os.path.join(base_dir_results, report_dir_name)
   logger.info("Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
 
@@ -625,8 +624,6 @@ def main():
         wait_logger = 0
   wait_du_profile_end_time = time.time()
 
-  end_time = time.time()
-
   #############################################################################
   # Wait for Playbook Completion Phase
   #############################################################################
@@ -661,6 +658,8 @@ def main():
         log_monitor_data(monitor_data, round(time.time() - start_time), cliargs)
         wait_logger = 0
   wait_playbook_end_time = time.time()
+
+  end_time = time.time()
 
   # End of Workload delay
   if cliargs.end_delay > 0:

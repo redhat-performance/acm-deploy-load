@@ -17,7 +17,7 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import pandas as pd
 import pathlib
@@ -117,7 +117,7 @@ def main():
   l = {"value" : "# clusters", "date" : ""}
   l2 = {"value" : "# clusters or # nodes", "date" : ""}
 
-  ts = datetime.utcfromtimestamp(time.time()).strftime("%Y%m%d-%H%M%S")
+  ts = datetime.fromtimestamp(time.time(), tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
 
   logger.info("Creating Graph - {}/cluster-node-{}.png".format(cliargs.results_directory, ts))
   fig_cluster_node = px.line(df, x="date", y=y_cluster_node, labels=l2, width=cliargs.width, height=cliargs.height)

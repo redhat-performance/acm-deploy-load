@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 import time
@@ -331,7 +331,7 @@ class ZTPMonitor(Thread):
       # Write csv data
       with open(self.csv_file, "a") as csv_file:
         csv_file.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            datetime.utcfromtimestamp(start_sample_time).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            datetime.fromtimestamp(start_sample_time, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
             self.monitor_data["cluster_applied_committed"], cluster_init, cluster_notstarted, node_booted,
             node_discovered, cluster_installing, cluster_install_failed, cluster_install_completed, cluster_managed,
             cluster_policy_init, cluster_policy_notstarted, cluster_policy_applying, cluster_policy_timedout,

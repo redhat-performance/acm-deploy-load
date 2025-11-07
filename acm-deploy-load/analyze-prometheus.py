@@ -19,7 +19,7 @@
 # import prometheus_api_client
 import argparse
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from datetime import timedelta
 from utils.common_ocp import get_ocp_namespace_list
 from utils.common_ocp import get_ocp_version
@@ -54,7 +54,7 @@ logging.Formatter.converter = time.gmtime
 
 
 def calculate_query_offset(end_ts):
-  cur_utc_unix_time = time.mktime(datetime.utcnow().timetuple())
+  cur_utc_unix_time = time.mktime(datetime.now(tz=timezone.utc).timetuple())
   offset_minutes = (int(cur_utc_unix_time) - end_ts) / 60
   if offset_minutes < 1:
     offset_minutes = 0
@@ -527,14 +527,14 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
         for metric in qd_json["data"]["result"]:
           # Get/set the datetime series
           if len(frame) == 0:
-            frame["datetime"] = pd.Series([datetime.utcfromtimestamp(x[0]) for x in metric["values"]], name="datetime")
+            frame["datetime"] = pd.Series([datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]], name="datetime")
           # Need to rework how datetime series is generated and how series are merged together.  Pods come and go and their
           # series of data is shorter and not paded, so we need some sort of "merge" method instead of picking the largest.
           # Also not all series start at the same datetime. ugh
           # else:
           #   logger.debug("length of metrics: {}, length of previous datetime: {}".format(len(metric["values"]), len(frame["datetime"])))
           #   if len(metric["values"]) > len(frame["datetime"]):
-          #     frame["datetime"] = pd.Series([datetime.utcfromtimestamp(x[0]) for x in metric["values"]], name="datetime")
+          #     frame["datetime"] = pd.Series([datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]], name="datetime")
           # Get the metrics series
           if series_label not in metric["metric"]:
             logger.debug("Num of values: {}".format(len(metric["values"])))
@@ -626,8 +626,8 @@ def main():
   start_time = time.time()
   # Default end time for analysis is the start time of the script
   # Default start time for analysis is start time of script minus one hour (Default analyzes one hour from now)
-  default_ap_end_time = datetime.utcfromtimestamp(start_time)
-  default_ap_start_time = datetime.utcfromtimestamp(start_time - (60 * 60))
+  default_ap_end_time = datetime.fromtimestamp(start_time, tz=timezone.utc)
+  default_ap_start_time = datetime.fromtimestamp(start_time - (60 * 60), tz=timezone.utc)
 
   parser = argparse.ArgumentParser(
       description="Query and Graph Prometheus data off a live OpenShift cluster",
@@ -707,7 +707,7 @@ def main():
 
   # Create the results directories to store data into
   report_dir = os.path.join(cliargs.results_directory, "{}-{}".format(cliargs.prefix,
-      datetime.utcfromtimestamp(start_time).strftime("%Y%m%d-%H%M%S")))
+      datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S")))
   logger.debug("Creating report directory: {}".format(report_dir))
   if not os.path.exists(report_dir):
     os.mkdir(report_dir)

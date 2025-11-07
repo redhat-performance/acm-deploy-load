@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from datetime import datetime
+from datetime import datetime, timezone
 from datetime import timedelta
 import logging
 import numpy as np
@@ -143,9 +143,9 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
     log_write(report, " * Wan Emulation: {}".format(cliargs.wan_emulation))
     log_write(report, "Workload Duration Results")
     log_write(report, " * Start Time: {} {}".format(
-        datetime.utcfromtimestamp(start_time).strftime("%Y-%m-%dT%H:%M:%SZ"), int(start_time * 1000)))
+        datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(start_time * 1000)))
     log_write(report, " * End Time: {} {}".format(
-        datetime.utcfromtimestamp(end_time).strftime("%Y-%m-%dT%H:%M:%SZ"), int(end_time * 1000)))
+        datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(end_time * 1000)))
     log_write(report, " * Cluster Deploying duration: {}s :: {}".format(total_deploy_time, str(timedelta(seconds=total_deploy_time))))
     if not cliargs.skip_wait_install:
       log_write(report, " * Cluster Install wait duration: {}s :: {}".format(total_cluster_install_time, str(timedelta(seconds=total_cluster_install_time))))

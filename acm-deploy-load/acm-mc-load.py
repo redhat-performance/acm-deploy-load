@@ -19,8 +19,7 @@
 
 import argparse
 import base64
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import glob
 from jinja2 import Template
 from utils.command import command
@@ -101,7 +100,7 @@ def update_policy_cm(policy_ns, cm_name, policy_keys, policy_dir, hub_kc):
       name=cm_name,
       namespace=policy_ns,
       keys=policy_keys)
-  ts = datetime.utcfromtimestamp(time.time()).strftime("%Y%m%d-%H%M%S")
+  ts = datetime.fromtimestamp(time.time(), tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
   policy_cm_file = "{}/policy-cm-{}.yml".format(policy_dir, ts)
   with open(policy_cm_file, "w") as file1:
     file1.writelines(hcm_template_rendered)
@@ -157,7 +156,7 @@ def main():
   base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
   base_dir_down = os.path.dirname(base_dir)
   base_dir_results = os.path.join(base_dir_down, "results")
-  report_dir_name = "{}-mc-load".format(datetime.utcfromtimestamp(start_time).strftime("%Y%m%d-%H%M%S"))
+  report_dir_name = "{}-mc-load".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
   report_dir = os.path.join(base_dir_results, report_dir_name)
   mc_dir = os.path.join(report_dir, "mc")
   policy_dir = os.path.join(report_dir, "policy-cm")
@@ -318,12 +317,12 @@ def main():
     log_write(report, " * Total cluster(s) managed: {}".format(total_clusters_managed))
     log_write(report, " * Total policy cm updates: {}".format(total_policy_cm_updates))
     log_write(report, "Workload Timestamps")
-    log_write(report, " * Start Time: {} {}".format(datetime.utcfromtimestamp(manage_start_time).strftime("%Y-%m-%dT%H:%M:%SZ"), int(manage_start_time * 1000)))
-    log_write(report, " * Start Delay Complete Time: {}".format(datetime.utcfromtimestamp(start_delay_complete_ts).strftime("%Y-%m-%dT%H:%M:%SZ")))
+    log_write(report, " * Start Time: {} {}".format(datetime.fromtimestamp(manage_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(manage_start_time * 1000)))
+    log_write(report, " * Start Delay Complete Time: {}".format(datetime.fromtimestamp(start_delay_complete_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
     for i, ts in enumerate(cluster_managed_timestamps):
-      log_write(report, " * MC {} event: {}".format(i, datetime.utcfromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%SZ")))
-    log_write(report, " * End Delay Start Time: {}".format(datetime.utcfromtimestamp(end_delay_start_ts).strftime("%Y-%m-%dT%H:%M:%SZ")))
-    log_write(report, " * End Time: {} {}".format(datetime.utcfromtimestamp(manage_end_time).strftime("%Y-%m-%dT%H:%M:%SZ"), int(manage_end_time * 1000)))
+      log_write(report, " * MC {} event: {}".format(i, datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
+    log_write(report, " * End Delay Start Time: {}".format(datetime.fromtimestamp(end_delay_start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
+    log_write(report, " * End Time: {} {}".format(datetime.fromtimestamp(manage_end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(manage_end_time * 1000)))
 
     log_write(report, "Workload Duration Results")
     sd_duration = round(start_delay_complete_ts - manage_start_time)
