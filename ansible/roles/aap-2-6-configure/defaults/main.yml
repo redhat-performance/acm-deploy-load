@@ -21,7 +21,7 @@ de_image_tag: 1.2.0-75
 global_hub_kafka_topic: gh-status.local-cluster
 eda_rulebook_name: eda-test.yml
 
-aap_controller_template_playbook: playbooks/ztp-test.yml
+aap_controller_template_playbook: playbooks/ztp-test-split-play.yml
 
 gogs_host: "[fc00:1000::1]"
 gogs_port: 10880
