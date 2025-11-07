@@ -19,8 +19,7 @@
 # import prometheus_api_client
 import argparse
 from collections import OrderedDict
-from datetime import datetime, timezone
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from utils.common_ocp import get_ocp_namespace_list
 from utils.common_ocp import get_ocp_version
 from utils.common_ocp import get_prometheus_token
@@ -522,63 +521,78 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
       if len(qd_json["data"]["result"]) == 0:
         logger.warning("Empty data returned from query")
       else:
-        frame = {}
+        # Build list of DataFrames, one per metric, then merge them
+        dfs = []
         series = []
+
         for metric in qd_json["data"]["result"]:
-          # Get/set the datetime series
-          if len(frame) == 0:
-            frame["datetime"] = pd.Series([datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]], name="datetime")
-          # Need to rework how datetime series is generated and how series are merged together.  Pods come and go and their
-          # series of data is shorter and not paded, so we need some sort of "merge" method instead of picking the largest.
-          # Also not all series start at the same datetime. ugh
-          # else:
-          #   logger.debug("length of metrics: {}, length of previous datetime: {}".format(len(metric["values"]), len(frame["datetime"])))
-          #   if len(metric["values"]) > len(frame["datetime"]):
-          #     frame["datetime"] = pd.Series([datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]], name="datetime")
-          # Get the metrics series
+          # Create datetime series for this metric
+          metric_datetime = [datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]]
+
+          # Determine the series name
           if series_label not in metric["metric"]:
+            metric_name = series_label
             logger.debug("Num of values: {}".format(len(metric["values"])))
-            if y_unit == "MEM":
-              bytes_to_gib = 1024 * 1024 * 1024
-              frame[series_label] = pd.Series([float(x[1]) / bytes_to_gib for x in metric["values"]], name=series_label)
-            elif y_unit == "NET":
-              bytes_to_mib = 1024 * 1024
-              frame[series_label] = pd.Series([float(x[1]) / bytes_to_mib for x in metric["values"]], name=series_label)
-            elif y_unit == "DISK":
-              bytes_to_gb = 1000 * 1000 * 1000
-              frame[series_label] = pd.Series([float(x[1]) / bytes_to_gb for x in metric["values"]], name=series_label)
-            else:
-              frame[series_label] = pd.Series([float(x[1]) for x in metric["values"]], name=series_label)
-            series.append(series_label)
           else:
-            logger.debug("{}: {}, Num of values: {}".format(series_label, metric["metric"][series_label], len(metric["values"])))
-            if y_unit == "MEM":
-              bytes_to_gib = 1024 * 1024 * 1024
-              frame[metric["metric"][series_label]] = pd.Series([float(x[1]) / bytes_to_gib for x in metric["values"]], name=metric["metric"][series_label])
-            elif y_unit == "NET":
-              bytes_to_mib = 1024 * 1024
-              frame[metric["metric"][series_label]] = pd.Series([float(x[1]) / bytes_to_mib for x in metric["values"]], name=metric["metric"][series_label])
-            elif y_unit == "DISK":
-              bytes_to_gb = 1000 * 1000 * 1000
-              frame[metric["metric"][series_label]] = pd.Series([float(x[1]) / bytes_to_gb for x in metric["values"]], name=metric["metric"][series_label])
-            else:
-              frame[metric["metric"][series_label]] = pd.Series([float(x[1]) for x in metric["values"]], name=metric["metric"][series_label])
-            series.append(metric["metric"][series_label])
+            metric_name = metric["metric"][series_label]
+            logger.debug("{}: {}, Num of values: {}".format(series_label, metric_name, len(metric["values"])))
 
-        df = pd.DataFrame(frame)
+          # Convert values based on unit
+          if y_unit == "MEM":
+            bytes_to_gib = 1024 * 1024 * 1024
+            metric_values = [float(x[1]) / bytes_to_gib for x in metric["values"]]
+          elif y_unit == "NET":
+            bytes_to_mib = 1024 * 1024
+            metric_values = [float(x[1]) / bytes_to_mib for x in metric["values"]]
+          elif y_unit == "DISK":
+            bytes_to_gb = 1000 * 1000 * 1000
+            metric_values = [float(x[1]) / bytes_to_gb for x in metric["values"]]
+          else:
+            metric_values = [float(x[1]) for x in metric["values"]]
 
-        csv_dir = os.path.join(directory, "csv")
-        stats_dir = os.path.join(directory, "stats")
+          # Create a DataFrame for this metric
+          metric_df = pd.DataFrame({
+            "datetime": metric_datetime,
+            metric_name: metric_values
+          })
+          dfs.append(metric_df)
+          series.append(metric_name)
 
-        # Write graph and stats file
-        with open("{}/{}.stats".format(stats_dir, fname), "a") as stats_file:
-          stats_file.write(str(df.describe()))
-        df.to_csv("{}/{}.csv".format(csv_dir, fname))
+        # Merge all DataFrames on datetime using outer join to handle different lengths
+        df = dfs[0]
+        for metric_df in dfs[1:]:
+          df = pd.merge(df, metric_df, on="datetime", how="outer")
+        # Sort by datetime after merge if we merged multiple DataFrames
+        if len(dfs) > 1:
+          df = df.sort_values("datetime").reset_index(drop=True)
+        
+        # Ensure datetime column is properly formatted for plotly
+        if "datetime" in df.columns:
+          df["datetime"] = pd.to_datetime(df["datetime"])
 
-        l = {"value" : y_title, "date" : ""}
-        fig_cluster_node = px.line(df, x="datetime", y=series, labels=l, width=g_width, height=g_height)
-        fig_cluster_node.update_layout(title=g_title, legend_orientation="v")
-        fig_cluster_node.write_image("{}/{}.png".format(directory, fname))
+        # Filter series list to only include columns that actually exist in the DataFrame
+        series_to_plot = [s for s in series if s in df.columns]
+
+        if len(series_to_plot) == 0:
+          logger.warning("No valid series to plot after merge")
+        else:
+          csv_dir = os.path.join(directory, "csv")
+          stats_dir = os.path.join(directory, "stats")
+
+          # Write graph and stats file
+          with open("{}/{}.stats".format(stats_dir, fname), "a") as stats_file:
+            stats_file.write(str(df.describe()))
+          df.to_csv("{}/{}.csv".format(csv_dir, fname))
+
+          # Create a copy for plotting with datetime as string to avoid plotly conversion issues
+          df_plot = df.copy()
+          if "datetime" in df_plot.columns:
+            df_plot["datetime"] = df_plot["datetime"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          l = {"value" : y_title, "datetime": "Time (UTC)"}
+          fig_cluster_node = px.line(df_plot, x="datetime", y=series_to_plot, labels=l, width=g_width, height=g_height)
+          fig_cluster_node.update_layout(title=g_title, legend_orientation="v")
+          fig_cluster_node.write_image("{}/{}.png".format(directory, fname))
 
       logger.info("Completed querying and graphing data")
 
