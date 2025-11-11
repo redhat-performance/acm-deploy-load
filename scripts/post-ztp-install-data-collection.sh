@@ -15,7 +15,7 @@ if [ "$1" == "-k" ]; then
   ls /root/hv-vm/standard/manifests/ | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/%; oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
 fi
 
-echo "$(date -u) :: Collecting clusterversion, csv, nodes, namespaces and pod/event data"
+echo "$(date -u) :: Collecting clusterversion, clusteroperators, featuregate, etcd, csv, nodes, namespaces and pod/event data"
 
 oc get clusterversion > ${output_dir}/clusterversion
 oc get clusterversion -o yaml > ${output_dir}/clusterversion.yaml
@@ -24,6 +24,12 @@ oc describe clusterversion > ${output_dir}/clusterversion.describe
 oc get clusteroperators > ${output_dir}/clusteroperators
 oc get clusteroperators -o yaml > ${output_dir}/clusteroperators.yaml
 oc describe clusteroperators > ${output_dir}/clusteroperators.describe
+
+oc describe featuregate cluster > ${output_dir}/featuregate.cluster.describe
+oc get featuregate cluster -o yaml > ${output_dir}/featuregate.cluster.yaml
+
+oc describe etcd cluster > ${output_dir}/etcd.describe
+oc get etcd cluster -o yaml > ${output_dir}/etcd.yaml
 
 # Get hub cluster install config
 oc get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/cluster-config-v1
@@ -110,7 +116,8 @@ cat ${output_dir}/ici.status | grep ClusterInstallationSucceeded | head -n 2 | a
 echo "$(date -u) :: Collecting managedcluster data"
 
 oc get managedcluster -A > ${output_dir}/managedcluster.get_default
-oc describe managedcluster -A > ${output_dir}/managedcluster.describe
+# Takes too long
+# oc describe managedcluster -A > ${output_dir}/managedcluster.describe
 oc get managedcluster -A --no-headers -o custom-columns=NAME:'.metadata.name',AVAILABLE:'.status.conditions[?(@.type=="ManagedClusterConditionAvailable")].status' > ${output_dir}/managedcluster.available
 
 cat ${output_dir}/managedcluster.available | grep "Unknown" > ${output_dir}/mc.Unknown
