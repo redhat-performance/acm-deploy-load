@@ -10,12 +10,12 @@ iteration=1
 # method="ai-clusterinstance-gitops"
 method="ibi-clusterinstance-gitops"
 
-# Rate 500/1hr
-interval_period=3600
+# Rate 500/30m
+interval_period=1800
 batch=500
-# Rate 40/5m
+# Rate 80/5m
 # interval_period=300
-# batch=40
+# batch=80
 
 # SNO or Mixed SNOs and MNOs
 clusters_per_app=100
@@ -75,8 +75,8 @@ echo "##########################################################################
 
 start_time=$(grep "Start Time:" ${results_dir}/report.txt | awk '{print $4}')
 end_time=$(grep "End Time:" ${results_dir}/report.txt | awk '{print $4}')
-time ./acm-deploy-load/analyze-prometheus.py -p "deploy-pa" -s "${start_time}" -e "${end_time}" ${results_dir} 2>&1 | tee -a ${log_file}
 echo "time ./acm-deploy-load/analyze-prometheus.py -p deploy-pa -s ${start_time} -e ${end_time} ${results_dir}" | tee -a ${log_file}
+time ./acm-deploy-load/analyze-prometheus.py -p "deploy-pa" -s "${start_time}" -e "${end_time}" ${results_dir} 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
