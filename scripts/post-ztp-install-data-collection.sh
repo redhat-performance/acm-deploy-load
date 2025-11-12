@@ -190,6 +190,7 @@ if [[ $ztp_day2_ns_exists > 0 ]]; then
   oc get eda -n ansible-automation-platform -o yaml > ${output_dir}/aap.eda.yaml
   oc describe eda -n ansible-automation-platform > ${output_dir}/aap.eda.describe
 
+  oc get managedclusters --show-labels | grep -v ztp-ansible > ${output_dir}/aap.mc.missing.ztp-ansible
   oc get managedclusters -l ztp-ansible=running > ${output_dir}/aap.mc.ztp-ansible-running
   oc get managedclusters -l ztp-ansible=completed > ${output_dir}/aap.mc.ztp-ansible-completed
   oc get managedclusters -l ztp-ansible=running --no-headers | wc -l > ${output_dir}/aap.mc.ztp-ansible-running.count
