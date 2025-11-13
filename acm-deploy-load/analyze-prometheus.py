@@ -394,6 +394,57 @@ def metal3_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def mcgh_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "mcgh")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # MCGH CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub'})"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "cpu-mcgh", "MCGH CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub'})"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "mem-mcgh", "MCGH Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub'}[5m]))"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh", "MCGH Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub'}[5m]))"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh", "MCGH Network Transmit Throughput", "NET", w, h, q_names)
+
+  # MCGH pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'amq-streams-cluster-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-amq-streams-cluster-operator", "MCGH AMQ Streams Cluster Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'amq-streams-cluster-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-amq-streams-cluster-operator", "MCGH AMQ Streams Cluster Operator Memory Usage", "MEM", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Network Transmit Throughput", "NET", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-kafka-kraft", "MCGH Kafka Kraft CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-kafka-kraft", "MCGH Kafka Kraft Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-kafka-kraft", "MCGH Kafka Kraft Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-kafka-kraft", "MCGH Kafka Kraft Network Transmit Throughput", "NET", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-pods", "MCGH Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-pods", "MCGH Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-pods", "MCGH Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-pods", "MCGH Pod Network Transmit Throughput", "NET", w, h, q_names)
+
+  return q_names
+
+
 def node_queries(report_dir, route, token, end_ts, duration, w, h):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
@@ -804,6 +855,9 @@ def main():
   if "open-cluster-management" in namespaces:
     logger.info("open-cluster-management namespace found, querying for acm metrics")
     report_data["acm"] = acm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "multicluster-global-hub" in namespaces:
+    logger.info("multicluster-global-hub namespace found, querying for mcgh metrics")
+    report_data["mcgh"] = mcgh_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   if "ansible-automation-platform" in namespaces:
     logger.info("ansible-automation-platform namespace found, querying for aap metrics")
     report_data["aap"] = aap_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
