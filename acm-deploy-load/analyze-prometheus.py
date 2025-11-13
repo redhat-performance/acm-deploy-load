@@ -39,7 +39,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # TODO:
 # * Gather cluster data to make decisions for queries:
 #   * Node Count (Is it an SNO, Compact or standard)
-# * Fix timeseries with coming and leaving pods
 # * Graph cluster/node disk (throughput, iops)
 # * ACM Policy Engine Pods CPU/Memory, work queue?
 # * Node kubelet, crio cpu/memory
@@ -65,8 +64,8 @@ def aap_queries(report_dir, route, token, end_ts, duration, w, h):
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
   # Interesting AAP Objects:
-  q = "apiserver_storage_objects{resource='ansiblejobs.tower.ansible.com'}"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "aap-aj", "AnsibleJob Objects", "Count", w, h, q_names)
+  # q = "apiserver_storage_objects{resource='ansiblejobs.tower.ansible.com'}"
+  # query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "aap-aj", "AnsibleJob Objects", "Count", w, h, q_names)
 
   # AAP Namespace
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform'})"
@@ -79,6 +78,10 @@ def aap_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "ansible-automation-platform", token, end_ts, duration, sub_report_dir, "net-xmt-aap", "ansible-automation-platform Network Transmit Throughput", "NET", w, h, q_names)
 
   # AAP Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-gateway-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-gateway-operator", "AAP Gateway Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-gateway-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-gateway-operator", "AAP Gateway Operator Memory Usage", "MEM", w, h, q_names)
   q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automation-controller-operator-controller-manager-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-operator", "AAP Automation Controller Operator CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automation-controller-operator-controller-manager-.*'})"
@@ -91,52 +94,92 @@ def aap_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-operator", "AAP EDA Operator CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'eda-server-operator-controller-manager-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-operator", "AAP EDA Operator Memory Usage", "MEM", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'ansible-lightspeed-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-lightspeed-operator", "AAP Lightspeed Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'ansible-lightspeed-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-lightspeed-operator", "AAP Lightspeed Operator Memory Usage", "MEM", w, h, q_names)
   q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'resource-operator-controller-manager-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-resource-operator", "AAP Resource Operator CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'resource-operator-controller-manager-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-resource-operator", "AAP Resource Operator Memory Usage", "MEM", w, h, q_names)
 
+  # AAP Postgres and Redis Pod
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-postgres-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-postgres", "AAP Postgres CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-postgres-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-postgres", "AAP Postgres Memory Usage", "MEM", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-redis-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-redis", "AAP Redis CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-redis-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-redis", "AAP Redis Memory Usage", "MEM", w, h, q_names)
+
   # AAP Automation Controller pods
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationcontroller-postgres-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-postgres", "Automation Controller Postgres CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationcontroller-postgres-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ac-postgres", "Automation Controller Postgres Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationcontroller-task-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-task", "Automation Controller Task CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationcontroller-task-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ac-task", "Automation Controller Task Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationcontroller-web-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-web", "Automation Controller Web CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationcontroller-web-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ac-web", "Automation Controller Web Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-controller-task-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-task", "AAP Controller Task CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-controller-task-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ac-task", "AAP Controller Task Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-controller-web-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ac-web", "AAP Controller Web CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-controller-web-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ac-web", "AAP Controller Web Memory Usage", "MEM", w, h, q_names)
 
   # AAP Automation Hub pods
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationhub-api-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-api", "Automation Hub Api CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationhub-api-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-api", "Automation Hub Api Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationhub-content-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-content", "Automation Hub Content CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationhub-content-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-content", "Automation Hub Content Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationhub-postgres-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-postgres", "Automation Hub Postgres CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationhub-postgres-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-postgres", "Automation Hub Postgres Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationhub-redis-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-redis", "Automation Hub Redis CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationhub-redis-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-redis", "Automation Hub Redis Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automationhub-worker-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-worker", "Automation Hub Worker CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automationhub-worker-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-worker", "Automation Hub Worker Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-hub-api-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-api", "AAP Hub Api CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-hub-api-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-api", "AAP Hub Api Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-hub-content-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-content", "AAP Hub Content CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-hub-content-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-content", "AAP Hub Content Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-hub-redis-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-redis", "AAP Hub Redis CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-hub-redis-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-redis", "AAP Hub Redis Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-hub-web-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-web", "AAP Hub Web CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-hub-web-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-web", "AAP Hub Web Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-hub-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-ah-worker", "AAP Hub Worker CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-hub-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-ah-worker", "AAP Hub Worker Memory Usage", "MEM", w, h, q_names)
+
+  # AAP EDA pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-eda-activation-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-activation-worker", "EDA Activation Worker CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-eda-activation-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-activation-worker", "EDA Activation Worker Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-eda-api-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-api", "EDA Api CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-eda-api-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-api", "EDA Api Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-eda-default-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-default-worker", "EDA Default Worker CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-eda-default-worker-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-default-worker", "EDA Default Worker Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-eda-event-stream-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-event-stream", "EDA Event Stream CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-eda-event-stream-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-event-stream", "EDA Event Stream Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'aap-eda-scheduler-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-scheduler", "EDA Scheduler CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'aap-eda-scheduler-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-scheduler", "EDA Scheduler Memory Usage", "MEM", w, h, q_names)
+
+  # AAP EDA Activation Job pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'activation-job-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-eda-activation-jobs", "EDA Activation Jobs CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'activation-job-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-eda-activation-jobs", "EDA Activation Jobs Memory Usage", "MEM", w, h, q_names)
 
   # AAP Automation Job pods
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automation-job-.*'})"
-  query_thanos(route, q, "Automation Job Pods", token, end_ts, duration, sub_report_dir, "cpu-aap-jobs", "AAP Automation Jobs CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automation-job-.*'})"
-  query_thanos(route, q, "Automation Job Pods", token, end_ts, duration, sub_report_dir, "mem-aap-jobs", "AAP Automation Jobs Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='ansible-automation-platform',pod=~'automation-job-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-automation-jobs", "AAP Automation Jobs CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automation-job-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-automation-jobs", "AAP Automation Jobs Memory Usage", "MEM", w, h, q_names)
 
   return q_names
 
@@ -280,7 +323,9 @@ def etcd_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "total-leader-elections", "ETCD Leader Elections Per Day", "Count", w, h, q_names)
   q = "max by (pod) (etcd_server_leader_changes_seen_total)"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "leader-changes", "ETCD Max Leader Changes", "Count", w, h, q_names)
-  q = "histogram_quantile(0.99, irate(etcd_network_peer_round_trip_time_seconds_bucket[1m]))"
+
+  # Summing by pod means latencies between each other member are "summed" FYI
+  q = "sum by (pod) (histogram_quantile(0.99, irate(etcd_network_peer_round_trip_time_seconds_bucket[1m])))"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "peer-roundtrip-time", "ETCD Peer Roundtrip Time", "Seconds", w, h, q_names)
   return q_names
 
@@ -298,6 +343,11 @@ def gitops_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-rcv-gitops", "OpenShift GitOps Network Receive Throughput", "NET", w, h, q_names)
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'openshift-gitops'}[5m]))"
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-xmt-gitops", "OpenShift GitOps Network Transmit Throughput", "NET", w, h, q_names)
+  # split by pods in the namespaces
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-gitops'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-gitops-pod", "OpenShift GitOps CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='openshift-gitops'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-gitops-pod", "OpenShift GitOps Memory Usage", "MEM", w, h, q_names)
   return q_names
 
 
@@ -344,6 +394,57 @@ def metal3_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def mcgh_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "mcgh")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # MCGH CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub'})"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "cpu-mcgh", "MCGH CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub'})"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "mem-mcgh", "MCGH Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub'}[5m]))"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh", "MCGH Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub'}[5m]))"
+  query_thanos(route, q, "multicluster-global-hub", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh", "MCGH Network Transmit Throughput", "NET", w, h, q_names)
+
+  # MCGH pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'amq-streams-cluster-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-amq-streams-cluster-operator", "MCGH AMQ Streams Cluster Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'amq-streams-cluster-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-amq-streams-cluster-operator", "MCGH AMQ Streams Cluster Operator Memory Usage", "MEM", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-entity-operator-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-kafka-entity-operator", "MCGH Kafka Entity Operator Network Transmit Throughput", "NET", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-kafka-kraft", "MCGH Kafka Kraft CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-kafka-kraft", "MCGH Kafka Kraft Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-kafka-kraft", "MCGH Kafka Kraft Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'kafka-kraft-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-kafka-kraft", "MCGH Kafka Kraft Network Transmit Throughput", "NET", w, h, q_names)
+
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mcgh-pods", "MCGH Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mcgh-pods", "MCGH Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mcgh-pods", "MCGH Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-global-hub',pod=~'multicluster-global-hub-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mcgh-pods", "MCGH Pod Network Transmit Throughput", "NET", w, h, q_names)
+
+  return q_names
+
+
 def node_queries(report_dir, route, token, end_ts, duration, w, h):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
@@ -353,7 +454,7 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by(node) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!=''})"
   query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/'} - node_filesystem_avail_bytes{mountpoint='/'})"
+  q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/sysroot'} - node_filesystem_avail_bytes{mountpoint='/sysroot'})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-root-node", "Node / usage", "DISK", w, h, q_names)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/var/lib/etcd'} - node_filesystem_avail_bytes{mountpoint='/var/lib/etcd'})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-etcd-node", "Node /var/lib/etcd usage", "DISK", w, h, q_names)
@@ -395,13 +496,11 @@ def ocp_queries(report_dir, route, token, end_ts, duration, w, h):
     # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'" + ns + "'}[5m]))"
     # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-xmt-{}".format(ns), "{} Network Transmit Throughput".format(ns), "NET", w, h, q_names)
 
-    # Need to capture per-pod level detail too most likely
-    # Needs work as pods don't always "survive" complete query time period
-    # # split by pods in the namespaces
-    # q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
-    # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
-    # q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='" + ns + "'})"
-    # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "MEM", w, h, q_names)
+    # split by pods in the namespaces
+    q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
+    q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='" + ns + "'})"
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "MEM", w, h, q_names)
 
   q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
   query_thanos(route, q, "container", token, end_ts, duration, sub_report_dir, "pod-restarts", "Pod Restarts > 3", "Count", w, h, q_names)
@@ -482,7 +581,7 @@ def ztp_day2_queries(report_dir, route, token, end_ts, duration, w, h):
 
 
 def query_thanos(route, query, series_label, token, end_ts, duration, directory, fname, g_title, y_unit, g_width, g_height, q_names, resolution="1m"):
-  logger.info("Querying data")
+  logger.info("Querying data for {}".format(fname))
   if fname in q_names:
     logger.error("Query name already exists")
     sys.exit(1)
@@ -756,6 +855,9 @@ def main():
   if "open-cluster-management" in namespaces:
     logger.info("open-cluster-management namespace found, querying for acm metrics")
     report_data["acm"] = acm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "multicluster-global-hub" in namespaces:
+    logger.info("multicluster-global-hub namespace found, querying for mcgh metrics")
+    report_data["mcgh"] = mcgh_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   if "ansible-automation-platform" in namespaces:
     logger.info("ansible-automation-platform namespace found, querying for aap metrics")
     report_data["aap"] = aap_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
