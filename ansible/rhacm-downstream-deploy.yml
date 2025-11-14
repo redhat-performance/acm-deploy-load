@@ -6,13 +6,16 @@
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-deploy.yml
 #
 
-- name: Setup downstream RHACM ICSP
+- name: Setup downstream RHACM Mirror
   hosts: bastion
   vars_files:
   - vars/all.yml
+  vars:
+    wait_for_machineconfigpool_update: false
   roles:
-  - rhacm-hub-icsp
+  - rhacm-hub-mirror
 
+# Konflux builds no longer require this workaround
 - name: Fix ipv6/disconnected nodes /etc/containers/registries.conf for tag mirroring
   hosts: fix_icsp_nodes
   vars_files:

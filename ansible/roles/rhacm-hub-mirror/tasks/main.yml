@@ -1,33 +1,58 @@
 ---
-# rhacm-hub-icsp tasks
+# rhacm-hub-mirror tasks
 
 - name: Create directory for rhacm deployment
   file:
     path: "{{ install_directory }}/rhacm-deploy"
     state: directory
 
-- name: Create ImageContentSourcePolicy on hub cluster
-  when: not is_konflux_build
-  template:
-    src: icsp.yaml.j2
-    dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"
-
-- name: Create ImageContentSourcePolicy on hub cluster
+- name: Konflux build tasks
   when: is_konflux_build
-  template:
-    src: icsp-konflux.yaml.j2
-    dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"
+  block:
+  - name: Create ImageDigestMirrorSet manifest
+    template:
+      src: idms-konflux.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/idms.yml"
 
-- name: Check if icsp exists
-  shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageContentSourcePolicy rhacm-repo
-  ignore_errors: true
-  register: icsp_exists
+  - name: Check if idms exists
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageDigestMirrorSet rhacm-repo
+    ignore_errors: true
+    register: idms_exists
 
-- name: Apply ImageContentSourcePolicy to hub cluster
-  shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/icsp.yml"
-  when: icsp_exists.rc == 1
+  - name: Apply ImageDigestMirrorSet to hub cluster
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/idms.yml"
+    when: idms_exists.rc == 1
+
+  - name: Enable wait for MachineConfigPools to update
+    set_fact:
+      wait_for_machineconfigpool_update: true
+    when: idms_exists.rc == 1
+
+- name: Non-Konflux build tasks
+  when: not is_konflux_build
+  block:
+  - name: Create ImageContentSourcePolicy manifest
+    template:
+      src: icsp.yaml.j2
+      dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"
+
+  - name: Check if icsp exists
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageContentSourcePolicy rhacm-repo
+    ignore_errors: true
+    register: icsp_exists
+
+  - name: Apply ImageContentSourcePolicy to hub cluster
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/icsp.yml"
+    when: icsp_exists.rc == 1
+
+  - name: Enable wait for MachineConfigPools to update
+    set_fact:
+      wait_for_machineconfigpool_update: true
+    when: icsp_exists.rc == 1
 
 - name: Determine if we enable worker mcp
   shell: |
@@ -41,12 +66,12 @@
   delay: 5
   retries: 30
   until: result.stdout == "True"
-  with_items:
+  loop:
   - mcp: master
   - mcp: worker
     enabled: "{{ enable_worker_mcp_count.stdout|int > 0 }}"
   when:
-  - icsp_exists.rc == 1
+  - wait_for_machineconfigpool_update
   - item.enabled | default(true)
 
 - name: Wait until MachineConfigPools are updated
@@ -56,12 +81,12 @@
   delay: 10
   retries: 120
   until: result.stdout == "True"
-  with_items:
+  loop:
   - master
   - worker
-  when: icsp_exists.rc == 1
+  when: wait_for_machineconfigpool_update
 
-- name: Obtain node ips for fixing ICSP mirroring
+- name: Obtain node ips to enable workaround for tag mirroring with ICSP
   when:
   - not is_konflux_build
   - rhacm_icsp_enable_tag_mirror
@@ -85,4 +110,4 @@
       ansible_user: "core"
       ansible_ssh_common_args: |-
         -o ControlMaster=no -o ControlPersist=no -o ProxyCommand='ssh -i {{ playbook_dir }}/.cluster_key -W %h:%p {{ ansible_user }}@{{ inventory_hostname }}'
-    with_items: "{{ all_node_ips.stdout_lines }}"
+    loop: "{{ all_node_ips.stdout_lines }}"
