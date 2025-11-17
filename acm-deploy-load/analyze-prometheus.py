@@ -224,6 +224,16 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management'}[5m]))"
   query_thanos(route, q, "ACM - open-cluster-management", token, end_ts, duration, sub_report_dir, "net-xmt-acm-ocm", "ACM open-cluster-management Network Transmit Throughput", "NET", w, h, q_names)
 
+  # ACM Open-cluster-management pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-ocm-pods", "Open-cluster-management Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-ocm-pods", "Open-cluster-management Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='open-cluster-management'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-acm-ocm-pods", "Open-cluster-management Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-ocm-pods", "Open-cluster-management Pod Network Transmit Throughput", "NET", w, h, q_names)
+
   # ACM MCE CPU/Memory/Network
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
   query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "cpu-acm-mce", "ACM MCE CPU Cores Usage", "CPU", w, h, q_names)
@@ -233,6 +243,16 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-rcv-acm-mce", "ACM MCE Network Receive Throughput", "NET", w, h, q_names)
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
   query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-xmt-acm-mce", "ACM MCE Network Transmit Throughput", "NET", w, h, q_names)
+
+  # ACM MCE pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-mce-pods", "MCE Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-engine'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-mce-pods", "MCE Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-acm-mce-pods", "MCE Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-mce-pods", "MCE Pod Network Transmit Throughput", "NET", w, h, q_names)
 
   # ACM Open-cluster-management SiteConfig Operator CPU/Memory
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management',pod=~'siteconfig-controller-manager.*'})"
@@ -257,6 +277,16 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "ACM - Observability", token, end_ts, duration, sub_report_dir, "cpu-acm-obs", "ACM Observability CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='open-cluster-management-observability'})"
   query_thanos(route, q, "ACM - Observability", token, end_ts, duration, sub_report_dir, "mem-acm-obs", "ACM Observability Memory Usage", "MEM", w, h, q_names)
+
+  # ACM Observability pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management-observability'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-obs-pods", "ACM Observability Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management-observability'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-obs-pods", "ACM Observability Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='open-cluster-management-observability'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-acm-obs-pods", "ACM Observability Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management-observability'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-obs-pods", "ACM Observability Pod Network Transmit Throughput", "NET", w, h, q_names)
 
   q = "sum(container_memory_working_set_bytes{cluster='',namespace='open-cluster-management-observability', pod=~'observability-thanos-receive-default.*', container!=''})"
   query_thanos(route, q, "ACM - Observability Receiver", token, end_ts, duration, sub_report_dir, "mem-acm-obs-rcv-total", "ACM Observability Receiver Memory Usage", "MEM", w, h, q_names)
@@ -528,7 +558,7 @@ def ocp_queries(report_dir, route, token, end_ts, duration, w, h):
     q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
     query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
     q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='" + ns + "'})"
-    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "MEM", w, h, q_names)
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
 
   q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
   query_thanos(route, q, "container", token, end_ts, duration, sub_report_dir, "pod-restarts", "Pod Restarts > 3", "Count", w, h, q_names)
