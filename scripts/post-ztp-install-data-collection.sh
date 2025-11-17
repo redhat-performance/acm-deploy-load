@@ -7,12 +7,8 @@ output_dir=${results_dir}/install-data
 mkdir -p ${output_dir}
 
 if [ "$1" == "-k" ]; then
-  echo "$(date -u) :: Getting sno cluster kubeconfigs"
-  ls /root/hv-vm/sno/ai-manifest/ | sed 's/-manifest.yml//g' | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/% ;oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
-  echo "$(date -u) :: Getting compact cluster kubeconfigs"
-  ls /root/hv-vm/compact/manifests/ | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/%; oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
-  echo "$(date -u) :: Getting standard cluster kubeconfigs"
-  ls /root/hv-vm/standard/manifests/ | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/%; oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
+  echo "$(date -u) :: Getting cluster kubeconfigs"
+  oc get managedcluster --no-headers | grep -v local | awk '{print $1}' | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/% ;oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
 fi
 
 echo "$(date -u) :: Collecting clusterversion, clusteroperators, featuregate, etcd, csv, nodes, namespaces and pod/event data"
