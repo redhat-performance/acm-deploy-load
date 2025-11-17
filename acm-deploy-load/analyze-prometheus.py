@@ -351,6 +351,34 @@ def gitops_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def hive_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "hive")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # Hive CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='hive'})"
+  query_thanos(route, q, "hive", token, end_ts, duration, sub_report_dir, "cpu-hive", "Hive CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='hive'})"
+  query_thanos(route, q, "hive", token, end_ts, duration, sub_report_dir, "mem-hive", "Hive Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='hive'}[5m]))"
+  query_thanos(route, q, "hive", token, end_ts, duration, sub_report_dir, "net-rcv-hive", "Hive Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='hive'}[5m]))"
+  query_thanos(route, q, "hive", token, end_ts, duration, sub_report_dir, "net-xmt-hive", "Hive Network Transmit Throughput", "NET", w, h, q_names)
+
+  # Hive pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='hive'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-hive-pods", "Hive Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='hive'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-hive-pods", "Hive Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='hive'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-hive-pods", "Hive Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='hive'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-hive-pods", "Hive Pod Network Transmit Throughput", "NET", w, h, q_names)
+
+  return q_names
+
+
 def lso_queries(report_dir, route, token, end_ts, duration, w, h):
   # Local-Storage-Operator Prometheus Queries
   sub_report_dir = os.path.join(report_dir, "lso")
@@ -846,6 +874,9 @@ def main():
   if "openshift-gitops" in namespaces:
     logger.info("openshift-gitops namespace found, querying for gitops metrics")
     report_data["gitops"] = gitops_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "hive" in namespaces:
+    logger.info("hive namespace found, querying for hive metrics")
+    report_data["hive"] = hive_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   if "openshift-local-storage" in namespaces:
     logger.info("openshift-local-storage namespace found, querying for lso metrics")
     report_data["lso"] = lso_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
