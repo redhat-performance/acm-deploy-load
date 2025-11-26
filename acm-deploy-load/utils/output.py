@@ -77,7 +77,7 @@ def generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wa
     failed_du_percent = round(100 - success_du_percent, 1)
     success_overall_percent = round((monitor_data["policy_compliant"] / monitor_data["cluster_applied_committed"]) * 100, 1)
     failed_overall_percent = round(100 - success_overall_percent, 1)
-  if monitor_data["policy_compliant"] > 0:
+  if cliargs.wait_playbook:
     success_playbook_percent = round((monitor_data["playbook_completed"] / monitor_data["policy_compliant"]) * 100, 1)
     failed_playbook_percent = round(100 - success_playbook_percent, 1)
     success_overall_percent = round((monitor_data["playbook_completed"] / monitor_data["cluster_applied_committed"]) * 100, 1)
