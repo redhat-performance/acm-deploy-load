@@ -31,11 +31,10 @@ data:
       mirror-by-digest-only = false
 
       [[registry.mirror]]
-        {% if is_konflux_build %}
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2"
-        {% else %}
+
+      [[registry.mirror]]
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
-        {% endif %}
 
     [[registry]]
       prefix = ""
@@ -43,11 +42,11 @@ data:
       mirror-by-digest-only = false
 
       [[registry.mirror]]
-        {% if is_konflux_build %}
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine"
-        {% else %}
+
+      [[registry.mirror]]
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
-        {% endif %}
+
     [[registry]]
       prefix = ""
       location = "quay.io/ocpmetal"
@@ -78,11 +77,10 @@ data:
       mirror-by-digest-only = false
 
       [[registry.mirror]]
-        {% if is_konflux_build %}
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2"
-        {% else %}
+
+      [[registry.mirror]]
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
-        {% endif %}
 {% endif %}
 
     [[registry]]
