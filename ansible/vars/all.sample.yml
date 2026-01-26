@@ -37,7 +37,7 @@ rhacm_build:
 # Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
 mce_build:
 # Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
-acm_source: cs-redhat-operator-index-v4-19
+acm_source: cs-redhat-operator-index-v4-20
 acm_channel: release-2.15
 
 rhacm_disableHubSelfManagement: false
@@ -60,10 +60,10 @@ talm_operator_source: redhat-operators
 # Deploy TALM via Repo
 setup_talm_repo: true
 talm_repo: https://github.com/openshift-kni/cluster-group-upgrades-operator.git
-talm_repo_branch: release-4.19
-talm_image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.19.0
-talm_precache_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-precache:4.19.0"
-talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-recovery:4.19.0"
+talm_repo_branch: release-4.20
+talm_image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.20.0
+talm_precache_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-precache:4.20.0"
+talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-recovery:4.20.0"
 
 # Apply ZTP argocd patches and create the argocd applications
 setup_rhacm_ztp_patches: true
@@ -73,14 +73,14 @@ setup_ztp_policy_application: true
 
 # MCE Assisted-installer items (Installed with RHACM)
 mce_assisted_ocp_versions:
-- quay.io/openshift-release-dev/ocp-release:4.19.13-x86_64
-- quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.20.11-x86_64
 mce_assisted_service_namespace: multicluster-engine
 mce_clusterimagesets:
-- name: openshift-4.19.13
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.19.13-x86_64
-- name: openshift-4.19.14
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
+- name: openshift-4.20.10
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
+- name: openshift-4.20.11
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.20.11-x86_64
 
 # Enable SiteConfig Operator in ACM (Included since ACM 2.12)
 acm_enable_siteconfig: false
