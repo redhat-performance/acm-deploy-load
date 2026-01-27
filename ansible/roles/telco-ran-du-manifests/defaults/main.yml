@@ -1,5 +1,5 @@
 ---
-# sno-create-manifests default vars
+# telco-ran-du-manifests default vars
 
 hv_vm_manifests_directory: /root/hv-vm
 
