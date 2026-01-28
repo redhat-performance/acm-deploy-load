@@ -1,50 +1,42 @@
 ---
 # telco-core-manifests tasks
 
-- name: Download ocpinventory.json
-  uri:
-    url: "{{ ocp_inventory }}"
-    return_content: true
-  register: ocpinventory
-  when: ocp_inventory | regex_search('^http')
-
-- name: Load {{ ocp_inventory }}
-  set_fact:
-    ocpinventory:
-      json: "{{ lookup('file', ocp_inventory) }}"
-  when: "'skipped' in ocpinventory"
+# - debug:
+#     msg: "{{ telco_core_clusters }}"
 
 - name: Create directory for telco-core manifest files
   file:
-    path: "{{ install_directory }}/telco-core-manifests"
+    path: "{{ item }}"
     state: directory
-
-- name: Set initial core_cluster_nodes list
-  set_fact:
-    core_cluster_nodes: []
-
-- name: Do not append to list any node on denylist
-  set_fact:
-    core_cluster_nodes: "{{ core_cluster_nodes + [item]}}"
-  when: item.pm_addr not in denylist_nodes
-  loop: "{{ ocpinventory.json.nodes }}"
-
-- name: Original Count of nodes
-  debug:
-    msg: "{{ ocpinventory.json.nodes | length }}"
-
-- name: Remaining nodes after removing denylist nodes
-  debug:
-    msg: "{{ core_cluster_nodes | length }}"
-
-- name: Create telco-core manifests
-  template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
   loop:
-  - src: telco-core-clusterinstance.yml.j2
-    dest: "{{ install_directory }}/telco-core-manifests/telco-core-clusterinstance.yml"
-  - src: telco-core-siteconfig.yml.j2
-    dest: "{{ install_directory }}/telco-core-manifests/telco-core-siteconfig.yml"
-  - src: telco-core-resources.yml.j2
-    dest: "{{ install_directory }}/telco-core-manifests/telco-core-resources.yml"
+  - "{{ install_directory }}/telco-core-manifests"
+  - "{{ install_directory }}/telco-core-manifests/clusterinstance"
+  - "{{ install_directory }}/telco-core-manifests/siteconfig"
+
+- name: Set pull-secret for bastion registry
+  set_fact:
+    pull_secret: "{{ disconnected_pull_secret | from_json }}"
+  delegate_to: "{{ groups['bastion'][0] }}"
+  run_once: true
+  when: rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
+
+- name: Create telco-core clusterinstances
+  template:
+    src: telco-core-clusterinstance.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/clusterinstance/{{ item.cluster_name }}-clusterinstance.yml"
+  loop: "{{ telco_core_clusters }}"
+
+# Siteconfig no longer has a reference after 4.19
+- name: Create telco-core siteconfigs
+  template:
+    src: telco-core-siteconfig.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/siteconfig/{{ item.cluster_name }}-siteconfig.yml"
+  loop: "{{ telco_core_clusters }}"
+  when: core_ocp_version in ['4.18', '4.19']
+
+- name: Create telco-core resources
+  template:
+    src: telco-core-resources.yml.j2
+    dest: "{{ install_directory }}/telco-core-manifests/siteconfig/{{ item.cluster_name }}-resources.yml"
+  loop: "{{ telco_core_clusters }}"
+  when: core_ocp_version in ['4.18', '4.19']

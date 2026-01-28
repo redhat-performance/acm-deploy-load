@@ -1,0 +1,59 @@
+---
+# telco-core-vm-inventory generatecluster tasks
+#
+# This task file is used to assemble the data to create manifests for multiple VM Telco Core cluster
+#
+
+- name: Set VM offset
+  set_fact:
+    vm_offset: "{{ vm_offset | default(0) }}"
+    node_list: []
+
+# - name: Debug Vars
+#   debug:
+#     msg: "{{ item }}"
+#   loop:
+#   - "cluster_index: {{ cluster_index }}"
+#   - "cluster_def: {{ cluster_def }}"
+#   - "vm_offset: {{ vm_offset }}"
+
+- name: Generate nodes array per cluster
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': groups['hv_vm'][vmIdx],
+        'bmc_address': 'redfish-virtualmedia+http://[' ~ hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] ~ ']:9000/redfish/v1/Systems/' ~ hostvars[groups['hv_vm'][vmIdx]]['domain_uuid'],
+        'bmc_user': bmc_username_base64,
+        'bmc_password': bmc_password_base64,
+        'boot_mode': core_boot_mode,
+        'mac_address': hostvars[groups['hv_vm'][vmIdx]]['mac_address'],
+        'ip_address': hostvars[groups['hv_vm'][vmIdx]]['ip'],
+        'prefix_length': hostvars[groups['hv_vm'][vmIdx]]['network_prefix'],
+        'dns_address': hostvars[groups['hv_vm'][vmIdx]]['hv_ip'],
+        'default_gateway_address': hostvars[groups['hv_vm'][vmIdx]]['gateway']
+      }
+    ] }}"
+  loop: "{{ range(vm_offset, vm_offset + cluster_def.workers + 3) | list}}"
+  loop_control:
+    loop_var: vmIdx
+
+- name: Append Virtual Machine Telco Core Cluster data to telco_core_clusters
+  set_fact:
+    telco_core_clusters: "{{ telco_core_clusters + [
+      {
+        'cluster_name': 'standard-' ~ ('%05d' | format(cluster_index + 1)),
+        'cluster_network': 'fd01::/48' if hostvars[groups['hv_vm'][vm_offset]]['hv_ip'] | ansible.utils.ipv6 else '10.128.0.0/14',
+        'base_domain': core_cluster_base_domain,
+        'host_prefix': 64 if hostvars[groups['hv_vm'][vm_offset]]['hv_ip'] | ansible.utils.ipv6 else 24,
+        'api_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((cluster_index + 1) * -2)),
+        'ingress_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost( ((cluster_index + 1) * -2) - 1),
+        'service_network': 'fd02::/112' if hostvars[groups['hv_vm'][vm_offset]]['hv_ip'] | ansible.utils.ipv6 else '172.30.0.0/16',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset]]['hv_ip'],
+        'nodes': node_list
+      }
+    ] }}"
+
+- name: Set VM offset
+  set_fact:
+    vm_offset: "{{ vm_offset + cluster_def.workers + 3 }}"

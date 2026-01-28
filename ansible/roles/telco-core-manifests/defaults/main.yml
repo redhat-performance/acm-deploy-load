@@ -1,6 +1,15 @@
 ---
 # telco-core-manifests default vars
 
+# Provide pull-secret for connected manifests
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
+
+# Disconnected registry pull secret
+auth_encoded: "{{ (registry_user + ':' + registry_password) | b64encode }}"
+disconnected_pull_secret: '{"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}": {"auth": "{{ auth_encoded }}"}}}'
+
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
 telco_core_clusterinstance_extra_manifests: false
 telco_core_clusterinstance_custom_manifests: false
 
@@ -14,3 +23,6 @@ telco_core_extra_manifests:
 - mount_namespace_config_worker.yaml
 - sctp_module_mc.yaml
 - worker-load-kernel-modules.yaml
+
+# Enable observability for Telco Core clusters
+telco_core_observability: true

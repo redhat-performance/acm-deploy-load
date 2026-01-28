@@ -2,31 +2,29 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ cluster_name }}
+  name: {{ item.cluster_name }}
   labels:
-    name: {{ cluster_name }}
+    name: {{ item.cluster_name }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: assisted-deployment-pull-secret
-  namespace: {{ cluster_name }}
+  namespace: {{ item.cluster_name }}
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: "{{ pull_secret | to_json | b64encode }}"
-{% for node in core_cluster_nodes %}
-{%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
-{%   set sno_short_hostname=(sno_long_hostname.split('.')[0]) %}
+{% for node in item.nodes %}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ sno_short_hostname }}-bmc-secret
-  namespace: {{ cluster_name }}
+  name: {{ node.hostname }}-bmc-secret
+  namespace: {{ item.cluster_name }}
 type: Opaque
 data:
-  password: {{ node.pm_password | b64encode }}
-  username: {{ node.pm_user | b64encode }}
+  password: {{ node.bmc_password | b64encode }}
+  username: {{ node.bmc_user | b64encode }}
 {% endfor %}
 {% if telco_core_clusterinstance_extra_manifests %}
 ---
@@ -34,7 +32,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: extra-manifests-configmap
-  namespace: {{ cluster_name }}
+  namespace: {{ item.cluster_name }}
 data:
 {%   for item in telco_core_extra_manifests %}
   {{ item }}: |
@@ -45,15 +43,15 @@ data:
 apiVersion: siteconfig.open-cluster-management.io/v1alpha1
 kind: ClusterInstance
 metadata:
-  name: {{ cluster_name }}
-  namespace: {{ cluster_name }}
+  name: {{ item.cluster_name }}
+  namespace: {{ item.cluster_name }}
 spec:
-  baseDomain: {{ core_cluster_base_domain }}
+  baseDomain: {{ item.base_domain }}
   pullSecretRef:
     name: "assisted-deployment-pull-secret"
-  clusterImageSetNameRef: {{ cluster_image_set }}
+  clusterImageSetNameRef: {{ core_cluster_image_set }}
   sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
-  clusterName: {{ cluster_name }}
+  clusterName: {{ item.cluster_name }}
   networkType: OVNKubernetes
   clusterType: HighlyAvailable
   # Reference configuration extra manifests
@@ -77,74 +75,85 @@ spec:
   extraLabels:
     ManagedCluster:
       common: "core"
-      version: "4.18"
+      version: "{{ core_ocp_version }}"
       region: "zone-1"
-      name: {{ cluster_name }}
+      name: {{ item.cluster_name }}
       vendor: OpenShift
+{% if telco_core_observability %}
+      observability: enabled
+{% else %}
       observability: disabled
+{% endif %}
   clusterNetwork:
-  - cidr: {{ core_cluster_cluster_network }}
-    hostPrefix: {{ core_cluster_host_prefix }}
+  - cidr: {{ item.cluster_network }}
+    hostPrefix: {{ item.host_prefix }}
   apiVIPs:
-  - {{ core_cluster_api_address }}
+  - {{ item.api_address }}
   ingressVIPs:
-  - {{ core_cluster_ingress_address }}
+  - {{ item.ingress_address }}
   serviceNetwork:
-  - cidr: {{ core_cluster_service_network }}
+  - cidr: {{ item.service_network }}
   machineNetwork:
-  - cidr: {{ core_cluster_machine_network }}
+  - cidr: {{ item.machine_network }}
   additionalNTPSources:
-  - {{ core_cluster_ntp_source }}
+  - {{ item.ntp_source }}
+  ignitionConfigOverride: "{\"ignition\":{\"version\":\"3.2.0\"},\"storage\":{\"files\":[{\"path\":\"/etc/containers/policy.json\",\"mode\":420,\"overwrite\":true,\"contents\":{\"source\":\"data:text/plain;charset=utf-8;base64,ewogICAgImRlZmF1bHQiOiBbCiAgICAgICAgewogICAgICAgICAgICAidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIgogICAgICAgIH0KICAgIF0sCiAgICAidHJhbnNwb3J0cyI6CiAgICAgICAgewogICAgICAgICAgICAiZG9ja2VyLWRhZW1vbiI6CiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgIiI6IFt7InR5cGUiOiJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIn1dCiAgICAgICAgICAgICAgICB9CiAgICAgICAgfQp9\"}}]}}"
   templateRefs:
   - name: ai-cluster-templates-v1
     namespace: open-cluster-management
   nodes:
-{% for node in core_cluster_nodes %}
-{%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
-{%   set sno_short_hostname=(sno_long_hostname.split('.')[0]) %}
-  - hostName: {{ sno_short_hostname }}
+{% for node in item.nodes %}
+  - hostName: {{ node.hostname }}
 {%   if loop.index <= 3 %}
     role: "master"
 {%   else %}
     role: "worker"
 {%   endif %}
     automatedCleaningMode: disabled
+    bmcAddress: {{ node.bmc_address }}
+    bmcCredentialsName:
+      name: {{ node.hostname }}-bmc-secret
+    bootMACAddress: {{ node.mac_address }}
+    bootMode: "{{ node.boot_mode }}"
     # ironicInspect defaults to enabled and consumes more time for inspection of nodes
     ironicInspect: disabled
-    # bmcAddress: redfish-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
-    bmcAddress: idrac-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
-    bmcCredentialsName:
-      name: {{ sno_short_hostname }}-bmc-secret
-    bootMACAddress: {{ node.mac[core_cluster_network_interface_idx] }}
-    bootMode: "UEFI"
-    # bootMode: "UEFISecureBoot"
     # rootDeviceHints:
     #   deviceName: "/dev/disk/by-path/pci-0000:00:11.5-ata-3.0"
     nodeNetwork:
       interfaces:
-      - macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+      - macAddress: {{ node.mac_address }}
         name: eno1
       config:
         interfaces:
         - name: eno1
           type: ethernet
           state: up
+{% if node.ip_address | ansible.utils.ipv4 %}
           ipv4:
             address:
-            - ip: {{ core_cluster_machine_network | ansible.utils.nthhost(loop.index0 + core_cluster_node_ip_offset) }}
-              prefix-length: {{ core_cluster_machine_network | ansible.utils.ipaddr('prefix') }}
+            - ip: {{ node.ip_address }}
+              prefix-length: {{ node.prefix_length }}
             enabled: true
           ipv6:
             enabled: false
+{% else %}
+          ipv4:
+            enabled: false
+          ipv6:
+            enabled: true
+            address:
+            - ip: {{ node.ip_address }}
+              prefix-length: {{ node.prefix_length }}
+{% endif %}
         dns-resolver:
           config:
             server:
-            - {{ core_cluster_dns_address }}
+            - {{ node.dns_address }}
         routes:
           config:
-          - destination: 0.0.0.0/0
+          - destination: {{ "::/0" if node.ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
             next-hop-interface: eno1
-            next-hop-address: {{ core_cluster_default_gateway_address }}
+            next-hop-address: {{ node.default_gateway_address }}
             table-id: 254
     templateRefs:
     - name: ai-node-templates-v1

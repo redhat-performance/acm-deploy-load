@@ -1,0 +1,4 @@
+---
+# telco-core-bm-inventory default vars
+
+telco_core_cluster_name: standard-00001

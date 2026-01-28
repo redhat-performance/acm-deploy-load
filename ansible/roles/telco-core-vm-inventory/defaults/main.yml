@@ -1,0 +1,6 @@
+---
+# telco-core-vm-inventory default vars
+
+# Used with bmc-secret
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"

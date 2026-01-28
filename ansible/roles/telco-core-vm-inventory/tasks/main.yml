@@ -1,0 +1,9 @@
+---
+# telco-core-vm-inventory tasks
+
+- name: Generate each cluster definition
+  include_tasks: generatecluster.yml
+  loop: "{{ cluster_definitions }}"
+  loop_control:
+    loop_var: cluster_def
+    index_var: cluster_index

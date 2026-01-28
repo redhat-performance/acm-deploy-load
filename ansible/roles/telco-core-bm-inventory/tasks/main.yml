@@ -1,0 +1,71 @@
+---
+# telco-core-bm-inventory tasks
+#
+# This role is used to assemble the data to create manifests for a single BM Telco Core cluster
+#
+
+- name: Download ocpinventory.json
+  uri:
+    url: "{{ ocp_inventory }}"
+    return_content: true
+  register: ocpinventory
+  when: '"http" in ocp_inventory'
+
+- name: Load {{ ocp_inventory }}
+  set_fact:
+    ocpinventory:
+      json: "{{ lookup('file', ocp_inventory) }}"
+  when: "'skipped' in ocpinventory"
+
+- name: Initialize lists
+  set_fact:
+    core_cluster_nodes: []
+    node_list: []
+
+- name: Do not append to list any node on denylist
+  set_fact:
+    core_cluster_nodes: "{{ core_cluster_nodes + [item]}}"
+  when: item.pm_addr not in denylist_nodes
+  loop: "{{ ocpinventory.json.nodes }}"
+
+- name: Original Count of nodes
+  debug:
+    msg: "{{ ocpinventory.json.nodes | length }}"
+
+- name: Remaining nodes after removing denylist nodes
+  debug:
+    msg: "{{ core_cluster_nodes | length }}"
+
+- name: Generate nodes array for telco_core_clusters inventory
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': item.name | split('.') | first,
+        'bmc_address': 'idrac-virtualmedia+https://' ~ item.pm_addr ~ '/redfish/v1/Systems/System.Embedded.1/',
+        'bmc_user': item.pm_user,
+        'bmc_password': item.pm_password,
+        'boot_mode': core_boot_mode,
+        'mac_address': item.mac[core_cluster_network_interface_idx | int],
+        'ip_address': core_cluster_machine_network | ansible.utils.nthhost(loopIndex + core_cluster_node_ip_offset | int),
+        'prefix_length': core_cluster_machine_network | ansible.utils.ipaddr('prefix'),
+        'dns_address': core_cluster_dns_address,
+        'default_gateway_address': core_cluster_default_gateway_address
+      }
+    ] }}"
+  loop: "{{ core_cluster_nodes }}"
+  loop_control:
+    index_var: loopIndex
+
+- name: Append Bare Metal Telco Core Cluster data to telco_core_clusters
+  set_fact:
+    telco_core_clusters:
+    - cluster_name: "{{ telco_core_cluster_name }}"
+      cluster_network: "{{ core_cluster_cluster_network }}"
+      base_domain: "{{ core_cluster_base_domain }}"
+      host_prefix: "{{ core_cluster_host_prefix }}"
+      api_address: "{{ core_cluster_api_address }}"
+      ingress_address: "{{ core_cluster_ingress_address }}"
+      service_network: "{{ core_cluster_service_network }}"
+      machine_network: "{{ core_cluster_machine_network }}"
+      ntp_source: "{{ core_cluster_ntp_source }}"
+      nodes: "{{ node_list }}"

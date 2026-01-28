@@ -1,21 +1,21 @@
-# Reference - https://github.com/openshift-kni/telco-reference/blob/main/telco-core/install/example-standard-siteconfig.yaml
+# Reference - https://github.com/openshift-kni/telco-reference/blob/release-4.18/telco-core/install/example-standard.yaml
 ---
 apiVersion: ran.openshift.io/v1
 kind: SiteConfig
 metadata:
-  name: {{ cluster_name }}
-  namespace: {{ cluster_name }}
+  name: {{ item.cluster_name }}
+  namespace: {{ item.cluster_name }}
 spec:
-  baseDomain: {{ core_cluster_base_domain }}
+  baseDomain: {{ item.base_domain }}
   pullSecretRef:
     name: "assisted-deployment-pull-secret"
-  clusterImageSetNameRef: {{ cluster_image_set }}
+  clusterImageSetNameRef: {{ core_cluster_image_set }}
   sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
   # Optionally; This can be used to configure desired BIOS setting on all hosts in this site:
   # biosConfigRef:
   #   filePath: "example-hw.profile"
   clusters:
-  - clusterName: {{ cluster_name }}
+  - clusterName: {{ item.cluster_name }}
     networkType: "OVNKubernetes"
     extraManifests:
       searchPaths:
@@ -25,29 +25,27 @@ spec:
         # - custom-manifests
     clusterLabels:
       common: "core"
-      version: "4.18"
+      version: "{{ core_ocp_version }}"
       region: "zone-1"
-      name: {{ cluster_name }}
+      name: {{ item.cluster_name }}
       vendor: OpenShift
       observability: disabled
     clusterNetwork:
-    - cidr: {{ core_cluster_cluster_network }}
-      hostPrefix: {{ core_cluster_host_prefix }}
+    - cidr: {{ item.cluster_network }}
+      hostPrefix: {{ item.host_prefix }}
     apiVIPs:
-    - {{ core_cluster_api_address }}
+    - {{ item.api_address }}
     ingressVIPs:
-    - {{ core_cluster_ingress_address }}
+    - {{ item.ingress_address }}
     serviceNetwork:
-    - {{ core_cluster_service_network }}
+    - {{ item.service_network }}
     machineNetwork:
-    - cidr: {{ core_cluster_machine_network }}
+    - cidr: {{ item.machine_network }}
     additionalNTPSources:
-    - {{ core_cluster_ntp_source }}
+    - {{ item.ntp_source }}
     nodes:
-{% for node in core_cluster_nodes %}
-{%   set sno_long_hostname=node.pm_addr | replace('mgmt-','') %}
-{%   set sno_short_hostname=(sno_long_hostname.split('.')[0]) %}
-    - hostName: {{ sno_short_hostname }}
+{% for node in item.nodes %}
+    - hostName: {{ node.hostname }}
 {%   if loop.index <= 3 %}
       role: "master"
 {%   else %}
@@ -55,18 +53,16 @@ spec:
 {%   endif %}
       # ironicInspect defaults to enabled and consumes more time for inspection of nodes
       ironicInspect: disabled
-      # bmcAddress: redfish-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
-      bmcAddress: idrac-virtualmedia+https://{{ node.pm_addr }}/redfish/v1/Systems/System.Embedded.1/
+      bmcAddress: {{ node.bmc_address }}
       bmcCredentialsName:
-        name: {{ sno_short_hostname }}-bmc-secret
-      bootMACAddress: {{ node.mac[core_cluster_network_interface_idx] }}
-      bootMode: "UEFI"
-      # bootMode: "UEFISecureBoot"
+        name: {{ node.hostname }}-bmc-secret
+      bootMACAddress: {{ node.mac_address }}
+      bootMode: "{{ node.boot_mode }}"
       # rootDeviceHints:
       #   deviceName: "/dev/disk/by-path/pci-0000:00:11.5-ata-3.0"
       nodeNetwork:
         interfaces:
-        - macAddress: {{ node.mac[core_cluster_network_interface_idx] }}
+        - macAddress: {{ node.mac_address }}
           name: eno1
         config:
           interfaces:
@@ -75,19 +71,19 @@ spec:
             state: up
             ipv4:
               address:
-              - ip: {{ core_cluster_machine_network | ansible.utils.nthhost(loop.index0 + core_cluster_node_ip_offset) }}
-                prefix-length: {{ core_cluster_machine_network | ansible.utils.ipaddr('prefix') }}
+              - ip: {{ node.ip_address }}
+                prefix-length: {{ node.prefix_length }}
               enabled: true
             ipv6:
               enabled: false
           dns-resolver:
             config:
               server:
-              - {{ core_cluster_dns_address }}
+              - {{ node.dns_address }}
           routes:
             config:
             - destination: 0.0.0.0/0
               next-hop-interface: eno1
-              next-hop-address: {{ core_cluster_default_gateway_address }}
+              next-hop-address: {{ node.default_gateway_address }}
               table-id: 254
 {% endfor %}
