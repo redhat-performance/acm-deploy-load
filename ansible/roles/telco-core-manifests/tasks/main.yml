@@ -13,12 +13,21 @@
   - "{{ install_directory }}/telco-core-manifests/clusterinstance"
   - "{{ install_directory }}/telco-core-manifests/siteconfig"
 
+# In older versions of Ansible, disconnected_pull_secret variable will be a dictionary and does not need a string to json conversion
+- name: Set pull-secret for bastion registry
+  set_fact:
+    pull_secret: "{{ disconnected_pull_secret }}"
+  when:
+  - rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
+  - disconnected_pull_secret is mapping
+
+# In modern versions of Ansible, disconnected_pull_secret variable will be a string and must be converted into json
 - name: Set pull-secret for bastion registry
   set_fact:
     pull_secret: "{{ disconnected_pull_secret | from_json }}"
-  delegate_to: "{{ groups['bastion'][0] }}"
-  run_once: true
-  when: rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
+  when:
+  - rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
+  - disconnected_pull_secret is string
 
 - name: Create telco-core clusterinstances
   template:
