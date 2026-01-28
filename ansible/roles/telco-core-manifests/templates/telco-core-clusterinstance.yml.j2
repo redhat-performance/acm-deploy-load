@@ -35,7 +35,7 @@ metadata:
   namespace: {{ item.cluster_name }}
 data:
 {%   for item in telco_core_extra_manifests %}
-  {{ item }}: |
+  {{ item | basename }}: |
     {{ lookup('file', 'extra-manifests/' + item ) | indent(4) }}
 {%   endfor %}
 {% endif %}

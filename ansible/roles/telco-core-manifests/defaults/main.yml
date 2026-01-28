@@ -15,14 +15,16 @@ telco_core_clusterinstance_custom_manifests: false
 
 # Manifest must exist in acm-deploy-load directory in order to be added to the extra-manifests configmap
 telco_core_extra_manifests:
-- control-plane-load-kernel-modules.yaml
+# - control-plane-load-kernel-modules.yaml
+- 4.20-newer/control-plane-load-kernel-modules.yaml
 - kdump-master.yaml
 - kdump-worker.yaml
 - mc_rootless_pods_selinux.yaml
 - mount_namespace_config_master.yaml
 - mount_namespace_config_worker.yaml
 - sctp_module_mc.yaml
-- worker-load-kernel-modules.yaml
+# - worker-load-kernel-modules.yaml
+- 4.20-newer/worker-load-kernel-modules.yaml
 
 # Enable observability for Telco Core clusters
 telco_core_observability: true
