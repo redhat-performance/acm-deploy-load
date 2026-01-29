@@ -1,8 +1,20 @@
 ---
 # telco-core-ztp default vars
 
-# Currently only the 4.18 profile has been placed and adjusted for this testing in this repo
-telco_core_profile_version: 4.18
+# Base repo with branch to host both cluster and policy applications and data
+cnf_features_deploy_repo: https://github.com/openshift-kni/cnf-features-deploy.git
+cnf_features_deploy_branch: release-4.20
+
+# Gogs service to commit repo to
+gogs_host: "[fc00:1000::1]"
+gogs_port: 10880
+gogs_username: testadmin
+gogs_password: testadmin
+
+# 4.18 or 4.20 profiles are available
+telco_core_profile_version: "4.20"
+telco_core_operator_index: registry.redhat.io/redhat/redhat-operator-index:v{{ telco_core_profile_version }}
+
 
 # Enable overriding the clusterlogging subscription reference CR channel
 telco_core_reference_cluster_logging_channel_override_enable: true
@@ -13,4 +25,7 @@ telco_core_reference_cluster_logging_channel_override: stable-6.1
 # version will be commented and your policy will be compliant regardless of the version
 # of the cluster logging operator installed.
 telco_core_cluster_logging_version_enable: false
-telco_core_cluster_logging_version: cluster-logging.v6.0.0
+telco_core_cluster_logging_version: cluster-logging.v6.2.0
+
+# Node Resource Topology scheduler image
+telco_core_nrt_scheduler_image: registry.redhat.io/openshift4/noderesourcetopology-scheduler-rhel9:v4.20.0

@@ -12,6 +12,15 @@
   - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/"
   - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/"
   - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/template-values"
+
+# ignore_errors because the directory may not exist
+- name: Copy clusterinstances
+  copy:
+    src: "{{ install_directory }}/telco-core-manifests/clusterinstance/"
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-core/"
+    remote_src: true
+  ignore_errors: true
 
 - name: Create Telco Core ZTP kustomization files in cnf-features-deploy
   template:
@@ -33,18 +42,26 @@
   - src: policy-application.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/ztp-core-policies.yaml"
 
-# https://github.com/openshift-kni/telco-reference/tree/release-4.18/telco-core/configuration
+# https://github.com/openshift-kni/telco-reference/tree/release-4.20/telco-core/configuration
 - name: Template Telco Core Profile policy manifests into cnf-features-deploy
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
+  when: item.enabled | default(true)
   loop:
   - src: release-{{ telco_core_profile_version }}/core-baseline.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
   - src: release-{{ telco_core_profile_version }}/core-overlay.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
-  - src: release-{{ telco_core_profile_version }}/ns.yaml
+  - src: release-{{ telco_core_profile_version }}/core-finish.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+    enabled: "{{ telco_core_profile_version is version('4.20', '>=') }}"
+  - src: ns.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/"
+  - src: hw-types.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/template-values/"
+  - src: regional.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy/telco-core/template-values/"
 
 - name: Copy directory of Telco Core reference CRs into cnf-features-deploy
   ansible.builtin.copy:

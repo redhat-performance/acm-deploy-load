@@ -2,11 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 generators:
 - core-baseline.yaml
-# Overlay commented out until template-value ConfigMaps completed
-# - core-overlay.yaml
+- core-overlay.yaml
+{% if telco_core_profile_version is version('4.20', '>=') %}
+# - core-finish.yaml
+{% endif %}
 # - core-upgrade.yaml
 
 resources:
 - ns.yaml
-# - template-values/regional.yaml
-# - template-values/hw-types.yaml
+- template-values/regional.yaml
+- template-values/hw-types.yaml

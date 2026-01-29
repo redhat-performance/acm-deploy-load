@@ -2,18 +2,18 @@
 apiVersion: policy.open-cluster-management.io/v1
 kind: PolicyGenerator
 metadata:
-  name: core-baseline-18
+  name: core-baseline-19
 policyDefaults:
   namespace: ztp-core-policies
   policySets: []
   placement:
     clusterSelectors:
       common: "core"
-      version: "4.18"
+      version: "4.20"
   remediationAction: "inform"
 policies:
   # Base cluster configuration
-  - name: core-cluster-config-4.18
+  - name: core-cluster-config-4.20
     policyAnnotations:
       ran.openshift.io/ztp-deploy-wave: "1"
     manifests:
@@ -25,22 +25,13 @@ policies:
       - path: reference-crs/required/scheduling/Scheduler.yaml
 
   # Core cluster OLM operators
-  - name: core-operator-subs-4.18
+  - name: core-operator-subs-4.20
     policyAnnotations:
       ran.openshift.io/ztp-deploy-wave: "5"
     manifests:
       - path: reference-crs/optional/logging/ClusterLogNS.yaml
       - path: reference-crs/optional/logging/ClusterLogOperGroup.yaml
       - path: reference-crs/optional/logging/ClusterLogSubscription.yaml
-{% if telco_core_reference_cluster_logging_channel_override_enable %}
-        patches:
-        - spec:
-            channel: "{{ telco_core_reference_cluster_logging_channel_override }}"
-{% else %}
-        # patches:
-        # - spec:
-        #     channel: "{{ telco_core_reference_cluster_logging_channel_override }}"
-{% endif %}
       - path: reference-crs/optional/logging/ClusterLogOperatorStatus.yaml
         patches:
         - status:
@@ -71,7 +62,7 @@ policies:
         patches:
         - spec:
             installPlanApproval: Manual
-            channel: stable-4.18
+            channel: stable-4.20
       - path: reference-crs/required/networking/metallb/metallbNS.yaml
       - path: reference-crs/required/networking/metallb/metallbOperGroup.yaml
       - path: reference-crs/required/networking/metallb/metallbSubscription.yaml
@@ -92,7 +83,7 @@ policies:
             installPlanApproval: Manual
 
   # Operator configuration
-  - name: core-operator-config-4.18
+  - name: core-operator-config-4.20
     policyAnnotations:
       ran.openshift.io/ztp-deploy-wave: "7"
     manifests:
@@ -112,3 +103,6 @@ policies:
 
       # Scheduling
       - path: reference-crs/required/scheduling/sched.yaml
+        patches:
+        - spec:
+            imageSpec: {{ telco_core_nrt_scheduler_image }}
