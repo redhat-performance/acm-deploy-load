@@ -4,6 +4,11 @@
 # - debug:
 #     msg: "{{ telco_core_clusters }}"
 
+- name: Clear telco-core manifests directory
+  file:
+    path: "{{ install_directory }}/telco-core-manifests/"
+    state: absent
+
 - name: Create directory for telco-core manifest files
   file:
     path: "{{ item }}"
