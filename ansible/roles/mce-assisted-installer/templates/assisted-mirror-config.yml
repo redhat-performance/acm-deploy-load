@@ -81,6 +81,15 @@ data:
 
       [[registry.mirror]]
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io"
+      mirror-by-digest-only = false
+
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
+
 {% endif %}
 
     [[registry]]
