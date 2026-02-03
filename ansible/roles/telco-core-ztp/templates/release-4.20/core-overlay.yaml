@@ -54,14 +54,15 @@ policies:
       - path: reference-crs/required/scheduling/nrop.yaml
         patches:
         - spec:
-            nodeGroups:
-            - config:
-                # Periodic is the default setting
-                infoRefreshMode: Periodic
-              machineConfigPoolSelector:
-                matchLabels:
-                  # This label must match the pool(s) you want to run NUMA-aligned workloads
-                  machineconfiguration.openshift.io/role: worker-2
+            logLevel: Normal
+            # nodeGroups:
+            # - config:
+            #     # Periodic is the default setting
+            #     infoRefreshMode: Periodic
+            #   machineConfigPoolSelector:
+            #     matchLabels:
+            #       # This label must match the pool(s) you want to run NUMA-aligned workloads
+            #       machineconfiguration.openshift.io/role: worker-2
 
       # MCP PerformanceProfiles
       - path: reference-crs/required/performance/PerformanceProfile.yaml
@@ -158,53 +159,59 @@ policies:
             nodeSelector:
               node-role.kubernetes.io/worker: ""
 
-      # - path: reference-crs/required/networking/metallb/bfd-profile.yaml
-      # - path: reference-crs/required/networking/metallb/addr-pool.yaml
-      #   patches:
-      #   - metadata:
-      #       name: pool1
-      #       annotations:
-      #         metallb.universe.tf/address-pool: pool1
-      #     spec:
-      #       addresses:
-      #       - 1.2.3.0/24
-      #       #bgpAdvertisements:
-      #       #- aggregationLength: 32
-      #       #  communities:
-      #       #  - 65535:65282
-      # - path: reference-crs/required/networking/metallb/bgp-peer.yaml
-      #   patches:
-      #   - metadata:
-      #       name: peer1
-      #     spec:
-      #       # Dummy address for now. One of our node ips
-      #       peerAddress: 1.2.3.9
-      #       peerASN: 64501
-      #       myASN: 64500
-      #       routerID: 10.10.10.10
-      # - path: reference-crs/required/networking/metallb/bgp-advr.yaml
-      #   patches:
-      #   - metadata:
-      #       name: bgpadv-1
-      #     spec:
-      #       ipAddressPools:
-      #       - pool1
-      #       peers:
-      #       - peer1
-      #       communities:
-      #       - 65535:65282
-      # - path: reference-crs/required/networking/metallb/service.yaml
-      #   patches:
-      #   - metadata:
-      #       name: svc1
-      #       namespace: default
-      #       annotations:
-      #         metallb.universe.tf/address-pool: pool1
-      #     spec:
-      #       selector:
-      #         app: lbapp
-      #       # Dummy IP for now. Borrow cnfdf03 api IP
-      #       loadBalancerIP: 1.2.3.5
+      - path: reference-crs/required/networking/metallb/bfd-profile.yaml
+        patches:
+        - metadata:
+            name: bfdprofile
+      - path: reference-crs/required/networking/metallb/addr-pool.yaml
+        patches:
+        - metadata:
+            name: pool1
+            annotations:
+              metallb.universe.tf/address-pool: pool1
+          spec:
+            addresses:
+            - 1.2.3.0/24
+            #bgpAdvertisements:
+            #- aggregationLength: 32
+            #  communities:
+            #  - 65535:65282
+      - path: reference-crs/required/networking/metallb/bgp-peer.yaml
+        patches:
+        - metadata:
+            name: peer1
+          spec:
+            # Dummy address for now. One of our node ips
+            peerAddress: 1.2.3.9
+            peerASN: 64501
+            myASN: 64500
+            routerID: 10.10.10.10
+            bfdProfile: bfdprofile
+            disableMP: false
+            peerPort: 170
+      - path: reference-crs/required/networking/metallb/bgp-advr.yaml
+        patches:
+        - metadata:
+            name: bgpadv-1
+          spec:
+            ipAddressPools:
+            - pool1
+            peers:
+            - peer1
+            communities:
+            - 65535:65282
+      - path: reference-crs/required/networking/metallb/service.yaml
+        patches:
+        - metadata:
+            name: svc1
+            namespace: default
+            annotations:
+              metallb.universe.tf/address-pool: pool1
+          spec:
+            selector:
+              app: lbapp
+            # Dummy IP for now. Borrow cnfdf03 api IP
+            loadBalancerIP: 1.2.3.5
 
       # - path: reference-crs/required/networking/sriov/sriovNetworkNodePolicy.yaml
       #   patches:
@@ -239,6 +246,8 @@ policies:
       #
       # Configure ODF
       #
+
+      # Commented out because there is no external odf cluster
       # - path: reference-crs/required/storage/odf-external/01-rook-ceph-external-cluster-details.secret.yaml
       #   patches:
       #     - data:
@@ -249,6 +258,7 @@ policies:
 
   # reference-crs/optional/networking/nodeNetworkConfigurationPolicy.yaml
 
+  # Sections commented out because there is no odf cluster to provide PVs from
   - name: config-monitoring-4.20
     policyAnnotations:
       ran.openshift.io/ztp-deploy-wave: "10"
@@ -261,25 +271,25 @@ policies:
             # content must be copied here in order to add custom content
             # (additionalAlertmanagerConfigs)
             config.yaml: |
-              alertmanagerMain:
-                volumeClaimTemplate:
-                  spec:
-                    storageClassName: ocs-external-storagecluster-ceph-rbd
-                    resources:
-                      requests:
-                        storage: 20Gi
+              # alertmanagerMain:
+              #   volumeClaimTemplate:
+              #     spec:
+              #       storageClassName: ocs-external-storagecluster-ceph-rbd
+              #       resources:
+              #         requests:
+              #           storage: 20Gi
               prometheusK8s:
                 retention: 15d
-                volumeClaimTemplate:
-                  spec:
-                    storageClassName: ocs-external-storagecluster-ceph-rbd
-                    resources:
-                      requests:
-                        storage: 100Gi
-                additionalAlertmanagerConfigs:
-                - scheme: "http"
-                  pathPrefix: "/"
-                  timeout: "30s"
-                  apiVersion: "v1"
-                  staticConfigs:
-                  - "10.11.12.14:9999"
+                # volumeClaimTemplate:
+                #   spec:
+                #     storageClassName: ocs-external-storagecluster-ceph-rbd
+                #     resources:
+                #       requests:
+                #         storage: 100Gi
+                # additionalAlertmanagerConfigs:
+                # - scheme: "http"
+                #   pathPrefix: "/"
+                #   timeout: "30s"
+                #   apiVersion: "v1"
+                #   staticConfigs:
+                #   - "10.11.12.14:9999"
