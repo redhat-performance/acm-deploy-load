@@ -4,5 +4,7 @@ generators:
 #- telco-core-siteconfig.yml
 
 resources:
+- ai-cluster-templates-v1-search.yaml
+#- standard-00001-clusterinstance.yml
 #- telco-core-clusterinstance.yml
 #- telco-core-resources.yml

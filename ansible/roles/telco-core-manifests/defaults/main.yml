@@ -28,3 +28,10 @@ telco_core_extra_manifests:
 
 # Enable observability for Telco Core clusters
 telco_core_observability: true
+
+# Defaults for AI clusterinstance templates
+# Adjusted for search collector enabled
+telco_core_ai_clusterinstance_cluster_templates_ns: open-cluster-management
+telco_core_ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search
+telco_core_ai_clusterinstance_node_templates_ns: open-cluster-management
+telco_core_ai_clusterinstance_node_templates: ai-node-templates-v1

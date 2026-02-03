@@ -42,6 +42,11 @@
   - src: policy-application.yaml
     dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/ztp-core-policies.yaml"
 
+- name: Copy Telco Core ai-cluster template with search collector enabled
+  ansible.builtin.copy:
+    src: ai-cluster-templates-v1-search.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-core/ai-cluster-templates-v1-search.yaml"
+
 # https://github.com/openshift-kni/telco-reference/tree/release-4.20/telco-core/configuration
 - name: Template Telco Core Profile policy manifests into cnf-features-deploy
   template:
