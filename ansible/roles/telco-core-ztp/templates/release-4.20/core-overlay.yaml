@@ -213,6 +213,7 @@ policies:
             # Dummy IP for now. Borrow cnfdf03 api IP
             loadBalancerIP: 1.2.3.5
 
+      # Commented out since VMs do not have SRIOV emulated nics
       # - path: reference-crs/required/networking/sriov/sriovNetworkNodePolicy.yaml
       #   patches:
       #   - metadata:
@@ -233,15 +234,15 @@ policies:
       #       priority: 99
       #       # excludeTopology: true
       #       resourceName: testSignaling
-      - path: reference-crs/required/networking/sriov/sriovNetwork.yaml
-        patches:
-        - metadata:
-            name: sriov-network-signal-1
-          spec:
-            capabilities: "{}"
-            ipam: '{}'
-            networkNamespace: signal-1
-            resourceName: testSignaling
+      # - path: reference-crs/required/networking/sriov/sriovNetwork.yaml
+      #   patches:
+      #   - metadata:
+      #       name: sriov-network-signal-1
+      #     spec:
+      #       capabilities: "{}"
+      #       ipam: '{}'
+      #       networkNamespace: signal-1
+      #       resourceName: testSignaling
 
       #
       # Configure ODF
