@@ -41,6 +41,7 @@
     node_list: "{{ node_list + [
       {
         'hostname': item.name | split('.') | first,
+        'role': 'master' if loopIndex < 3 else 'worker',
         'bmc_address': 'idrac-virtualmedia+https://' ~ item.pm_addr ~ '/redfish/v1/Systems/System.Embedded.1/',
         'bmc_user': item.pm_user,
         'bmc_password': item.pm_password,

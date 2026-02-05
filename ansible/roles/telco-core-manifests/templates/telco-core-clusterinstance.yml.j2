@@ -104,11 +104,15 @@ spec:
   nodes:
 {% for node in item.nodes %}
   - hostName: {{ node.hostname }}
-{%   if loop.index <= 3 %}
+{%   if node.role == 'master' %}
     role: "master"
 {%   else %}
     role: "worker"
 {%   endif %}
+{% if node.role == 'infra' %}
+    nodeLabels:
+      node-role.kubernetes.io/infra: ""
+{% endif %}
     automatedCleaningMode: disabled
     bmcAddress: {{ node.bmc_address }}
     bmcCredentialsName:
