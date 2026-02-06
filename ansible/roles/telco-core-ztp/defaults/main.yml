@@ -29,3 +29,8 @@ telco_core_cluster_logging_version: cluster-logging.v6.2.0
 
 # Node Resource Topology scheduler image
 telco_core_nrt_scheduler_image: registry.redhat.io/openshift4/noderesourcetopology-scheduler-rhel9:v4.20.0
+
+# Telco Core Monitoring configuration options
+telco_core_prometheus_retention_period: 8d
+# Sets openshift-monitoring config for vm-telco-core "style" scale testing configuration
+telco_core_vm_scale_monitoring_config: true

@@ -266,7 +266,7 @@ policies:
                       requests:
                         storage: 20Gi
               prometheusK8s:
-                retention: 15d
+                retention: {{ telco_core_prometheus_retention_period }}
                 volumeClaimTemplate:
                   spec:
                     storageClassName: ocs-external-storagecluster-ceph-rbd

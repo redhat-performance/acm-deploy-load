@@ -268,29 +268,44 @@ policies:
         complianceType: musthave
         patches:
         - data:
+{% if telco_core_vm_scale_monitoring_config %}
+            config.yaml: |
+              prometheusK8s:
+                retention: {{ telco_core_prometheus_retention_period }}
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  value: reserved
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  value: reserved
+                  effect: NoExecute
+{% else %}
             # The config is a single string value in this map and default
             # content must be copied here in order to add custom content
             # (additionalAlertmanagerConfigs)
             config.yaml: |
-              # alertmanagerMain:
-              #   volumeClaimTemplate:
-              #     spec:
-              #       storageClassName: ocs-external-storagecluster-ceph-rbd
-              #       resources:
-              #         requests:
-              #           storage: 20Gi
+              alertmanagerMain:
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: ocs-external-storagecluster-ceph-rbd
+                    resources:
+                      requests:
+                        storage: 20Gi
               prometheusK8s:
-                retention: 15d
-                # volumeClaimTemplate:
-                #   spec:
-                #     storageClassName: ocs-external-storagecluster-ceph-rbd
-                #     resources:
-                #       requests:
-                #         storage: 100Gi
-                # additionalAlertmanagerConfigs:
-                # - scheme: "http"
-                #   pathPrefix: "/"
-                #   timeout: "30s"
-                #   apiVersion: "v1"
-                #   staticConfigs:
-                #   - "10.11.12.14:9999"
+                retention: {{ telco_core_prometheus_retention_period }}
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: ocs-external-storagecluster-ceph-rbd
+                    resources:
+                      requests:
+                        storage: 100Gi
+                additionalAlertmanagerConfigs:
+                - scheme: "http"
+                  pathPrefix: "/"
+                  timeout: "30s"
+                  apiVersion: "v1"
+                  staticConfigs:
+                  - "10.11.12.14:9999"
+{% endif %}
