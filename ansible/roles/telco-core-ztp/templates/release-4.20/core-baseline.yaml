@@ -81,6 +81,14 @@ policies:
         patches:
         - spec:
             installPlanApproval: Manual
+{% if telco_core_include_lso %}
+      - path: reference-crs/optional/storage-lso/StorageNS.yaml
+      - path: reference-crs/optional/storage-lso/StorageOperGroup.yaml
+      - path: reference-crs/optional/storage-lso/StorageSubscription.yaml
+        patches:
+        - spec:
+            installPlanApproval: Manual
+{% endif %}
 
   # Operator configuration
   - name: core-operator-config-4.20

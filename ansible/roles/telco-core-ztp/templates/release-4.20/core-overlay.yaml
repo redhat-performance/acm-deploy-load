@@ -257,6 +257,32 @@ policies:
 
       # - path: reference-crs/required/storage/odf-external/02-ocs-external-storagecluster.yaml
 
+{% if telco_core_include_lso %}
+      - path: reference-crs/optional/storage-lso/StorageLV.yaml
+        patches:
+        - spec:
+            nodeSelector:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/infra"
+                  operator: In
+                  values:
+                  - ""
+            tolerations:
+            - key: node-role.kubernetes.io/infra
+              operator: Exists
+              effect: NoSchedule
+            - key: node-role.kubernetes.io/infra
+              operator: Exists
+              effect: NoExecute
+            storageClassDevices:
+            - devicePaths:
+              - {{ telco_core_lso_device_path }}
+              fsType: xfs
+              storageClassName: "localstorage-sc"
+              volumeMode: Filesystem
+{% endif %}
+
   # reference-crs/optional/networking/nodeNetworkConfigurationPolicy.yaml
 
   # Sections commented out because there is no odf cluster to provide PVs from
@@ -270,16 +296,82 @@ policies:
         - data:
 {% if telco_core_vm_scale_monitoring_config %}
             config.yaml: |
-              prometheusK8s:
-                retention: {{ telco_core_prometheus_retention_period }}
+              alertmanagerMain:
                 nodeSelector:
                   node-role.kubernetes.io/infra: ""
                 tolerations:
                 - key: node-role.kubernetes.io/infra
-                  value: reserved
+                  operator: Exists
                   effect: NoSchedule
                 - key: node-role.kubernetes.io/infra
-                  value: reserved
+                  operator: Exists
+                  effect: NoExecute
+              kubeStateMetrics:
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoExecute
+              metricsServer:
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoExecute
+              monitoringPlugin:
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoExecute
+              openshiftStateMetrics:
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoExecute
+              prometheusK8s:
+                retention: {{ telco_core_prometheus_retention_period }}
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: localstorage-sc
+                    resources:
+                      requests:
+                        storage: 100Gi
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoExecute
+              thanosQuerier:
+                nodeSelector:
+                  node-role.kubernetes.io/infra: ""
+                tolerations:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+                  effect: NoSchedule
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
                   effect: NoExecute
 {% else %}
             # The config is a single string value in this map and default
