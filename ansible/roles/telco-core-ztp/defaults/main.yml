@@ -15,6 +15,9 @@ gogs_password: testadmin
 telco_core_profile_version: "4.20"
 telco_core_operator_index: registry.redhat.io/redhat/redhat-operator-index:v{{ telco_core_profile_version }}
 
+# For vm-telco-core scale testing, include local storage operator for managedcluster prometheus to have PV
+telco_core_include_lso: true
+telco_core_lso_device_path: /dev/disk/by-path/pci-0000:02:00.0-scsi-0:0:0:1
 
 # Enable overriding the clusterlogging subscription reference CR channel
 telco_core_reference_cluster_logging_channel_override_enable: true
