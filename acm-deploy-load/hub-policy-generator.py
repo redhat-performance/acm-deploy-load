@@ -57,10 +57,10 @@ metadata:
 spec:
   clusterSelector:
     matchExpressions:
-    - key: common
+    - key: {{ selector_key }}
       operator: In
       values:
-      - "true"
+      - "{{ selector_value }}"
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
@@ -246,6 +246,9 @@ def main():
   parser_gen.add_argument("--hub-policy-cm-name", type=str, default="policy-template-map", help="Name for hub side configmap for policy data keys")
   parser_gen.add_argument("--hub-policy-cm-keys", type=int, default=5, help="Number of keys for the hub side configmap")
 
+  parser_gen.add_argument("--cluster-selector", type=str, default="common=true",
+                      help="Cluster selector in key=value format (e.g., common=true, common=core)")
+
   parser_gen.add_argument("--no-apply", action="store_true", default=False, help="Do not apply the manifests")
 
   parser.set_defaults(action="generate")
@@ -256,6 +259,12 @@ def main():
 
   #### Generate Manifests
   if cliargs.action == "generate":
+
+    # Parse cluster selector
+    if "=" not in cliargs.cluster_selector:
+      logger.error("Invalid cluster selector format. Use key=value format (e.g., common=true)")
+      sys.exit(1)
+    selector_key, selector_value = cliargs.cluster_selector.split("=", 1)
 
     manifests_dir = ""
     if cliargs.manifests_directory:
@@ -274,9 +283,11 @@ def main():
       manifests_dir = os.path.join(base_dir_manifests, manifests_dir_name)
       os.mkdir(manifests_dir)
       logger.info("Using created manifests directory: {}".format(manifests_dir))
+
     phase_break()
 
     logger.info("Creating manifests with:")
+    logger.info(" * Cluster selector: {}={}".format(selector_key, selector_value))
     logger.info(" * 1 namespace ({}) for policies".format(cliargs.hub_policy_namespace))
     logger.info("   * 1 configmap ({}) with {} keys".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_cm_keys))
     if cliargs.policies > 1:
@@ -366,6 +377,8 @@ def main():
       policy_template_rendered = t.render(
           name=policy_name,
           namespace=cliargs.hub_policy_namespace,
+          selector_key=selector_key,
+          selector_value=selector_value,
           policy_namespaces=namespaces,
           deployments=deployments,
           replicas=cliargs.replicas,
