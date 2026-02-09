@@ -158,6 +158,12 @@ spec:
                       secretName: {{ secret['name'] }}
                   {%- endfor %}
                   {%- endif %}
+                  {%- if node_selector %}
+                  nodeSelector:
+                    {%- for key, value in node_selector.items() %}
+                    {{ key }}: "{{ value }}"
+                    {%- endfor %}
+                  {%- endif %}
             status:
               availableReplicas: {{ replicas }}
         {%- for cm in configmaps[ns][deploy] %}
@@ -249,6 +255,9 @@ def main():
   parser_gen.add_argument("--cluster-selector", type=str, default="common=true",
                       help="Cluster selector in key=value format (e.g., common=true, common=core)")
 
+  parser_gen.add_argument("--node-selector", type=str, default=None,
+                      help="Depoloyment pod nodeSelector as key=value (e.g. workload=true). Omit for no nodeSelector.")
+
   parser_gen.add_argument("--no-apply", action="store_true", default=False, help="Do not apply the manifests")
 
   parser.set_defaults(action="generate")
@@ -265,6 +274,15 @@ def main():
       logger.error("Invalid cluster selector format. Use key=value format (e.g., common=true)")
       sys.exit(1)
     selector_key, selector_value = cliargs.cluster_selector.split("=", 1)
+
+    # Parse node selector (optional; one key=value or none)
+    node_selector = {}
+    if cliargs.node_selector:
+      if "=" not in cliargs.node_selector:
+        logger.error("Invalid node selector format. Use key=value format (e.g., workload=true)")
+        sys.exit(1)
+      ns_key, ns_value = cliargs.node_selector.split("=", 1)
+      node_selector = {ns_key: ns_value}
 
     manifests_dir = ""
     if cliargs.manifests_directory:
@@ -296,6 +314,10 @@ def main():
       logger.info("   * 1 policy")
     logger.info("     * {} namespaces per policy".format(cliargs.namespaces))
     logger.info("       * {} deployment(s) per namespace with {} pod replicas".format(cliargs.deployments, cliargs.replicas))
+    if node_selector:
+      logger.info("         * Node selector: {}".format(cliargs.node_selector))
+    else:
+      logger.info("         * Node selector: none")
     logger.info("       * {} configmap(s) per deployment".format(cliargs.configmaps))
     logger.info("       * {} secret(s) per deployment".format(cliargs.secrets))
     if cliargs.service:
@@ -387,6 +409,7 @@ def main():
           configmaps=configmaps,
           secrets=secrets,
           service=cliargs.service,
+          node_selector=node_selector,
           hub_policy_cm_name=cliargs.hub_policy_cm_name,
           hub_policy_cm_key_count=cliargs.hub_policy_cm_keys)
       with open("{}/{}".format(manifests_dir, "03-policy-{:04d}.yml".format(policy)), "w") as file1:
