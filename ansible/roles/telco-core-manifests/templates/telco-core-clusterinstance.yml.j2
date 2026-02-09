@@ -112,6 +112,9 @@ spec:
 {% if node.role == 'infra' %}
     nodeLabels:
       node-role.kubernetes.io/infra: ""
+{% elif node.role == 'worker' %}
+    nodeLabels:
+      workload: "true"
 {% endif %}
     automatedCleaningMode: disabled
     bmcAddress: {{ node.bmc_address }}
