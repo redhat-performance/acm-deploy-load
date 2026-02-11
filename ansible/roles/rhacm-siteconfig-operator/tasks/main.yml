@@ -2,6 +2,16 @@
 # rhacm-siteconfig-operator tasks
 # SiteConfig Operator is included with ACM 2.12
 
+- name: Create directory for SiteConfig Operator manifests
+  file:
+    path: "{{ install_directory }}/rhacm-siteconfig-operator"
+    state: directory
+
+- name: Copy SiteConfig Operator ai-cluster template with search collector enabled
+  ansible.builtin.copy:
+    src: ai-cluster-templates-v1-search.yaml
+    dest: "{{ install_directory }}/rhacm-siteconfig-operator/ai-cluster-templates-v1-search.yaml"
+
 - name: Enable SiteConfig Operator
   shell: |
     export KUBECONFIG={{ hub_cluster_kubeconfig }}
@@ -22,6 +32,10 @@
   delay: 2
   register: as_pod
   until: as_pod.stdout == "Running"
+
+- name: Apply SiteConfig Operator ai-cluster template with search collector enabled
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-siteconfig-operator/ai-cluster-templates-v1-search.yaml
 
 - name: Patch SiteConfig Operator maxConcurrentReconciles to {{ siteconfig_max_concurrent_reconciles }}
   when: tune_sco_threads

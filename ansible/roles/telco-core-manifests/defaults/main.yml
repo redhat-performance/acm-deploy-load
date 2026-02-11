@@ -30,7 +30,7 @@ telco_core_extra_manifests:
 telco_core_observability: true
 
 # Defaults for AI clusterinstance templates
-# Adjusted for search collector enabled
+# Adjusted for search collector enabled (ai-cluster-templates-v1-search), original (ai-cluster-templates-v1)
 telco_core_ai_clusterinstance_cluster_templates_ns: open-cluster-management
 telco_core_ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search
 telco_core_ai_clusterinstance_node_templates_ns: open-cluster-management
