@@ -1,7 +1,7 @@
 ---
-# sno-create-manifests tasks
+# telco-ran-du-manifests tasks
 
-- name: Create directories for hv-vm SNO manifests on bastion
+- name: Create directories for hv-vm Telco RAN DU manifests on bastion
   file:
     path: "{{ item.dir }}"
     state: directory

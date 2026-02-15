@@ -1,0 +1,17 @@
+---
+# Playbook to create all manifests for Telco RAN DU whether AI or IBI (SNO Only) methods
+#
+# Note: This playbook runs with Jetlag's inventory so it knows all the VM details to use
+#
+# Example Usage:
+#
+# time ansible-playbook -i ../jetlag/ansible/inventory/cloud30.local ansible/telco-ran-du-manifests.yml
+#
+
+- name: Create all manifest files for Telco RAN DU
+  hosts: hv_vm
+  gather_facts: false
+  vars_files:
+  - vars/all.yml
+  roles:
+  - telco-ran-du-manifests
