@@ -22,7 +22,7 @@
     node_list: "{{ node_list + [
       {
         'hostname': groups['hv_vm'][vmIdx],
-        'role': hostvars[groups['hv_vm'][vmIdx]]['role'] if 'role' in hostvars[groups['hv_vm'][vmIdx]] else ('master' if vmIdx - vm_offset < 3 else 'worker'),
+        'role': hostvars[groups['hv_vm'][vmIdx]]['role'] if 'role' in hostvars[groups['hv_vm'][vmIdx]] else ('master' if vmIdx - vm_offset|int < 3 else 'worker'),
         'bmc_address': 'redfish-virtualmedia+http://[' ~ hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] ~ ']:9000/redfish/v1/Systems/' ~ hostvars[groups['hv_vm'][vmIdx]]['domain_uuid'],
         'bmc_user': bmc_username_base64,
         'bmc_password': bmc_password_base64,
