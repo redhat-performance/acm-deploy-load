@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Script to collect post data artifacts for ACM Telco Core Load or ACM MC Load
 #set -e
 set -o pipefail
 

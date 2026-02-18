@@ -34,7 +34,7 @@ echo "time ./acm-deploy-load/analyze-prometheus.py -p mc-load -s ${start_time} -
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
-time ./scripts/post-mc-load-data-collection.sh -k 2>&1 | tee -a ${log_file}
+time ./scripts/post-acm-load-data-collection.sh -k 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 

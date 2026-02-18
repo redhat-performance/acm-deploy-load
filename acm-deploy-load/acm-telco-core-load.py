@@ -138,12 +138,15 @@ def main():
 
   parser.add_argument("-i", "--interval-deploy", type=int, default=3600,
                       help="Time in seconds between deploying Telco Core clusters")
+  parser.add_argument("-l", "--last-deploy-runtime", type=int, default=3600,
+                      help="Amount of seconds after last cluster deployment to continue running")
   parser.add_argument("-b", "--batch", type=int, default=1, help="Number of clusters to deploy per interval")
   parser.add_argument("-p", "--interval-policy", type=int, default=720,
                       help="Interval between updating configmap used in policy templates")
   parser.add_argument("--max-policy-intervals", type=int, default=10,
                       help="Maximum number of policy intervals to run (Used with --no-deploy only)")
 
+  # Delay args are idle time before and after the workload
   parser.add_argument("-s", "--start-delay", type=int, default=120, help="Delay on start of script")
   parser.add_argument("-e", "--end-delay", type=int, default=120, help="Delay on end of script")
 
@@ -185,29 +188,28 @@ def main():
     if len(clusterinstance_files) == 0:
       logger.error("Zero clusters discovered.")
       sys.exit(1)
-    deploy_interval_count = ceil(len(clusterinstance_files) / cliargs.batch)
+    deploy_batch_count = ceil(len(clusterinstance_files) / cliargs.batch)
   phase_break()
 
   logger.info("Workload Parameters")
-  if cliargs.no_deploy == False and cliargs.no_policy == False:
-    expected_run_time = cliargs.start_delay + deploy_interval_count * cliargs.interval_deploy + cliargs.end_delay
-    logger.info("* Mode: Deploy+Policy")
+  if cliargs.no_deploy == False:
+    expected_run_time = cliargs.start_delay + (deploy_batch_count - 1) * cliargs.interval_deploy + cliargs.last_deploy_runtime + cliargs.end_delay
+    if cliargs.no_policy == False:
+      logger.info("* Mode: Deploy+Policy")
+    else:
+      logger.info("* Mode: Deploy Clusters only")
     logger.info(f" * Start delay: {cliargs.start_delay}s")
     logger.info(f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s interval")
     logger.info(f"  * Available clusters: {len(clusterinstance_files)}")
-    logger.info(f"  * Total intervals: {deploy_interval_count}")
-    logger.info(f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
+    logger.info(f"  * Total batches: {deploy_batch_count}")
+    logger.info(f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s")
+    if cliargs.no_policy == False:
+      logger.info(f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
+    else:
+      logger.info(f" * No policy updates")
     logger.info(f" * End delay: {cliargs.end_delay}s")
     logger.info(f"* Expected run time: {expected_run_time}s")
-  elif cliargs.no_deploy == False and cliargs.no_policy == True:
-    expected_run_time = cliargs.start_delay + deploy_interval_count * cliargs.interval_deploy + cliargs.end_delay
-    logger.info("* Mode: Deploy Clusters only")
-    logger.info(f" * Start delay: {cliargs.start_delay}s")
-    logger.info(f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s interval")
-    logger.info(f"  * Available clusters: {len(clusterinstance_files)}")
-    logger.info(f"  * Total intervals: {deploy_interval_count}")
-    logger.info(f" * End delay: {cliargs.end_delay}s")
-  elif cliargs.no_deploy == True and cliargs.no_policy == False:
+  elif cliargs.no_deploy == True:
     expected_run_time = cliargs.start_delay + cliargs.max_policy_intervals * cliargs.interval_policy + cliargs.end_delay
     logger.info("* Mode: Policy configmap updates only")
     logger.info(f" * Start delay: {cliargs.start_delay}s")
@@ -275,20 +277,22 @@ def main():
         # This occurs after the last cluster is deployed + interval time after that
         logger.info("Completed deploying all clusters")
         break
+
+      if total_clusters_deployed + cliargs.batch >= len(clusterinstance_files):
+        new_cluster_count = len(clusterinstance_files) - total_clusters_deployed
+        next_deploy_time = next_deploy_time + cliargs.last_deploy_runtime
       else:
-        if total_clusters_deployed + cliargs.batch >= len(clusterinstance_files):
-          new_cluster_count = len(clusterinstance_files) - total_clusters_deployed
-        else:
-          new_cluster_count = cliargs.batch
-        st = time.time()
-        deployed_clusters.extend(clusterinstance_files[total_clusters_deployed:total_clusters_deployed + new_cluster_count])
-        commit_message = "Deploying new cluster(s): {}".format(', '.join([x.split("/")[-1].split("-clusterinstance.yml")[0] for x in clusterinstance_files[total_clusters_deployed:total_clusters_deployed + new_cluster_count]]))
-        deploy_clusters(deployed_clusters, commit_message, cliargs.gitops_dir)
-        et = time.time()
-        cluster_deployed_timestamps.append(et)
-        logger.info("Deploying took: {}".format(round(et - st, 1)))
-        total_clusters_deployed += new_cluster_count
-      next_deploy_time = next_deploy_time + cliargs.interval_deploy
+        new_cluster_count = cliargs.batch
+        next_deploy_time = next_deploy_time + cliargs.interval_deploy
+      st = time.time()
+      deployed_clusters.extend(clusterinstance_files[total_clusters_deployed:total_clusters_deployed + new_cluster_count])
+      commit_message = "Deploying new cluster(s): {}".format(', '.join([x.split("/")[-1].split("-clusterinstance.yml")[0] for x in clusterinstance_files[total_clusters_deployed:total_clusters_deployed + new_cluster_count]]))
+      deploy_clusters(deployed_clusters, commit_message, cliargs.gitops_dir)
+      et = time.time()
+      cluster_deployed_timestamps.append(et)
+      logger.info("Deploying took: {}".format(round(et - st, 1)))
+      total_clusters_deployed += new_cluster_count
+
     elif cliargs.no_deploy == True:
       # Not deploying clusters, thus break once max policy intervals are reached
       if total_policy_cm_updates >= cliargs.max_policy_intervals:
@@ -354,7 +358,8 @@ def main():
       log_write(report, f" * Start delay: {cliargs.start_delay}s")
       log_write(report, f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s interval")
       log_write(report, f"  * Available clusters: {len(clusterinstance_files)}")
-      log_write(report, f"  * Total intervals: {deploy_interval_count}")
+      log_write(report, f"  * Total batches: {deploy_batch_count}")
+      log_write(report, f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s")
       log_write(report, f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
       log_write(report, f" * End delay: {cliargs.end_delay}s")
     elif cliargs.no_deploy == False and cliargs.no_policy == True:
@@ -362,7 +367,8 @@ def main():
       log_write(report, f" * Start delay: {cliargs.start_delay}s")
       log_write(report, f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s interval")
       log_write(report, f"  * Available clusters: {len(clusterinstance_files)}")
-      log_write(report, f"  * Total intervals: {deploy_interval_count}")
+      log_write(report, f"  * Total batches: {deploy_batch_count}")
+      log_write(report, f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s")
       log_write(report, f" * End delay: {cliargs.end_delay}s")
     elif cliargs.no_deploy == True and cliargs.no_policy == False:
       log_write(report, " * Mode: Policy configmap updates only")
