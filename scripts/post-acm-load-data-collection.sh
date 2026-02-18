@@ -7,6 +7,9 @@ results_dir=$(ls -td results/*/ | head -1)
 output_dir=${results_dir}/post-run-data
 mkdir -p ${output_dir}
 
+echo "$(date -u) :: Collecting managedcluster kubeconfigs"
+oc get managedcluster --no-headers | grep -v local | awk '{print $1}' | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/% ;oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
+
 echo "$(date -u) :: Collecting clusterversion, csv, nodes, namespaces and pod/event data"
 
 oc get clusterversion > ${output_dir}/clusterversion
