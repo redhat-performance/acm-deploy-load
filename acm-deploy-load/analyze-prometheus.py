@@ -37,13 +37,18 @@ import time
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # TODO:
+# * Host OS Components (Kubelet and Crio)
+# * Organize OCP into:
+#   * Base OCP - All Base OCP Namespaces CPU and Memory
+#   * Core OCP Components (apiserver, controller-manager, scheduler, etc.) similiar to queries for OCP namespaces
+# * Organize ACM Queries into:
+#   * Each ACM Namespace
+#   * Each Pod per namespace
+#   * ACM Complete (All ACM Namespaces and MCE Namespaces combined)
 # * Gather cluster data to make decisions for queries:
 #   * Node Count (Is it an SNO, Compact or standard)
 # * Graph cluster/node disk (throughput, iops)
 # * ACM Policy Engine Pods CPU/Memory, work queue?
-# * Node kubelet, crio cpu/memory
-# * OCP CPU, Memory, split on pods?
-# * Total pod count??, total object count?
 # * ACM Disk?, Network?
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
@@ -234,43 +239,11 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management'}[5m]))"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-ocm-pods", "Open-cluster-management Pod Network Transmit Throughput", "NET", w, h, q_names)
 
-  # ACM MCE CPU/Memory/Network
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
-  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "cpu-acm-mce", "ACM MCE CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-engine'})"
-  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "mem-acm-mce", "ACM MCE Memory Usage", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
-  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-rcv-acm-mce", "ACM MCE Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
-  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-xmt-acm-mce", "ACM MCE Network Transmit Throughput", "NET", w, h, q_names)
-
-  # ACM MCE pods
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-mce-pods", "MCE Pod CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-engine'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-mce-pods", "MCE Pod Memory Usage", "MEM", w, h, q_names)
-  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-acm-mce-pods", "MCE Pod Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-mce-pods", "MCE Pod Network Transmit Throughput", "NET", w, h, q_names)
-
   # ACM Open-cluster-management SiteConfig Operator CPU/Memory
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management',pod=~'siteconfig-controller-manager.*'})"
   query_thanos(route, q, "ACM - SiteConfig Operator", token, end_ts, duration, sub_report_dir, "cpu-acm-ocm-sco", "ACM siteconfig-controller-manager CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='open-cluster-management',pod=~'siteconfig-controller-manager.*'})"
   query_thanos(route, q, "ACM - SiteConfig Operator", token, end_ts, duration, sub_report_dir, "mem-acm-ocm-sco", "ACM siteconfig-controller-manager Memory Usage", "MEM", w, h, q_names)
-
-  # ACM MCE Assisted-installer CPU/Memory
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'assisted-service.*'})"
-  query_thanos(route, q, "ACM - MCE Assisted-Installer", token, end_ts, duration, sub_report_dir, "cpu-acm-mce-ai", "ACM Assisted-Installer CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'assisted-service.*'})"
-  query_thanos(route, q, "ACM - MCE Assisted-Installer", token, end_ts, duration, sub_report_dir, "mem-acm-mce-ai", "ACM Assisted-Installer Memory Usage", "MEM", w, h, q_names)
-
-  # ACM MCE Image Based Install Operator CPU/Memory
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'image-based-install-operator.*'})"
-  query_thanos(route, q, "ACM - MCE IBIO", token, end_ts, duration, sub_report_dir, "cpu-acm-mce-ibio", "ACM image-based-install-operator CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'image-based-install-operator.*'})"
-  query_thanos(route, q, "ACM - MCE IBIO", token, end_ts, duration, sub_report_dir, "mem-acm-mce-ibio", "ACM image-based-install-operator Memory Usage", "MEM", w, h, q_names)
 
   # ACM Observability CPU/Memory/Network
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management-observability'})"
@@ -320,20 +293,33 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
 
 
 def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
-  # Cluster CPU/Memory/Network and nonterminated pods
   sub_report_dir = os.path.join(report_dir, "cluster")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='', namespace!='minio'})"
+  # Cluster CPU/Memory/Network and nonterminated pods (excluding Minio)
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster_no-minio", "Cluster CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster_no-minio", "Cluster Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster_no-minio", "Cluster Network Receive Throughput (Excluding Minio)", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster_no-minio", "Cluster Network Transmit Throughput (Excluding Minio)", "NET", w, h, q_names)
+  q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed',namespace!='minio'})"
+  query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster_no-minio", "Non-terminated pods across entire cluster (Excluding Minio)", "Count", w, h, q_names)
+
+  # Cluster CPU/Memory/Network and nonterminated pods (including Minio)
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster", "Cluster CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',namespace!='minio', container!=''})"
+  q = "sum(container_memory_working_set_bytes{cluster='',container!=''})"
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster", "Cluster Memory Usage", "MEM", w, h, q_names)
   q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!=''}[5m]))"
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster", "Cluster Network Receive Throughput", "NET", w, h, q_names)
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!=''}[5m]))"
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster", "Cluster Network Transmit Throughput", "NET", w, h, q_names)
-  q = "sum(kube_pod_status_phase{phase!='Succeeded', phase!='Failed'})"
+  q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed'})"
   query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster", "Non-terminated pods across entire cluster", "Count", w, h, q_names)
+
   return q_names
 
 
@@ -361,22 +347,31 @@ def etcd_queries(report_dir, route, token, end_ts, duration, w, h):
 
 
 def gitops_queries(report_dir, route, token, end_ts, duration, w, h):
-  # GitOps Prometheus Queries
+  # GitOps has two namespaces, openshift-gitops-operator and openshift-gitops
   sub_report_dir = os.path.join(report_dir, "gitops")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-gitops-operator'})"
+  query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "cpu-gitops-op", "OpenShift GitOps Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-gitops-operator'})"
+  query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "mem-gitops-op", "OpenShift GitOps Operator Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-gitops-operator'}[5m]))"
+  query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-rcv-gitops-op", "OpenShift GitOps Operator Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-gitops-operator'}[5m]))"
+  query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-xmt-gitops-op", "OpenShift GitOps Operator Network Transmit Throughput", "NET", w, h, q_names)
+
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-gitops'})"
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "cpu-gitops", "OpenShift GitOps CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-gitops'})"
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "mem-gitops", "OpenShift GitOps Memory Usage", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace=~'openshift-gitops'}[5m]))"
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-gitops'}[5m]))"
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-rcv-gitops", "OpenShift GitOps Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'openshift-gitops'}[5m]))"
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-gitops'}[5m]))"
   query_thanos(route, q, "openshift-gitops", token, end_ts, duration, sub_report_dir, "net-xmt-gitops", "OpenShift GitOps Network Transmit Throughput", "NET", w, h, q_names)
   # split by pods in the namespaces
   q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-gitops'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-gitops-pod", "OpenShift GitOps CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='openshift-gitops'})"
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-gitops'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-gitops-pod", "OpenShift GitOps Memory Usage", "MEM", w, h, q_names)
   return q_names
 
@@ -409,6 +404,50 @@ def hive_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def hypershift_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "hypershift")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+  q = "sum (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='hypershift'})"
+  query_thanos(route, q, "hypershift", token, end_ts, duration, sub_report_dir, "cpu-hypershift", "Hypershift CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='hypershift'})"
+  query_thanos(route, q, "hypershift", token, end_ts, duration, sub_report_dir, "mem-hypershift", "Hypershift Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='hypershift'}[5m]))"
+  query_thanos(route, q, "hypershift", token, end_ts, duration, sub_report_dir, "net-rcv-hypershift", "Hypershift Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='hypershift'}[5m]))"
+  query_thanos(route, q, "hypershift", token, end_ts, duration, sub_report_dir, "net-xmt-hypershift", "Hypershift Network Transmit Throughput", "NET", w, h, q_names)
+
+  return q_names
+
+
+def hypershift_uwm_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "hypershift-uwm")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # OpenShift User Workload Monitoring CPU/Memory/Network
+  q = "sum (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-user-workload-monitoring'})"
+  query_thanos(route, q, "hypershift-uwm", token, end_ts, duration, sub_report_dir, "cpu-hypershift-uwm", "Hypershift UWM CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-user-workload-monitoring'})"
+  query_thanos(route, q, "hypershift-uwm", token, end_ts, duration, sub_report_dir, "mem-hypershift-uwm", "Hypershift UWM Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-user-workload-monitoring'}[5m]))"
+  query_thanos(route, q, "hypershift-uwm", token, end_ts, duration, sub_report_dir, "net-rcv-hypershift-uwm", "Hypershift UWM Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-user-workload-monitoring'}[5m]))"
+  query_thanos(route, q, "hypershift-uwm", token, end_ts, duration, sub_report_dir, "net-xmt-hypershift-uwm", "Hypershift UWM Network Transmit Throughput", "NET", w, h, q_names)
+
+  # OpenShift User Workload Monitoring pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-user-workload-monitoring'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-hypershift-uwm-pods", "Hypershift UWM Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-user-workload-monitoring'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-hypershift-uwm-pods", "Hypershift UWM Pod Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='openshift-user-workload-monitoring'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-hypershift-uwm-pods", "Hypershift UWM Pod Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-user-workload-monitoring'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-hypershift-uwm-pods", "Hypershift UWM Pod Network Transmit Throughput", "NET", w, h, q_names)
+
+  return q_names
+
+
 def lso_queries(report_dir, route, token, end_ts, duration, w, h):
   # Local-Storage-Operator Prometheus Queries
   sub_report_dir = os.path.join(report_dir, "lso")
@@ -418,10 +457,10 @@ def lso_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "cpu-lso", "OpenShift LSO CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-local-storage'})"
   query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "mem-lso", "OpenShift LSO Memory Usage", "MEM", w, h, q_names)
-  # q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace=~'openshift-local-storage'}[5m]))"
-  # query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "net-rcv-lso", "OpenShift LSO Network Receive Throughput", "NET", w, h, q_names)
-  # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'openshift-local-storage'}[5m]))"
-  # query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "net-xmt-lso", "OpenShift LSO Network Transmit Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-local-storage'}[5m]))"
+  query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "net-rcv-lso", "OpenShift LSO Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-local-storage'}[5m]))"
+  query_thanos(route, q, "openshift-local-storage", token, end_ts, duration, sub_report_dir, "net-xmt-lso", "OpenShift LSO Network Transmit Throughput", "NET", w, h, q_names)
   return q_names
 
 
@@ -449,6 +488,152 @@ def metal3_queries(report_dir, route, token, end_ts, duration, w, h):
   # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-metal3-ironic-proxy", "Metal3 Ironic Proxy Network Receive Throughput", "NET", w, h, q_names)
   # q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-machine-api',pod=~'ironic-proxy-.*'}[5m]))"
   # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-metal3-ironic-proxy", "Metal3 Ironic Proxy Network Transmit Throughput", "NET", w, h, q_names)
+  return q_names
+
+
+def mce_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "mce")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+  # Interesting MCE objects
+  q = "apiserver_storage_objects{resource='agents.agent-install.openshift.io'}"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "mce-agents", "MCE Agent Objects", "Count", w, h, q_names)
+
+  # MCE CPU/Memory/Network (multicluster-engine namespace)
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
+  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "cpu-mce", "MCE CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-engine'})"
+  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "mem-mce", "MCE Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-rcv-mce", "MCE Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  query_thanos(route, q, "ACM - MCE", token, end_ts, duration, sub_report_dir, "net-xmt-mce", "MCE Network Transmit Throughput", "NET", w, h, q_names)
+
+  # MCE pods (multicluster-engine namespace)
+  # Graphing all MCE pods in one graph is too visually busy
+  # q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine'})"
+  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-pods", "MCE Pod CPU Cores Usage", "CPU", w, h, q_names)
+  # q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='multicluster-engine'})"
+  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-pods", "MCE Pod Memory Usage", "MEM", w, h, q_names)
+  # q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-mce-pods", "MCE Pod Network Receive Throughput", "NET", w, h, q_names)
+  # q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='multicluster-engine'}[5m]))"
+  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-mce-pods", "MCE Pod Network Transmit Throughput", "NET", w, h, q_names)
+
+  # MCE agentinstalladmission CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'agentinstalladmission.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-aia", "MCE agentinstalladmission CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'agentinstalladmission.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-aia", "MCE agentinstalladmission Memory Usage", "MEM", w, h, q_names)
+
+  # MCE Assisted installer service(s) CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'assisted.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-ai", "MCE Assisted-Installer CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'assisted.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-ai", "MCE Assisted-Installer Memory Usage", "MEM", w, h, q_names)
+
+  # MCE cluster-curator-controller CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'cluster-curator-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cluster-curator-controller", "MCE cluster-curator-controller CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'cluster-curator-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cluster-curator-controller", "MCE cluster-curator-controller Memory Usage", "MEM", w, h, q_names)
+
+  # MCE cluster-image-set-controller CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'cluster-image-set-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cis", "MCE cluster-image-set-controller CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'cluster-image-set-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cis", "MCE cluster-image-set-controller Memory Usage", "MEM", w, h, q_names)
+
+  # MCE cluster-manager CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'cluster-manager.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cm", "MCE cluster-manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'cluster-manager.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cm", "MCE cluster-manager Memory Usage", "MEM", w, h, q_names)
+
+  # MCE cluster-proxy, cluster-proxy-addon manager/user Pods CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'cluster-proxy.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cp", "MCE cluster-proxy, cluster-proxy-addon manager/user CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'cluster-proxy.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cp", "MCE cluster-proxy, cluster-proxy-addon manager/user Memory Usage", "MEM", w, h, q_names)
+
+  # MCE clusterclaims-controller CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'clusterclaims-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-clusterclaims-controller", "MCE clusterclaims-controller CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'clusterclaims-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-clusterclaims-controller", "MCE clusterclaims-controller Memory Usage", "MEM", w, h, q_names)
+
+  # MCE clusterlifecycle-state-metrics-v2 CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'clusterlifecycle-state-metrics-v2.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cls", "MCE clusterlifecycle-state-metrics-v2 CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'clusterlifecycle-state-metrics-v2.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cls", "MCE clusterlifecycle-state-metrics-v2 Memory Usage", "MEM", w, h, q_names)
+
+  # MCE console-mce-console CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'console-mce-console.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-cmc", "MCE console-mce-console CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'console-mce-console.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-cmc", "MCE console-mce-console Memory Usage", "MEM", w, h, q_names)
+
+  # MCE discovery-operator CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'discovery-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-do", "MCE discovery-operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'discovery-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-do", "MCE discovery-operator Memory Usage", "MEM", w, h, q_names)
+
+  # MCE hcp-cli-download CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'hcp-cli-download.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-hcp-cli-download", "MCE hcp-cli-download CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'hcp-cli-download.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-hcp-cli-download", "MCE hcp-cli-download Memory Usage", "MEM", w, h, q_names)
+
+  # MCE hive-operator CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'hive-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-ho", "MCE hive-operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'hive-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-ho", "MCE hive-operator Memory Usage", "MEM", w, h, q_names)
+
+  # MCE hypershift-addon-manager CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'hypershift-addon-manager.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-ham", "MCE hypershift-addon-manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'hypershift-addon-manager.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-ham", "MCE hypershift-addon-manager Memory Usage", "MEM", w, h, q_names)
+
+  # MCE infrastructure-operator CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'infrastructure-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-io", "MCE infrastructure-operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'infrastructure-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-io", "MCE infrastructure-operator Memory Usage", "MEM", w, h, q_names)
+
+  # MCE Image Based Install Operator CPU/Memory
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'image-based-install-operator.*'})"
+  query_thanos(route, q, "MCE IBIO", token, end_ts, duration, sub_report_dir, "cpu-mce-ibio", "MCE image-based-install-operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'image-based-install-operator.*'})"
+  query_thanos(route, q, "MCE IBIO", token, end_ts, duration, sub_report_dir, "mem-mce-ibio", "MCE image-based-install-operator Memory Usage", "MEM", w, h, q_names)
+
+  # MCE Managedcluster-import-controller CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'managedcluster-import-controller-v2.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-mcic", "MCE managedcluster-import-controller CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'managedcluster-import-controller-v2.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-mcic", "MCE managedcluster-import-controller Memory Usage", "MEM", w, h, q_names)
+
+  # MCE multicluster-engine-operator CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'multicluster-engine-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-meo", "MCE multicluster-engine-operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'multicluster-engine-operator.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-meo", "MCE multicluster-engine-operator Memory Usage", "MEM", w, h, q_names)
+
+  # MCE ocm CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'ocm.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-ocm", "MCE ocm CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'ocm.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-ocm", "MCE ocm Memory Usage", "MEM", w, h, q_names)
+
+  # MCE provider-credential-controller CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='multicluster-engine',pod=~'provider-credential-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-mce-pcc", "MCE provider-credential-controller CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='', container!='',namespace='multicluster-engine',pod=~'provider-credential-controller.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-mce-pcc", "MCE provider-credential-controller Memory Usage", "MEM", w, h, q_names)
+
   return q_names
 
 
@@ -503,15 +688,34 @@ def mcgh_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def minio_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "minio")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # Minio CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='minio'})"
+  query_thanos(route, q, "minio", token, end_ts, duration, sub_report_dir, "cpu-minio", "Minio CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='minio'})"
+  query_thanos(route, q, "minio", token, end_ts, duration, sub_report_dir, "mem-minio", "Minio Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='minio'}[5m]))"
+  query_thanos(route, q, "minio", token, end_ts, duration, sub_report_dir, "net-rcv-minio", "Minio Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='minio'}[5m]))"
+  query_thanos(route, q, "minio", token, end_ts, duration, sub_report_dir, "net-xmt-minio", "Minio Network Transmit Throughput", "NET", w, h, q_names)
+  # Minio is a single pod thus no need to split by pod
+  return q_names
+
+
 def node_queries(report_dir, route, token, end_ts, duration, w, h):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
   q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by(node) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node_no-minio", "Node CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+  q = "sum by(node) (container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node_no-minio", "Node Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+  # Disk does not include Minio PV data (Separate PV Disk for Minio)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/sysroot'} - node_filesystem_avail_bytes{mountpoint='/sysroot'})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-root-node", "Node / usage", "DISK", w, h, q_names)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/var/lib/etcd'} - node_filesystem_avail_bytes{mountpoint='/var/lib/etcd'})"
@@ -522,8 +726,15 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "net-rcv-node", "Node Network Receive Throughput", "NET", w, h, q_names)
   q = "sum by (instance) (instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=''})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "net-xmt-node", "Node Network Transmit Throughput", "NET", w, h, q_names)
-  q = "sum(kube_pod_status_phase{phase!='Succeeded', phase!='Failed'} * on (namespace, pod, container, uid) group_left(node) kube_pod_info{pod_ip!=''}) by (node)"
+  q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed'} * on (namespace, pod, container, uid) group_left(node) kube_pod_info{pod_ip!=''}) by (node)"
   query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "nonterm-pods-node", "Non-terminated pods by Node", "Count", w, h, q_names)
+
+  # Node CPU/Memory/Network (including Minio)
+  q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!=''})"
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
+
   return q_names
 
 
@@ -549,15 +760,15 @@ def ocp_queries(report_dir, route, token, end_ts, duration, w, h):
     query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "cpu-{}".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
     q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
     query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "mem-{}".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
-    # q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace=~'" + ns + "'}[5m]))"
+    # q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
     # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-rcv-{}".format(ns), "{} Network Receive Throughput".format(ns), "NET", w, h, q_names)
-    # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'" + ns + "'}[5m]))"
+    # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
     # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-xmt-{}".format(ns), "{} Network Transmit Throughput".format(ns), "NET", w, h, q_names)
 
     # split by pods in the namespaces
     q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
     query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
-    q = "sum by (pod) (container_memory_working_set_bytes{cluster='',namespace!='minio', container!='',namespace='" + ns + "'})"
+    q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
     query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
 
   q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
@@ -608,14 +819,15 @@ def talm_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "talm-cgu", "ClusterGroupUpgrades Objects", "Count", w, h, q_names)
 
   # TALM CPU/Memory/Network
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'openshift-cluster-group-upgrades'})"
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-cluster-group-upgrades'})"
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "cpu-talm", "TALM CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace=~'openshift-cluster-group-upgrades'})"
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-cluster-group-upgrades'})"
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "mem-talm", "TALM Memory Usage", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace=~'openshift-cluster-group-upgrades'}[5m]))"
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-cluster-group-upgrades'}[5m]))"
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "net-rcv-talm", "TALM Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'openshift-cluster-group-upgrades'}[5m]))"
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-cluster-group-upgrades'}[5m]))"
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "net-xmt-talm", "TALM Network Transmit Throughput", "NET", w, h, q_names)
+  # TALM is a single pod thus no need to split by pod
   return q_names
 
 
@@ -894,38 +1106,64 @@ def main():
   report_data = OrderedDict()
 
   # Query prometheus and build data structure to help build report html file
-
   report_data["cluster"] = cluster_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["node"] = node_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["etcd"] = etcd_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  report_data["ocp"] =  ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["resource"] = resource_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  report_data["ocp"] =  ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["metal3"] = metal3_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  if "openshift-gitops" in namespaces:
-    logger.info("openshift-gitops namespace found, querying for gitops metrics")
-    report_data["gitops"] = gitops_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  # MCE and MCE related namespaces
+  if "multicluster-engine" in namespaces:
+    logger.info("multicluster-engine namespace found, querying for mce metrics")
+    report_data["mce"] = mce_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   if "hive" in namespaces:
     logger.info("hive namespace found, querying for hive metrics")
     report_data["hive"] = hive_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  if "openshift-local-storage" in namespaces:
-    logger.info("openshift-local-storage namespace found, querying for lso metrics")
-    report_data["lso"] = lso_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  if "openshift-cluster-group-upgrades" in namespaces:
-    logger.info("openshift-cluster-group-upgrades namespace found, querying for talm metrics")
-    report_data["talm"] = talm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "hypershift" in namespaces:
+    logger.info("hypershift namespace found, querying for hypershift metrics")
+    report_data["hypershift"] = hypershift_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+    report_data["hypershift-uwm"] = hypershift_uwm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
   if "open-cluster-management" in namespaces:
     logger.info("open-cluster-management namespace found, querying for acm metrics")
     report_data["acm"] = acm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  # if "open-cluster-management-observability" in namespaces:
+  #   logger.info("open-cluster-management-observability namespace found, querying for acm observability metrics")
+  #   report_data["acm-observability"] = acm_observability_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  # if "open-cluster-management-agent" in namespaces:
+  #   logger.info("open-cluster-management-agent namespace found, querying for acm agent metrics")
+  #   report_data["acm-agent"] = acm_agent_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  if "openshift-cluster-group-upgrades" in namespaces:
+    logger.info("openshift-cluster-group-upgrades namespace found, querying for talm metrics")
+    report_data["talm"] = talm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "openshift-gitops-operator" in namespaces:
+    logger.info("openshift-gitops-operator namespace found, querying for gitops metrics")
+    report_data["gitops"] = gitops_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "openshift-local-storage" in namespaces:
+    logger.info("openshift-local-storage namespace found, querying for lso metrics")
+    report_data["lso"] = lso_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  # Minio is a "workload" running on hub clusters to provide object storage for the cluster
+  if "minio" in namespaces:
+    logger.info("minio namespace found, querying for minio metrics")
+    report_data["minio"] = minio_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  # Multi Cluster Global Hub Queries
   if "multicluster-global-hub" in namespaces:
     logger.info("multicluster-global-hub namespace found, querying for mcgh metrics")
     report_data["mcgh"] = mcgh_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+
+  # AAP Queries
   if "ansible-automation-platform" in namespaces:
     logger.info("ansible-automation-platform namespace found, querying for aap metrics")
     report_data["aap"] = aap_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  # ACM with AAP without EDA (ZTP Day2 Automation)
   if "ztp-day2-automation" in namespaces:
     logger.info("ztp-day2-automation namespace found, querying for ztp day2 metrics")
     report_data["ztp-day2"] = ztp_day2_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-
 
   generate_report_html(report_dir, report_data)
 
