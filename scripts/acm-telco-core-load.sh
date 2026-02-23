@@ -3,13 +3,13 @@
 set -e
 set -o pipefail
 
-# 24 hour interval to deploy each cluster
-deploy_interval=86400
+# 12 hour interval to deploy each batch of clusters
+deploy_interval=43200
 # deploy_interval=300
 
-# Last deploy runtime of 24 hours
-last_deploy_runtime=86400
-# last_deploy_runtime=3600
+# 12 hour last deploy runtime (On last cluster batch, wait for 12 hours before concluding workload and running end delay)
+last_deploy_runtime=43200
+# last_deploy_runtime=7200
 
 # Every 12 minutes update 1/5 of the policies (all policies updated every hour)
 policy_interval=720
@@ -17,12 +17,12 @@ policy_interval=720
 # Number of clusters to deploy per interval
 deploy_batch=1
 
-# Start delay of 1 hour
-start_delay=3600
+# Start delay of 25 hour (Accounts for initial certificate rotation on hub cluster)
+start_delay=90000
 # start_delay=180
 
-# End delay of 2 hours
-end_delay=7200
+# End delay of 6 hours (Observe idle workload)
+end_delay=21600
 # end_delay=180
 
 ts="$(date -u +%Y%m%d-%H%M%S)"
