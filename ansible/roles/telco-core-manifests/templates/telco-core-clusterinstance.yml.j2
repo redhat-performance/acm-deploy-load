@@ -39,6 +39,19 @@ data:
     {{ lookup('file', 'extra-manifests/' + item ) | indent(4) }}
 {%   endfor %}
 {% endif %}
+{% if telco_core_clusterinstance_custom_manifests %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-manifests-configmap
+  namespace: {{ item.cluster_name }}
+data:
+{%   for item in telco_core_custom_manifests %}
+  {{ item | basename }}: |
+    {{ lookup('file', 'custom-manifests/' + item ) | indent(4) }}
+{%   endfor %}
+{% endif %}
 ---
 apiVersion: siteconfig.open-cluster-management.io/v1alpha1
 kind: ClusterInstance
@@ -114,6 +127,7 @@ spec:
       node-role.kubernetes.io/infra: ""
 {% elif node.role == 'worker' %}
     nodeLabels:
+      node-role.kubernetes.io/worker-{{ (loop.index % 3) + 1 }}: ""
       workload: "true"
 {% endif %}
     automatedCleaningMode: disabled

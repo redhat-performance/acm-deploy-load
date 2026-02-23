@@ -26,6 +26,12 @@ telco_core_extra_manifests:
 # - worker-load-kernel-modules.yaml
 - 4.20-newer/worker-load-kernel-modules.yaml
 
+# Manifest must exist in acm-deploy-load directory in order to be added to the custom-manifests configmap
+telco_core_custom_manifests:
+- mcp-worker-1.yaml
+- mcp-worker-2.yaml
+- mcp-worker-3.yaml
+
 # Enable observability for Telco Core clusters
 telco_core_observability: true
 

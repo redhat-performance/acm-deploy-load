@@ -5,17 +5,17 @@ metadata:
   name: hw-types
   namespace: ztp-core-policies
 data:
-  role-worker-1-reserved: "0-1,52-53"
-  role-worker-1-isolated: "2-51,54-103"
-  role-worker-1-hugepg-cnt: "4"
+  role-worker-1-reserved: "{{ telco_core_worker_1_reserved }}"
+  role-worker-1-isolated: "{{ telco_core_worker_1_isolated }}"
+  role-worker-1-hugepg-cnt: "{{ telco_core_worker_1_hugepg_cnt }}"
 
-  role-worker-2-reserved: "0-3"
-  role-worker-2-isolated: "4-63"
-  role-worker-2-hugepg-cnt: "8"
+  role-worker-2-reserved: "{{ telco_core_worker_2_reserved }}"
+  role-worker-2-isolated: "{{ telco_core_worker_2_isolated }}"
+  role-worker-2-hugepg-cnt: "{{ telco_core_worker_2_hugepg_cnt }}"
 
-  role-worker-3-reserved: "0-3"
-  role-worker-3-isolated: "4-63"
-  role-worker-3-hugepg-cnt: "8"
+  role-worker-3-reserved: "{{ telco_core_worker_3_reserved }}"
+  role-worker-3-isolated: "{{ telco_core_worker_3_isolated }}"
+  role-worker-3-hugepg-cnt: "{{ telco_core_worker_3_hugepg_cnt }}"
 
   nic-config-type-1-sriov-dev1: ens1f0
   nic-config-type-1-sriov-dev2: eno1np0

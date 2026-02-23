@@ -4,7 +4,7 @@ generators:
 - core-baseline.yaml
 - core-overlay.yaml
 {% if telco_core_profile_version is version('4.20', '>=') %}
-# - core-finish.yaml
+- core-finish.yaml
 {% endif %}
 # - core-upgrade.yaml
 

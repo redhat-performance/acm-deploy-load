@@ -37,3 +37,18 @@ telco_core_nrt_scheduler_image: registry.redhat.io/openshift4/noderesourcetopolo
 telco_core_prometheus_retention_period: 8d
 # Sets openshift-monitoring config for vm-telco-core "style" scale testing configuration
 telco_core_vm_scale_monitoring_config: true
+
+# Telco Core Worker Node Configuration
+# Current defaults are for vm-telco-core scale testing
+# Quotes for '0' such that it is passed as a string to the template
+telco_core_worker_1_reserved: "'0'"
+telco_core_worker_1_isolated: "1-3"
+telco_core_worker_1_hugepg_cnt: 0
+
+telco_core_worker_2_reserved: "'0'"
+telco_core_worker_2_isolated: "1-3"
+telco_core_worker_2_hugepg_cnt: 0
+
+telco_core_worker_3_reserved: "'0'"
+telco_core_worker_3_isolated: "1-3"
+telco_core_worker_3_hugepg_cnt: 0
