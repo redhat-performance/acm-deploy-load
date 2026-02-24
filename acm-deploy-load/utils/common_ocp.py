@@ -44,6 +44,70 @@ def detect_aap_install(kubeconfig=None, dry_run=False):
     return True
 
 
+def get_base_ocp_namespaces(ocp_version):
+  # TODO: Add other versions as needed (4.21 ...)
+  # 4.20 OpenShift Namespaces for "Base OCP"
+  ocp_4_20_base_namespaces = [
+    "openshift-apiserver",
+    "openshift-apiserver-operator",
+    "openshift-authentication",
+    "openshift-authentication-operator",
+    "openshift-catalogd",
+    "openshift-cloud-controller-manager-operator",
+    "openshift-cloud-credential-operator",
+    "openshift-cluster-machine-approver",
+    "openshift-cluster-node-tuning-operator",
+    "openshift-cluster-olm-operator",
+    "openshift-cluster-samples-operator",
+    "openshift-cluster-storage-operator",
+    "openshift-cluster-version",
+    "openshift-config-operator",
+    "openshift-console",
+    "openshift-console-operator",
+    "openshift-controller-manager",
+    "openshift-controller-manager-operator",
+    "openshift-dns",
+    "openshift-dns-operator",
+    "openshift-etcd",
+    "openshift-etcd-operator",
+    "openshift-image-registry",
+    "openshift-ingress",
+    "openshift-ingress-canary",
+    "openshift-ingress-operator",
+    "openshift-insights",
+    "openshift-kni-infra",
+    "openshift-kube-apiserver",
+    "openshift-kube-apiserver-operator",
+    "openshift-kube-controller-manager",
+    "openshift-kube-controller-manager-operator",
+    "openshift-kube-scheduler",
+    "openshift-kube-scheduler-operator",
+    "openshift-kube-storage-version-migrator",
+    "openshift-kube-storage-version-migrator-operator",
+    "openshift-machine-api",
+    "openshift-machine-config-operator",
+    "openshift-marketplace",
+    "openshift-monitoring",
+    "openshift-multus",
+    "openshift-network-console",
+    "openshift-network-diagnostics",
+    "openshift-network-node-identity",
+    "openshift-network-operator",
+    "openshift-oauth-apiserver",
+    "openshift-operator-controller",
+    "openshift-operator-lifecycle-manager",
+    "openshift-ovn-kubernetes",
+    "openshift-route-controller-manager",
+    "openshift-service-ca",
+    "openshift-service-ca-operator",
+  ]
+  if ocp_version["major"] == 4 and ocp_version["minor"] == 20:
+    return ocp_4_20_base_namespaces
+  else:
+    return ocp_4_20_base_namespaces
+    # return []
+
+
 def get_ocp_namespace_list(kubeconfig):
   logger.info("Getting OCP namespace list")
   oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "namespace", "-o", "json"]

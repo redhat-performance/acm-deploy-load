@@ -20,6 +20,7 @@
 import argparse
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+from utils.common_ocp import get_base_ocp_namespaces
 from utils.common_ocp import get_ocp_namespace_list
 from utils.common_ocp import get_ocp_version
 from utils.common_ocp import get_prometheus_token
@@ -185,7 +186,6 @@ def aap_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-aap-automation-jobs", "AAP Automation Jobs CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='ansible-automation-platform',pod=~'automation-job-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-aap-automation-jobs", "AAP Automation Jobs Memory Usage", "MEM", w, h, q_names)
-
   return q_names
 
 
@@ -292,6 +292,23 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def base_ocp_queries(report_dir, route, token, end_ts, duration, w, h, ocp_version):
+  sub_report_dir = os.path.join(report_dir, "base-ocp")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+  base_ocp_namespaces = get_base_ocp_namespaces(ocp_version)
+  ns = "namespace=~'" + "|".join(base_ocp_namespaces) + "'"
+  cpu_q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''," + ns + "})"
+  query_thanos(route, cpu_q, "base-ocp", token, end_ts, duration, sub_report_dir, "cpu-base-ocp", "Base OCP CPU Cores Usage", "CPU", w, h, q_names)
+  mem_q = "sum(container_memory_working_set_bytes{cluster='',container!=''," + ns + "})"
+  query_thanos(route, mem_q, "base-ocp", token, end_ts, duration, sub_report_dir, "mem-base-ocp", "Base OCP Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!=''," + ns + "}[5m]))"
+  query_thanos(route, q, "base-ocp", token, end_ts, duration, sub_report_dir, "net-rcv-base-ocp", "Base OCP Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!=''," + ns + "}[5m]))"
+  query_thanos(route, q, "base-ocp", token, end_ts, duration, sub_report_dir, "net-xmt-base-ocp", "Base OCP Network Transmit Throughput", "NET", w, h, q_names)
+  return q_names
+
+
 def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
   sub_report_dir = os.path.join(report_dir, "cluster")
   make_report_directories(sub_report_dir)
@@ -307,6 +324,9 @@ def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster_no-minio", "Cluster Network Transmit Throughput (Excluding Minio)", "NET", w, h, q_names)
   q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed',namespace!='minio'})"
   query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster_no-minio", "Non-terminated pods across entire cluster (Excluding Minio)", "Count", w, h, q_names)
+  # Sum of nodes in each status (Ready, DiskPressure, MemoryPressure, PIDPressure)
+  q = "sum by (condition) (kube_node_status_condition{status='true'})"
+  query_thanos(route, q, "condition", token, end_ts, duration, sub_report_dir, "cluster-node-status", "Cluster Nodes Status", "Count", w, h, q_names)
 
   # Cluster CPU/Memory/Network and nonterminated pods (including Minio)
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
@@ -319,7 +339,47 @@ def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster", "Cluster Network Transmit Throughput", "NET", w, h, q_names)
   q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed'})"
   query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster", "Non-terminated pods across entire cluster", "Count", w, h, q_names)
+  return q_names
 
+
+def core_ocp_queries(report_dir, route, token, end_ts, duration, w, h):
+  # Opinionated list of OCP Namespaces to collect prometheus data over
+  ocp_namespaces = [
+    "openshift-apiserver",
+    "openshift-console",
+    "openshift-controller-manager",
+    "openshift-etcd",
+    "openshift-ingress",
+    "openshift-kni-infra",
+    "openshift-kube-apiserver",
+    "openshift-kube-controller-manager",
+    "openshift-kube-scheduler",
+    "openshift-machine-api",
+    "openshift-monitoring",
+    "openshift-ovn-kubernetes"
+  ]
+
+  sub_report_dir = os.path.join(report_dir, "core-ocp")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+  for ns in ocp_namespaces:
+    q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
+    query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "cpu-{}".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
+    q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
+    query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "mem-{}".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
+    # q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
+    # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-rcv-{}".format(ns), "{} Network Receive Throughput".format(ns), "NET", w, h, q_names)
+    # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
+    # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-xmt-{}".format(ns), "{} Network Transmit Throughput".format(ns), "NET", w, h, q_names)
+
+    # split by pods in the namespaces
+    q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
+    q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
+
+  q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
+  query_thanos(route, q, "container", token, end_ts, duration, sub_report_dir, "pod-restarts", "Pod Restarts > 3", "Count", w, h, q_names)
   return q_names
 
 
@@ -473,22 +533,6 @@ def make_report_directories(sub_report_dir):
     os.mkdir(csv_dir)
   if not os.path.exists(stats_dir):
     os.mkdir(stats_dir)
-
-
-def metal3_queries(report_dir, route, token, end_ts, duration, w, h):
-  # Metal3 Prometheus Queries
-  sub_report_dir = os.path.join(report_dir, "metal3")
-  make_report_directories(sub_report_dir)
-  q_names = OrderedDict()
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-machine-api',pod=~'ironic-proxy-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-metal3-ironic-proxy", "Metal3 Ironic Proxy CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-machine-api',pod=~'ironic-proxy-.*'})"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-metal3-ironic-proxy", "Metal3 Ironic Proxy Memory Usage", "MEM", w, h, q_names)
-  # q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='openshift-machine-api',pod=~'ironic-proxy-.*'}[5m]))"
-  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-metal3-ironic-proxy", "Metal3 Ironic Proxy Network Receive Throughput", "NET", w, h, q_names)
-  # q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-machine-api',pod=~'ironic-proxy-.*'}[5m]))"
-  # query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-metal3-ironic-proxy", "Metal3 Ironic Proxy Network Transmit Throughput", "NET", w, h, q_names)
-  return q_names
 
 
 def mce_queries(report_dir, route, token, end_ts, duration, w, h):
@@ -735,44 +779,6 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!=''})"
   query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
 
-  return q_names
-
-
-def ocp_queries(report_dir, route, token, end_ts, duration, w, h):
-  # Typical OCP Namespaces to collect prometheus data over
-  ocp_namespaces = [
-    "openshift-apiserver",
-    "openshift-controller-manager",
-    "openshift-etcd",
-    "openshift-ingress",
-    "openshift-kni-infra",
-    "openshift-kube-apiserver",
-    "openshift-kube-controller-manager",
-    "openshift-kube-scheduler",
-    "openshift-machine-api",
-    "openshift-monitoring"
-  ]
-  sub_report_dir = os.path.join(report_dir, "ocp")
-  make_report_directories(sub_report_dir)
-  q_names = OrderedDict()
-  for ns in ocp_namespaces:
-    q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
-    query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "cpu-{}".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
-    q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
-    query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "mem-{}".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
-    # q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
-    # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-rcv-{}".format(ns), "{} Network Receive Throughput".format(ns), "NET", w, h, q_names)
-    # q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='" + ns + "'}[5m]))"
-    # query_thanos(route, q, ns, token, end_ts, duration, sub_report_dir, "net-xmt-{}".format(ns), "{} Network Transmit Throughput".format(ns), "NET", w, h, q_names)
-
-    # split by pods in the namespaces
-    q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='" + ns + "'})"
-    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-{}-pod".format(ns), "{} CPU Cores Usage".format(ns), "CPU", w, h, q_names)
-    q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='" + ns + "'})"
-    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-{}-pod".format(ns), "{} Memory Usage".format(ns), "MEM", w, h, q_names)
-
-  q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
-  query_thanos(route, q, "container", token, end_ts, duration, sub_report_dir, "pod-restarts", "Pod Restarts > 3", "Count", w, h, q_names)
   return q_names
 
 
@@ -1111,8 +1117,8 @@ def main():
   report_data["etcd"] = etcd_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["resource"] = resource_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
-  report_data["ocp"] =  ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  report_data["metal3"] = metal3_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  report_data["base-ocp"] = base_ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h, version)
+  report_data["core-ocp"] =  core_ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
   # MCE and MCE related namespaces
   if "multicluster-engine" in namespaces:
