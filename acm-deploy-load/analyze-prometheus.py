@@ -309,24 +309,23 @@ def base_ocp_queries(report_dir, route, token, end_ts, duration, w, h, ocp_versi
   return q_names
 
 
-def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
+def cluster_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   sub_report_dir = os.path.join(report_dir, "cluster")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
-  # Cluster CPU/Memory/Network and nonterminated pods (excluding Minio)
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster_no-minio", "Cluster CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster_no-minio", "Cluster Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster_no-minio", "Cluster Network Receive Throughput (Excluding Minio)", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster_no-minio", "Cluster Network Transmit Throughput (Excluding Minio)", "NET", w, h, q_names)
-  q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed',namespace!='minio'})"
-  query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster_no-minio", "Non-terminated pods across entire cluster (Excluding Minio)", "Count", w, h, q_names)
-  # Sum of nodes in each status (Ready, DiskPressure, MemoryPressure, PIDPressure)
-  q = "sum by (condition) (kube_node_status_condition{status='true'})"
-  query_thanos(route, q, "condition", token, end_ts, duration, sub_report_dir, "cluster-node-status", "Cluster Nodes Status", "Count", w, h, q_names)
+
+  if 'minio' in namespaces:
+    # Cluster CPU/Memory/Network and nonterminated pods (excluding Minio)
+    q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster_no-minio", "Cluster CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+    q = "sum(container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster_no-minio", "Cluster Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+    q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster_no-minio", "Cluster Network Receive Throughput (Excluding Minio)", "NET", w, h, q_names)
+    q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster_no-minio", "Cluster Network Transmit Throughput (Excluding Minio)", "NET", w, h, q_names)
+    q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed',namespace!='minio'})"
+    query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster_no-minio", "Non-terminated pods across entire cluster (Excluding Minio)", "Count", w, h, q_names)
 
   # Cluster CPU/Memory/Network and nonterminated pods (including Minio)
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
@@ -339,6 +338,9 @@ def cluster_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-xmt-cluster", "Cluster Network Transmit Throughput", "NET", w, h, q_names)
   q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed'})"
   query_thanos(route, q, "non-terminated pods", token, end_ts, duration, sub_report_dir, "nonterm-pods-cluster", "Non-terminated pods across entire cluster", "Count", w, h, q_names)
+  # Sum of nodes in each status (Ready, DiskPressure, MemoryPressure, PIDPressure)
+  q = "sum by (condition) (kube_node_status_condition{status='true'})"
+  query_thanos(route, q, "condition", token, end_ts, duration, sub_report_dir, "cluster-node-status", "Cluster Nodes Status", "Count", w, h, q_names)
   return q_names
 
 
@@ -750,15 +752,24 @@ def minio_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
-def node_queries(report_dir, route, token, end_ts, duration, w, h):
+def node_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
-  q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node_no-minio", "Node CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
-  q = "sum by(node) (container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node_no-minio", "Node Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+  if 'minio' in namespaces:
+    # Node CPU/Memory/Disk/Network (excluding Minio)
+    q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
+    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node_no-minio", "Node CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+    q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!='',namespace!='minio'})"
+    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node_no-minio", "Node Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+
+  # Node CPU/Memory/Network (including Minio)
+  q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!=''})"
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
+
   # Disk does not include Minio PV data (Separate PV Disk for Minio)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/sysroot'} - node_filesystem_avail_bytes{mountpoint='/sysroot'})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-root-node", "Node / usage", "DISK", w, h, q_names)
@@ -772,13 +783,6 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "net-xmt-node", "Node Network Transmit Throughput", "NET", w, h, q_names)
   q = "sum(kube_pod_status_phase{phase!='Succeeded',phase!='Failed'} * on (namespace, pod, container, uid) group_left(node) kube_pod_info{pod_ip!=''}) by (node)"
   query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "nonterm-pods-node", "Non-terminated pods by Node", "Count", w, h, q_names)
-
-  # Node CPU/Memory/Network (including Minio)
-  q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
-
   return q_names
 
 
@@ -956,7 +960,8 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
 
           # Write graph and stats file
           with open("{}/{}.stats".format(stats_dir, fname), "a") as stats_file:
-            stats_file.write(str(df.describe()))
+            with pd.option_context("display.max_columns", None, "display.width", 240):
+              stats_file.write(str(df.describe(percentiles=[.25, .5, .75, .95, .99])))
           df.to_csv("{}/{}.csv".format(csv_dir, fname))
 
           # Create a copy for plotting with datetime as string to avoid plotly conversion issues
@@ -1112,8 +1117,8 @@ def main():
   report_data = OrderedDict()
 
   # Query prometheus and build data structure to help build report html file
-  report_data["cluster"] = cluster_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
-  report_data["node"] = node_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  report_data["cluster"] = cluster_queries(report_dir, route, token, q_end_ts, q_duration, w, h, namespaces)
+  report_data["node"] = node_queries(report_dir, route, token, q_end_ts, q_duration, w, h, namespaces)
   report_data["etcd"] = etcd_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   report_data["resource"] = resource_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 

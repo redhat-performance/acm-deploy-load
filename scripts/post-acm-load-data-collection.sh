@@ -10,6 +10,9 @@ mkdir -p ${output_dir}
 echo "$(date -u) :: Collecting managedcluster kubeconfigs"
 oc get managedcluster --no-headers | grep -v local | awk '{print $1}' | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/% ;oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
 
+echo "$(date -u) :: Setting thanos-querier route timeout to 5 minutes on managed clusters"
+ls /root/hv-vm/kc/ | xargs -I % oc --kubeconfig /root/hv-vm/kc/%/kubeconfig annotate route -n openshift-monitoring thanos-querier haproxy.router.openshift.io/timeout=5m
+
 echo "$(date -u) :: Collecting clusterversion, csv, nodes, namespaces and pod/event data"
 
 oc get clusterversion > ${output_dir}/clusterversion
