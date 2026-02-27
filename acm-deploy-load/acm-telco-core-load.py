@@ -208,7 +208,7 @@ def main():
     else:
       logger.info(f" * No policy updates")
     logger.info(f" * End delay: {cliargs.end_delay}s")
-    logger.info(f"* Expected run time: {expected_run_time}s")
+    logger.info(f"* Expected run time: {expected_run_time}s :: {str(timedelta(seconds=expected_run_time))}")
   elif cliargs.no_deploy == True:
     expected_run_time = cliargs.start_delay + cliargs.max_policy_intervals * cliargs.interval_policy + cliargs.end_delay
     logger.info("* Mode: Policy configmap updates only")
@@ -224,14 +224,17 @@ def main():
 
   phase_break()
   # Detect a policy configmap
-  logger.info("Detecting configmap {} in namespace {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace))
-  oc_cmd = ["oc", "--kubeconfig", cliargs.kubeconfig, "get", "cm", "-n", cliargs.hub_policy_namespace, cliargs.hub_policy_cm_name, "-o", "json"]
-  rc, output = command(oc_cmd, False, retries=3, no_log=True)
-  if rc != 0:
-    logger.error("oc get cm {} -n {} rc: {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace, rc))
-    sys.exit(1)
+  if cliargs.no_policy == False:
+    logger.info("Detecting configmap {} in namespace {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace))
+    oc_cmd = ["oc", "--kubeconfig", cliargs.kubeconfig, "get", "cm", "-n", cliargs.hub_policy_namespace, cliargs.hub_policy_cm_name, "-o", "json"]
+    rc, output = command(oc_cmd, False, retries=3, no_log=True)
+    if rc != 0:
+      logger.error("oc get cm {} -n {} rc: {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace, rc))
+      sys.exit(1)
+    else:
+      logger.info("Detected configmap {} in namespace {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace))
   else:
-    logger.info("Detected configmap {} in namespace {}".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_namespace))
+    logger.info("No policy configmap updates, skipping policy configmap detection")
 
   # Pre-populate the policy configmap keys var for templating
   starting_key_increment = 0
@@ -264,7 +267,7 @@ def main():
 
   next_deploy_time = workload_start_time + cliargs.start_delay
   next_policy_time = next_deploy_time
-  last_logged = workload_start_time
+  last_logged = start_delay_complete_ts
   phase_break()
   logger.info("Begin Telco Core ACM Load - {}".format(int(time.time() * 1000)))
   phase_break()
@@ -313,20 +316,34 @@ def main():
       last_logged = current_time
       remaining_deploy_time = round(next_deploy_time - current_time)
       remaining_policy_time = round(next_policy_time - current_time)
-      if cliargs.no_deploy == False:
+      elapsed_time = round(current_time - workload_start_time)
+      estimated_remaining_time = expected_run_time - elapsed_time
+      logger.info("ACM-Telco Core Load Update:")
+      logger.info("Elapsed time: {}s :: {}".format(elapsed_time, str(timedelta(seconds=elapsed_time))))
+      logger.info("Estimated remaining workload time: {}s :: {}".format(estimated_remaining_time, str(timedelta(seconds=estimated_remaining_time))))
+      if cliargs.no_deploy == False and cliargs.no_policy == False:
+        # Deploy+Policy mode
+        logger.info("Total clusters deployed: {}".format(total_clusters_deployed))
+        logger.info("Total policy updates: {}".format(total_policy_cm_updates))
+        if total_clusters_deployed >= len(clusterinstance_files):
+          logger.info("Last cluster deployed, remaining interval time: {}s :: {}".format(remaining_deploy_time, str(timedelta(seconds=remaining_deploy_time))))
+        else:
+          logger.info("Time until next cluster to deploy: {}s :: {}".format(remaining_deploy_time, str(timedelta(seconds=remaining_deploy_time))))
+        logger.info("Time until next policy update: {}s :: {}".format(remaining_policy_time, str(timedelta(seconds=remaining_policy_time))))
+      elif cliargs.no_deploy == False and cliargs.no_policy == True:
+        # Deploy Clusters only mode
         logger.info("Total clusters deployed: {}".format(total_clusters_deployed))
         if total_clusters_deployed >= len(clusterinstance_files):
           logger.info("Last cluster deployed, remaining interval time: {}s :: {}".format(remaining_deploy_time, str(timedelta(seconds=remaining_deploy_time))))
         else:
           logger.info("Time until next cluster to deploy: {}s :: {}".format(remaining_deploy_time, str(timedelta(seconds=remaining_deploy_time))))
-      if cliargs.no_policy == False:
-        if cliargs.no_deploy == True:
-          logger.info("Total policy updates: {} of {}".format(total_policy_cm_updates, cliargs.max_policy_intervals))
-          if total_policy_cm_updates >= cliargs.max_policy_intervals:
-            logger.info("Last policy update, remaining interval time: {}s :: {}".format(remaining_policy_time, str(timedelta(seconds=remaining_policy_time))))
+      elif cliargs.no_policy == False and cliargs.no_deploy == True:
+        # Policy configmap updates only mode
+        logger.info("Total policy updates: {} of {}".format(total_policy_cm_updates, cliargs.max_policy_intervals))
+        if total_policy_cm_updates >= cliargs.max_policy_intervals:
+          logger.info("Last policy update, remaining interval time: {}s :: {}".format(remaining_policy_time, str(timedelta(seconds=remaining_policy_time))))
         else:
-          logger.info("Total policy updates: {}".format(total_policy_cm_updates))
-        logger.info("Time until next policy update: {}s :: {}".format(remaining_policy_time, str(timedelta(seconds=remaining_policy_time))))
+          logger.info("Time until next policy update: {}s :: {}".format(remaining_policy_time, str(timedelta(seconds=remaining_policy_time))))
 
     time.sleep(.1)
     current_time = time.time()
@@ -346,7 +363,7 @@ def main():
     time.sleep(total_end_delay)
 
   end_time = time.time()
-
+  total_elapsed_time = round(end_time - workload_start_time)
   # Make a report card
   with open("{}/report.txt".format(report_dir), "w") as report:
     phase_break(True, report)
@@ -377,6 +394,7 @@ def main():
       log_write(report, f"  * Maximum number of policy intervals to run: {cliargs.max_policy_intervals}")
       log_write(report, f" * End delay: {cliargs.end_delay}s")
     log_write(report, "Workload Results")
+    log_write(report, " * Total elapsed time: {}s :: {}".format(total_elapsed_time, str(timedelta(seconds=total_elapsed_time))))
     log_write(report, " * Total cluster(s) deployed: {}".format(total_clusters_deployed))
     log_write(report, " * Total policy cm updates: {}".format(total_policy_cm_updates))
     log_write(report, "Workload Timestamps")
@@ -387,7 +405,7 @@ def main():
     log_write(report, " * End Delay Start Time: {}".format(datetime.fromtimestamp(end_delay_start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
     log_write(report, " * End Time: {} {}".format(datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(end_time * 1000)))
 
-  logger.info("Took {}s".format(round(end_time - start_time, 1)))
+  logger.info("Took {}s :: {}".format(total_elapsed_time, str(timedelta(seconds=total_elapsed_time))))
 
 
 if __name__ == "__main__":
