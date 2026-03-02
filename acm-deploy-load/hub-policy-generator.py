@@ -248,6 +248,7 @@ def main():
   parser_gen.add_argument("-m", "--manifests-directory", type=str, help="The location to place hub policy manifests")
 
   parser_gen.add_argument("--hub-policy-namespace", type=str, default="policies", help="Namespace for the policies")
+  parser_gen.add_argument("--hub-policy-name-prefix", type=str, default="policy", help="Prefix for each policy name (Ex: small, medium, large)")
   parser_gen.add_argument("--hub-policy-cm-name", type=str, default="policy-template-map", help="Name for hub side configmap for policy data keys")
   parser_gen.add_argument("--hub-policy-cm-keys", type=int, default=5, help="Number of keys for the hub side configmap")
 
@@ -308,7 +309,7 @@ def main():
     logger.info(" * 1 namespace ({}) for policies".format(cliargs.hub_policy_namespace))
     logger.info("   * 1 configmap ({}) with {} keys".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_cm_keys))
     if cliargs.policies > 1:
-      logger.info("   * {} policies".format(cliargs.policies))
+      logger.info("   * {} policies with prefix {}".format(cliargs.policies, cliargs.hub_policy_name_prefix))
     else:
       logger.info("   * 1 policy")
     logger.info("     * {} namespaces per policy".format(cliargs.namespaces))
@@ -367,7 +368,7 @@ def main():
       file1.writelines(hcm_template_rendered)
 
     for policy in range(cliargs.policies):
-      policy_name = "policy-{:04d}".format(policy)
+      policy_name = "{}-{:04d}".format(cliargs.hub_policy_name_prefix, policy)
       namespaces = []
       deployments = {}
       configmaps = {}
