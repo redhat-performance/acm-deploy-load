@@ -92,6 +92,11 @@ spec:
       region: "zone-1"
       name: {{ item.cluster_name }}
       vendor: OpenShift
+{% if item.labels %}
+{%   for key, value in item.labels.items() %}
+      {{ key }}: "{{ value }}"
+{%   endfor %}
+{% endif %}
 {% if telco_core_observability %}
       observability: enabled
 {% else %}
