@@ -120,7 +120,7 @@ def launch_prometheus_analysis(report_dir, phase_name, start_ts, end_ts, kubecon
     return
   start_str = datetime.fromtimestamp(start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
   end_str = datetime.fromtimestamp(end_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-  duration_seconds = end_ts - start_ts
+  duration_seconds = round(end_ts - start_ts)
   if duration_seconds < 300:
     logger.warning("Skipping prometheus analysis phase {}: window {}s < 5 minutes".format(phase_name, duration_seconds))
     return
@@ -191,6 +191,9 @@ def main():
   parser.add_argument("-s", "--start-delay", type=int, default=120, help="Delay on start of script")
   parser.add_argument("-e", "--end-delay", type=int, default=120, help="Delay on end of script")
 
+  parser.add_argument("-t", "--results-dir-suffix", type=str, default="test-00",
+                      help="Suffix to be appended to results directory name")
+
   parser.add_argument("--no-prometheus-analysis", action="store_true", default=False,
                       help="Do not run analyze-prometheus.py in background post each phase+batch")
 
@@ -214,7 +217,7 @@ def main():
   base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
   base_dir_down = os.path.dirname(base_dir)
   base_dir_results = os.path.join(base_dir_down, "results")
-  report_dir_name = "{}-telco-core-load".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
+  report_dir_name = "{}-telco-core-load-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"), cliargs.results_dir_suffix)
   report_dir = os.path.join(base_dir_results, report_dir_name)
   policy_dir = os.path.join(report_dir, "policy-cm")
   logger.info("Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
@@ -462,7 +465,7 @@ def main():
       log_write(report, f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
       log_write(report, f" * End delay: {cliargs.end_delay}s")
     elif cliargs.no_deploy == False and cliargs.no_policy == True:
-      log_write(report, " * Mode: Deploy Clusters only")
+      log_write(report, "* Mode: Deploy Clusters only")
       log_write(report, f" * Start delay: {cliargs.start_delay}s")
       log_write(report, f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s interval")
       log_write(report, f"  * Available clusters: {len(clusterinstance_files)}")
@@ -470,7 +473,7 @@ def main():
       log_write(report, f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s")
       log_write(report, f" * End delay: {cliargs.end_delay}s")
     elif cliargs.no_deploy == True and cliargs.no_policy == False:
-      log_write(report, " * Mode: Policy configmap updates only")
+      log_write(report, "* Mode: Policy configmap updates only")
       log_write(report, f" * Start delay: {cliargs.start_delay}s")
       log_write(report, f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
       log_write(report, f"  * Maximum number of policy intervals to run: {cliargs.max_policy_intervals}")

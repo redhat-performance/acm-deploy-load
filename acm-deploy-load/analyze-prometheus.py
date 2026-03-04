@@ -1329,6 +1329,7 @@ def main():
     report_file.write("Analyzed Cluster Version: {}.{}.{}\n".format(version["major"], version["minor"], version["patch"]))
     report_file.write("Start Time: {}\n".format(cliargs.start_ts))
     report_file.write("End Time: {}\n".format(cliargs.end_ts))
+    report_file.write("Buffer time: {}s\n".format(buffer_time))
     report_file.write("Examining duration: {}s :: {}\n".format(analyze_duration, str(timedelta(seconds=analyze_duration))))
     report_file.write("Query duration: {}\n".format(q_duration))
     report_file.write("Query route: {}\n".format(route))
