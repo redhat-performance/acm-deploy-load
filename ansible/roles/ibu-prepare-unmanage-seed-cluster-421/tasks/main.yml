@@ -1,0 +1,79 @@
+---
+# ibu-prepare-seed-cluster-unmanage tasks
+
+- name: Create directories for IBU seed cluster to detach cluster
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ install_directory }}/rhacm-ztp"
+  - "{{ install_directory }}/rhacm-ztp/ibu"
+  - "{{ install_directory }}/rhacm-ztp/ibu/seed"
+
+- name: Select cluster to use as seed cluster
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get managedclusters -l ztp-done=,common=true --no-headers -o custom-columns=NAME:'.metadata.name' | head -n 1
+  register: select_cluster
+  when: seed_cluster == ""
+
+- name: Set seed_cluster when not previously set
+  set_fact:
+    seed_cluster: "{{ select_cluster.stdout }}"
+  when: seed_cluster == ""
+
+- name: Display selected seed_cluster
+  debug:
+    msg: "{{ seed_cluster }}"
+
+- name: Set seed cluster kubeconfig
+  set_fact:
+    seedcluster_kubeconfig: "{{ install_directory }}/rhacm-ztp/ibu/seed/{{ seed_cluster }}.kubeconfig"
+
+- name: Copy {{ seed_cluster }} kubeconfig
+  copy:
+    src: "/root/hv-vm/kc/{{ seed_cluster }}/kubeconfig"
+    dest: "{{ seedcluster_kubeconfig }}"
+    remote_src: true
+
+- name: Get cluster application with seed cluster
+  shell: |
+    grep -l "{{ seed_cluster }}" /root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/cluster/ztp-clusters-*/kustomization.yaml
+  register: seed_cluster_kustomization
+
+- name: Set cluster application containing the seed cluster
+  set_fact:
+    seed_cluster_application: "{{ seed_cluster_kustomization.stdout.split('/')[-2] }}"
+
+- name: Comment {{ seed_cluster }} in cluster applications - {{ seed_cluster_kustomization.stdout }}
+  replace:
+    path: "{{ seed_cluster_kustomization.stdout }}"
+    replace: "{{ item.replace }}"
+    regexp: "{{ item.regexp }}"
+  loop:
+  - replace: "#- ./{{ seed_cluster }}-siteconfig.yml"
+    regexp: "^- ./{{ seed_cluster }}-siteconfig.yml"
+  - replace: "#- ./{{ seed_cluster }}-resources.yml"
+    regexp: "^- ./{{ seed_cluster }}-resources.yml"
+  - replace: "#- ./{{ seed_cluster }}-clusterinstance.yml"
+    regexp: "^- ./{{ seed_cluster }}-clusterinstance.yml"
+
+- name: Commit and push the above changes to telco-reference
+  shell: |
+    cd {{ install_directory }}/rhacm-ztp/telco-reference
+    git add telco-ran/configuration/argocd/cluster/ telco-ran/configuration/argocd/cluster-applications/
+    git commit -a -m "Remove seed cluster {{ seed_cluster }} from cluster application - {{ seed_cluster_application }}"
+    git push origin-gogs
+
+- name: Trigger cluster application {{ seed_cluster_application }} for refresh
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc annotate applications.argoproj.io -n openshift-gitops {{ seed_cluster_application }} argocd.argoproj.io/refresh=normal
+
+# ignore_errors because we want the namespace to not exist
+- name: Wait until cluster is no longer managed
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ns {{ seed_cluster }}
+  register: check_cluster_namespace
+  ignore_errors: true
+  until: check_cluster_namespace.rc != 0
+  retries: 180
+  delay: 5
