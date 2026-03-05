@@ -10,6 +10,9 @@ disconnected_pull_secret: '{"auths": {"{{ rhacm_disconnected_registry }}:{{ rhac
 
 ssh_public_key_file: ~/.ssh/id_rsa.pub
 
+# Include ManagedClusterAddOn in clusterinstance to apply config-policy-controller memory tuning
+telco_core_include_managedclusteraddon_cpc_tune: false
+
 telco_core_clusterinstance_extra_manifests: false
 telco_core_clusterinstance_custom_manifests: false
 

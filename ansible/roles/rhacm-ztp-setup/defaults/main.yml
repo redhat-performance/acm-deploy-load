@@ -16,3 +16,7 @@ ztp_site_generator_image_tag: v4.20.0-1
 
 # RHACM Policy Generator Tag
 rhacm_policy_generator_image_tag: v2.13.4-2
+
+# Append ManagedClusterAddOn to namespaceResourceWhitelist in app-project.yaml (Used to enable Gitops to create/manage ManagedClusterAddOn CRs)
+# This allows a ManagedClusterAddOn CR to be created for each managed cluster via Gitops which will apply the tuning in the AddOnDeploymentConfig
+append_managedclusteraddons_app_project: true
