@@ -185,8 +185,9 @@
     dest: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/policy/common-and-group/source-crs/LcaOperatorStatus.yaml"
   - src: source-crs/LcaSecret.yaml
     dest: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/policy/common-and-group/source-crs/LcaSecret.yaml"
-  - src: source-crs/ImageBasedUpgrade.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/policy/common-and-group/source-crs/ImageBasedUpgrade.yaml"
+  - src: source-crs/ReduceMonitoringFootprint.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/policy/common-and-group/source-crs/ReduceMonitoringFootprint.yaml"
+
 
 - name: Commit and push RAN DU ZTP to telco-reference
   shell: |
