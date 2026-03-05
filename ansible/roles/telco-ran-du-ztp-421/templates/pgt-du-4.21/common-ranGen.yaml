@@ -158,7 +158,7 @@ spec:
     #   policyName: "subscriptions-policy"
     #
 {% endif %}
-    - fileName: cluster-tuning/monitoring-configuration/ReduceMonitoringFootprint.yaml
+    - fileName: ReduceMonitoringFootprint.yaml
       policyName: "{{ 'monitoring-config' if manyPolicies else 'config' }}-policy"
 {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
     #
