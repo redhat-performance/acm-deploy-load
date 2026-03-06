@@ -158,6 +158,7 @@ spec:
     #   policyName: "subscriptions-policy"
     #
 {% endif %}
+    # workaround for https://issues.redhat.com/browse/OCPBUGS-70352 that breaks prometheus-k8s-0 pod
     - fileName: ReduceMonitoringFootprint.yaml
       policyName: "{{ 'monitoring-config' if manyPolicies else 'config' }}-policy"
 {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
