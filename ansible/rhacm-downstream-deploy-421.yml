@@ -1,0 +1,43 @@
+---
+# Playbook to install RHACM Downstream Build
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-deploy.yml
+#
+
+- name: Setup downstream RHACM Mirror
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  vars:
+    wait_for_machineconfigpool_update: false
+  roles:
+  - rhacm-hub-mirror
+
+# Konflux builds no longer require this workaround
+- name: Fix ipv6/disconnected nodes /etc/containers/registries.conf for tag mirroring
+  hosts: fix_icsp_nodes
+  vars_files:
+  - vars/all.yml
+  roles:
+  - icsp-enable-tag-mirror
+
+- name: Install downstream RHACM
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - rhacm-downstream-deploy
+  - role: rhacm-observability
+    when: setup_rhacm_observability
+  - role: talm-deploy
+    when: setup_talm_operator or setup_talm_repo
+  - role: rhacm-ztp-patches-421
+    when: setup_rhacm_ztp_patches
+  - role: rhacm-siteconfig-operator
+    when: acm_enable_siteconfig
+  - mce-assisted-installer
+  - role: mce-image-based-install
+    when: mce_enable_ibio
+  - mce-add-clusterimagesets

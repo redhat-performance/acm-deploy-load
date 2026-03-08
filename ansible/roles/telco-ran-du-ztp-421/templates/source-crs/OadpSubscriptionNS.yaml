@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-adp
+  annotations:
+    workload.openshift.io/allowed: management
+    ran.openshift.io/ztp-deploy-wave: "2"
+  labels:
+    kubernetes.io/metadata.name: openshift-adp

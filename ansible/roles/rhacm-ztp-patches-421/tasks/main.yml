@@ -1,0 +1,39 @@
+---
+# rhacm-ztp-patches tasks
+
+- name: Apply the ArgoCD Deployment kustomization
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -k {{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/deployment
+
+- name: Apply ArgoCD telco-reference argocd-openshift-gitops-patch.json
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch argocd openshift-gitops -n openshift-gitops --patch-file {{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/deployment/argocd-openshift-gitops-patch.json --type=merge
+
+- name: Wait for openshift-gitops-repo-server pod running
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n openshift-gitops -l app.kubernetes.io/name=openshift-gitops-repo-server -o jsonpath='{.items[0].status.phase}'
+  retries: 60
+  delay: 2
+  register: as_pod
+  until: as_pod.stdout == "Running"
+
+# Although we wait for the new repo-server pod to be running, we can still apply the cluster and policy applications too quickly
+- name: Pause for 15s
+  pause:
+    seconds: 15
+
+# View the resources with oc get argocd -n openshift-gitops openshift-gitops -o json | jq '.spec.redis.resources'
+- name: Patch openshift-gitops redis memory requests/limits
+  when: gitops_redis_mem_patch
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch argocd -n openshift-gitops openshift-gitops --type json -p '[{"op": "replace", "path": "/spec/redis/resources/limits/memory", "value": "8Gi"}, {"op": "replace", "path": "/spec/redis/resources/requests/memory", "value": "256Mi"}]'
+
+- name: Apply ArgoCD Cluster Applications
+  when: setup_ztp_cluster_applications
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/cluster-applications/
+
+- name: Apply the ArgoCD Policy Applications
+  when: setup_ztp_policy_application
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/policy-applications/

@@ -1,0 +1,18 @@
+---
+# Playbook to setup ZTP for RHACM
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-ztp-setup.yml
+#
+
+- name: Setup RHACM ZTP
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - rhacm-ztp-setup-421
+  - role: telco-core-ztp
+    when: setup_core_ztp
+  - role: telco-ran-du-ztp-421
+    when: setup_ran_du_ztp
