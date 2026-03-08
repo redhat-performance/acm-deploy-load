@@ -29,6 +29,7 @@ data:
       - deployments
       - serviceaccounts
       - secrets
+      storageLocation: dataprotectionapplication-1
   restore_acm_klusterlet.yaml: |
     apiVersion: velero.io/v1
     kind: Restore
