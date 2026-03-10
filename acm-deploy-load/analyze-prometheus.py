@@ -233,6 +233,19 @@ def acm_complete_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "net-rcv-acm-complete", "ACM Complete Network Receive Throughput", "NET", w, h, q_names)
   q = "sum(irate(container_network_transmit_bytes_total{cluster=''," + ns + "}[5m]))"
   query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "net-xmt-acm-complete", "ACM Complete Network Transmit Throughput", "NET", w, h, q_names)
+
+  # Remove "open-cluster-management-observability" namespace from acm_namespaces list
+  acm_namespaces.remove("open-cluster-management-observability")
+  ns = "namespace=~'" + "|".join(acm_namespaces) + "'"
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''," + ns + "})"
+  query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "cpu-acm-complete-no-obs", "ACM Complete (No Observability) CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!=''," + ns + "})"
+  query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "mem-acm-complete-no-obs", "ACM Complete (No Observability) Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster=''," + ns + "}[5m]))"
+  query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "net-rcv-acm-complete-no-obs", "ACM Complete (No Observability) Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster=''," + ns + "}[5m]))"
+  query_thanos(route, q, "ACM Complete", token, end_ts, duration, sub_report_dir, "net-xmt-acm-complete-no-obs", "ACM Complete (No Observability) Network Transmit Throughput", "NET", w, h, q_names)
+
   return q_names
 
 
