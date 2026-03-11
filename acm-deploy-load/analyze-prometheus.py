@@ -488,12 +488,20 @@ def cluster_queries(report_dir, route, token, end_ts, duration, w, h, namespaces
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
 
+  # Cluster Complete utilization (OS + Applications)
+  # sum(node_cpu_info) is Cluster Core Count and sum(irate(node_cpu_seconds_total{mode="idle"}[1m])) is Idle CPU Usage, subtract idle from core count
+  q = "(count(node_cpu_seconds_total{mode='idle'}) - sum(irate(node_cpu_seconds_total{mode='idle'}[1m])))"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster", "Cluster CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)"
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster", "Cluster Memory Usage", "MEM", w, h, q_names)
+
+  # Cluster Application utilization below
   if 'minio' in namespaces:
     # Cluster CPU/Memory/Network and nonterminated pods (excluding Minio)
     q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
-    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster_no-minio", "Cluster CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster-app_no-minio", "Cluster Application CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
     q = "sum(container_memory_working_set_bytes{cluster='',namespace!='minio',container!=''})"
-    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster_no-minio", "Cluster Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+    query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster-app_no-minio", "Cluster Application Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
     q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
     query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster_no-minio", "Cluster Network Receive Throughput (Excluding Minio)", "NET", w, h, q_names)
     q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!='',namespace!='minio'}[5m]))"
@@ -503,9 +511,9 @@ def cluster_queries(report_dir, route, token, end_ts, duration, w, h, namespaces
 
   # Cluster CPU/Memory/Network and nonterminated pods (No namespaces excluded)
   q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster", "Cluster CPU Cores Usage", "CPU", w, h, q_names)
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "cpu-cluster-app", "Cluster Application CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum(container_memory_working_set_bytes{cluster='',container!=''})"
-  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster", "Cluster Memory Usage", "MEM", w, h, q_names)
+  query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "mem-cluster-app", "Cluster Application Memory Usage", "MEM", w, h, q_names)
   q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace!=''}[5m]))"
   query_thanos(route, q, "cluster", token, end_ts, duration, sub_report_dir, "net-rcv-cluster", "Cluster Network Receive Throughput", "NET", w, h, q_names)
   q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace!=''}[5m]))"
@@ -959,18 +967,26 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   sub_report_dir = os.path.join(report_dir, "node")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
+
+  # Keep in mind the below two queries include Minio
+  # Subtract by node/instance idle CPU usage from core count to get each node/instance's CPU usage
+  q = "(count by (instance) (node_cpu_seconds_total{mode='idle'}) - sum by (instance) (irate(node_cpu_seconds_total{mode='idle'}[1m])))"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (instance) (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
+
   if 'minio' in namespaces:
     # Node CPU/Memory/Disk/Network (excluding Minio)
     q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace!='minio'})"
-    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node_no-minio", "Node CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
+    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node-app_no-minio", "Node Application CPU Cores Usage (Excluding Minio)", "CPU", w, h, q_names)
     q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!='',namespace!='minio'})"
-    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node_no-minio", "Node Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
+    query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node-app_no-minio", "Node Application Memory Usage (Excluding Minio)", "MEM", w, h, q_names)
 
   # Node CPU/Memory/Network (including Minio)
   q = "sum by(node) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node", "Node CPU Cores Usage", "CPU", w, h, q_names)
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "cpu-node-app", "Node Application CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by(node) (container_memory_working_set_bytes{cluster='',container!=''})"
-  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node", "Node Memory Usage", "MEM", w, h, q_names)
+  query_thanos(route, q, "node", token, end_ts, duration, sub_report_dir, "mem-node-app", "Node Application Memory Usage", "MEM", w, h, q_names)
   q = "sum by (instance) (instance:node_network_receive_bytes_excluding_lo:rate1m{cluster=''})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "net-rcv-node", "Node Network Receive Throughput", "NET", w, h, q_names)
   q = "sum by (instance) (instance:node_network_transmit_bytes_excluding_lo:rate1m{cluster=''})"
