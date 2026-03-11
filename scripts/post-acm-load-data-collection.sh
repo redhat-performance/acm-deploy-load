@@ -23,6 +23,10 @@ oc get clusteroperators > ${output_dir}/clusteroperators
 oc get clusteroperators -o yaml > ${output_dir}/clusteroperators.yaml
 oc describe clusteroperators > ${output_dir}/clusteroperators.describe
 
+oc get featuregate cluster -o yaml > ${output_dir}/featuregate.cluster.yaml
+
+oc get etcd cluster -o yaml > ${output_dir}/etcd.yaml
+
 # Get hub cluster install config
 oc get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/cluster-config-v1
 
@@ -40,11 +44,25 @@ oc describe pods -A > ${output_dir}/pods.describe
 oc get ev -A > ${output_dir}/events
 oc get ev -A -o yaml > ${output_dir}/events.yaml
 
+echo "$(date -u) :: Collecting clusterinstance data"
+
+oc get clusterinstance -A > ${output_dir}/clusterinstance
+oc get clusterinstance -A -o yaml > ${output_dir}/clusterinstance.yaml
+
+echo "$(date -u) :: Collecting agentclusterinstall data"
+
+oc get agentclusterinstall -A > ${output_dir}/aci
+oc get agentclusterinstall -A -o yaml > ${output_dir}/aci.yaml
+
 echo "$(date -u) :: Collecting managedcluster data"
 
 oc get managedcluster -A > ${output_dir}/managedcluster
 oc get managedcluster -A -o yaml > ${output_dir}/managedcluster.yaml
-oc describe managedcluster -A > ${output_dir}/managedcluster.describe
+
+echo "$(date -u) :: Collecting clustergroupupgrades data"
+
+oc get clustergroupupgrades -A > ${output_dir}/cgu
+oc get clustergroupupgrades -A -o yaml > ${output_dir}/cgu.yaml
 
 echo "$(date -u) :: Collecting mch/mce/mco data"
 
@@ -72,5 +90,10 @@ oc describe placementrules -A > ${output_dir}/placementrules.describe
 oc get placementbinding -A > ${output_dir}/placementbinding
 oc get placementbinding -A -o yaml > ${output_dir}/placementbinding.yaml
 oc describe placementbinding -A > ${output_dir}/placementbinding.describe
+
+echo "$(date -u) :: Collecting openshift-gitops data"
+
+oc get applications.argoproj.io -n openshift-gitops > ${output_dir}/gitops.applications
+oc get applications.argoproj.io -n openshift-gitops -o yaml > ${output_dir}/gitops.applications.yaml
 
 echo "$(date -u) :: Done collecting data"
