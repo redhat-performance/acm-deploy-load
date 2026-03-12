@@ -1,0 +1,105 @@
+---
+# rhacm-ztp-setup tasks
+
+- name: Clear old telco-reference clone
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+  - "{{ install_directory }}/rhacm-ztp/telco-reference"
+
+- name: Create directories for rhacm-ztp
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ install_directory }}/rhacm-ztp"
+  - "{{ install_directory }}/rhacm-ztp/telco-reference"
+
+- name: Clone telco-reference
+  git:
+    repo: "{{ telco_reference_repo }}"
+    dest: "{{ install_directory }}/rhacm-ztp/telco-reference"
+    force: true
+    version: "{{ telco_reference_branch }}"
+
+# Perhaps we can detect if the repo exists already instead of ignoring errors
+- name: Create telco-reference repo in gogs
+  uri:
+    url: "http://{{ gogs_host }}:{{ gogs_port }}/api/v1/admin/users/{{ gogs_username }}/repos"
+    user: "{{ gogs_username }}"
+    password: "{{ gogs_password }}"
+    force_basic_auth: true
+    method: POST
+    headers:
+      content-type: application/json
+      Accept: application/json
+    body: {"name": "telco-reference", "description": "test repo", "private": false}
+    body_format: json
+    validate_certs: no
+    status_code: 201
+    return_content: yes
+  ignore_errors: true
+
+# The --force flag on the git push forces the gogs fork of the repo to be reset to the above "clone"
+- name: Push telco-reference into gogs
+  shell: |
+    cd {{ install_directory }}/rhacm-ztp/telco-reference
+    git remote add origin-gogs http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/telco-reference.git
+    git push -u origin-gogs --all --force
+
+
+
+- name: Patches for telco-reference argocd-openshift-gitops-patch.json
+  replace:
+    path: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/deployment/argocd-openshift-gitops-patch.json"
+    replace: "{{ item.replace }}"
+    regexp: "{{ item.regexp }}"
+  when: item.enabled | default(true)
+  loop:
+  - replace: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
+    regexp: "quay.io"
+    enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
+  # - replace: "openshift-kni"
+  #   regexp: "redhat_emp1"
+  # For rhacm policy generator release-4.14 branch
+  - replace: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
+    regexp: "registry.redhat.io"
+    enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
+  # - replace: "acm-d"
+  #   regexp: "rhacm2"
+  #   enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
+  # release-4.17 telco-reference
+  - replace: "{{ rhacm_policy_generator_image_tag }}"
+    regexp: "v2.11"
+  - replace: "{{ rhacm_policy_generator_image_tag }}"
+    regexp: "v2.7"
+  # release-4.11 telco-reference
+  - replace: "{{ ztp_site_generator_image_tag }}"
+    regexp: "latest"
+  # release-4.10 telco-reference
+  - replace: "{{ ztp_site_generator_image_tag }}"
+    regexp: "4.10.0"
+
+- name: Remove the cluster/policies app from telco-reference argocd deployment
+  file:
+    state: absent
+    path: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/deployment/{{ item }}"
+  loop:
+  - clusters-app.yaml
+  - policies-app.yaml
+
+- name: Remove clusters-app.yaml and policies-app.yaml from telco-reference argocd deployment kustomization.yaml
+  replace:
+    path: "{{ install_directory }}/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/deployment/kustomization.yaml"
+    replace: ""
+    regexp: "{{ item }}"
+  loop:
+  - ".*- clusters-app.yaml"
+  - ".*- policies-app.yaml"
+
+- name: Commit and push ZTP initial configuration to telco-reference
+  shell: |
+    cd {{ install_directory }}/rhacm-ztp/telco-reference
+    git commit -a -m "Add common ZTP inital configuration"
+    git push origin-gogs

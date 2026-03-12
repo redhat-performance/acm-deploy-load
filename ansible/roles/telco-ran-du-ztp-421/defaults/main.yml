@@ -1,0 +1,74 @@
+---
+# telco-ran-du-ztp default vars
+
+# Pre-creates manifests for the desired number of argocd cluster applications
+cluster_applications_count: 40
+
+siteconfigs_per_application: 100
+
+siteconfigs_directories:
+- /root/hv-vm/sno/ai-siteconfig
+- /root/hv-vm/compact/ai-siteconfig
+- /root/hv-vm/standard/ai-siteconfig
+
+#####
+# Siteconfig extra-manifests to include:
+#####
+# Include the crun container runtime manifest with day-0 install via siteconfig extra-manifests directory
+include_crun_extra_manifests: true
+# Include a modified sync-time-once chronyd manifest with day-0 install instead of the ztp generator included version
+# Used in conjunction with "siteconfig_exclude_sync_time_once" to prevent chronyd start and time drift issue
+# See https://issues.redhat.com/browse/OCPBUGS-21740
+include_synctimeonce_extra_manifests: false
+# Include a manifest to partition /var/lib/containers for IBU
+include_varlibcontainers_partitioned_extra_manifests: false
+
+#####
+# DU Profile Options
+#####
+# Currently can choose between 4.20, 4.19, 4.18, 4.17, 4.16, 4.15, 4.14, 4.13, and 4.12
+du_profile_version: 4.21
+
+disconnected_operator_index_name: redhat/redhat-operator-index
+operator_index_tag: v4.21
+
+# Initialize the siteconfig list so it can be sorted later
+siteconfig_list: []
+
+# Adjust the name of the du profile catalog source so it does not conflict with default names
+# https://bugzilla.redhat.com/show_bug.cgi?id=2074612
+common_catalogsource_name: rh-du-operators
+
+# These policy names were adjusted to increase the number of ztp generated policies to match as if performanceprofile
+# was enabled.  The original names are commented below.
+group_policy_logforwarder_name: "config-log-policy"
+group_policy_storage_name: "config-storage-policy"
+# group_policy_logforwarder_name: "config-policy"
+# group_policy_storage_name: "config-policy"
+
+# Image Based Upgrades requires the oadp operator to be installed on SNOs
+include_oadp_operator: false
+# Adjust URL to match your cluster's minio route
+oadp_s3Url: http://minio-minio.apps.bm.example.com
+s3_access_key_id: minio
+s3_secret_access_key: minio123
+
+# Image Based Upgrades requires the Lifecycle-agent operator to be installed on SNOs
+include_lca_operator: false
+# alpha for 4.15, stable for 4.16 and brew
+lifecycle_agent_channel: stable
+# v1alpha1 (alpha installed operator), v1 for brew (stable)
+ibu_source_crs_apiversion: v1
+
+# Only implemented for SNOs, organizes the CRs into 13-18 policies instead of the default of 5 policies
+manyPolicies: false
+
+# When enabled, creates extra annotations in common PGT which use hub side templating
+extraHubCommonTemplates: false
+# When enabled, creates extra annotations in group PGT which use hub side templating
+extraHubGroupTemplates: false
+# When enabled, creates extra annotations from site specific ConfigMaps on hub in group PGT
+extraHubSiteTemplates: false
+
+# When enabled use ACM PolicyGenerator instead of RAN PolicyGenTemplate to generate ACM policies
+acm_policygenerator: false

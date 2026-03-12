@@ -1,0 +1,24 @@
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: "{% raw %}{{ .Node.HostName }}{% endraw %}"
+  namespace: "{% raw %}{{ .Cluster.ClusterName }}{% endraw %}"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    bmac.agent-install.openshift.io/hostname: "{% raw %}{{ .Node.HostName }}{% endraw %}"
+    bmac.agent-install.openshift.io/installer-args: "{% raw %}{{ .Node.InstallerArgs }}{% endraw %}"
+    bmac.agent-install.openshift.io/ignition-config-overrides: "{% raw %}{{ .Node.IgnitionConfigOverride }}{% endraw %}"
+    bmac.agent-install.openshift.io/role: "{% raw %}{{ .Node.Role }}{% endraw %}"
+  labels:
+    infraenvs.agent-install.openshift.io: "{% raw %}{{ .Cluster.ClusterName }}{% endraw %}"
+spec:
+  bootMode: "{% raw %}{{ .Node.BootMode }}{% endraw %}"
+  bmc:
+    address: "{% raw %}{{ .Node.BmcAddress }}{% endraw %}"
+    disableCertificateVerification: true
+    credentialsName: "{% raw %}{{ .Node.BmcCredentialsName.Name }}{% endraw %}"
+  bootMACAddress: "{% raw %}{{ .Node.BootMACAddress }}{% endraw %}"
+  automatedCleaningMode: disabled
+  online: true
+  rootDeviceHints: "{% raw %}{{ .Node.RootDeviceHints }}{% endraw %}"
+  userData:  "{% raw %}{{ .Node.UserData }}{% endraw %}"

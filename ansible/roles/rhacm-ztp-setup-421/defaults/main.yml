@@ -1,0 +1,18 @@
+---
+# rhacm-ztp-setup default vars
+
+# Base repo with branch to host both cluster and policy applications and data
+telco_reference_repo: https://github.com/openshift-kni/telco-reference.git
+telco_reference_branch: release-4.21
+
+# Gogs service to commit repo to
+gogs_host: "[fc00:1000::1]"
+gogs_port: 10880
+gogs_username: testadmin
+gogs_password: testadmin
+
+# The ztp-site-generator container image tag
+ztp_site_generator_image_tag: v4.21.0-1
+
+# RHACM Policy Generator Tag
+rhacm_policy_generator_image_tag: v2.13.4-2
