@@ -51,6 +51,7 @@ oc get clusterinstance -A -o yaml > ${output_dir}/clusterinstance.yaml
 
 echo "$(date -u) :: Collecting agentclusterinstall data"
 
+oc get agentclusterinstall -A --no-headers -o custom-columns=NAME:'.metadata.name',COMPLETED:'.status.conditions[?(@.type=="Completed")].reason' > ${output_dir}/aci.status
 oc get agentclusterinstall -A > ${output_dir}/aci
 oc get agentclusterinstall -A -o yaml > ${output_dir}/aci.yaml
 
@@ -95,5 +96,18 @@ echo "$(date -u) :: Collecting openshift-gitops data"
 
 oc get applications.argoproj.io -n openshift-gitops > ${output_dir}/gitops.applications
 oc get applications.argoproj.io -n openshift-gitops -o yaml > ${output_dir}/gitops.applications.yaml
+
+echo "$(date -u) :: Collecting Each Managed Cluster data"
+mkdir -p ${output_dir}/cluster-data
+
+for cluster in $(cat ${output_dir}/aci.status | awk '{print $1}'); do
+  echo "$(date -u) :: Collecting data for cluster ${cluster}"
+  mkdir -p ${output_dir}/cluster-data/${cluster}
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusterversion > ${output_dir}/cluster-data/${cluster}/clusterversion
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig describe clusterversion > ${output_dir}/cluster-data/${cluster}/nodes
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusteroperators > ${output_dir}/cluster-data/${cluster}/clusteroperators
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get pods -A > ${output_dir}/cluster-data/${cluster}/pods
+  ./acm-deploy-load/analyze-single-cluster-time.py -m agent -c ${cluster} ${output_dir}/cluster-data/
+done
 
 echo "$(date -u) :: Done collecting data"
