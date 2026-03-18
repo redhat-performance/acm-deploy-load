@@ -338,7 +338,7 @@ def acm_observability_queries(report_dir, route, token, end_ts, duration, w, h):
 
   # Volume Space used by OBS
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='open-cluster-management-observability'})"
-  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-obs", "ACM Observability Volume Usage", "DISK", w, h, q_names)
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-obs", "ACM Observability Volume Usage", "DISK_USAGE", w, h, q_names)
   return q_names
 
 
@@ -566,7 +566,7 @@ def core_ocp_queries(report_dir, route, token, end_ts, duration, w, h):
     # Volume space used by openshift-monitoring, just monitoring for now
     if ns == "openshift-monitoring":
       q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='" + ns + "'})"
-      query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-{}".format(ns), "{} Volume Usage".format(ns), "DISK", w, h, q_names)
+      query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-{}".format(ns), "{} Volume Usage".format(ns), "DISK_USAGE", w, h, q_names)
 
   q = "(sum by (container) (kube_pod_container_status_restarts_total) > 3)"
   query_thanos(route, q, "container", token, end_ts, duration, sub_report_dir, "pod-restarts", "Pod Restarts > 3", "Count", w, h, q_names)
@@ -579,9 +579,9 @@ def etcd_queries(report_dir, route, token, end_ts, duration, w, h):
   q_names = OrderedDict()
   # ETCD DB Size is what can trigger out of quota
   q = "etcd_mvcc_db_total_size_in_bytes"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "db-size", "ETCD DB Size", "DISK", w, h, q_names)
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "db-size", "ETCD DB Size", "DISK_USAGE", w, h, q_names)
   q = "etcd_mvcc_db_total_size_in_use_in_bytes"
-  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "db-size-in-use", "ETCD DB Size In-use", "DISK", w, h, q_names)
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "db-size-in-use", "ETCD DB Size In-use", "DISK_USAGE", w, h, q_names)
   q = "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket{job='etcd'}[5m])) by (instance, pod, le))"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "fsync-duration", "ETCD Disk Sync Duration", "Seconds", w, h, q_names)
   q = "histogram_quantile(0.99, irate(etcd_disk_backend_commit_duration_seconds_bucket[5m]))"
@@ -889,7 +889,7 @@ def mce_queries(report_dir, route, token, end_ts, duration, w, h):
 
   # Volume Space used by MCE
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='multicluster-engine'})"
-  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-mce", "MCE Volume Usage", "DISK", w, h, q_names)
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-mce", "MCE Volume Usage", "DISK_USAGE", w, h, q_names)
   return q_names
 
 
@@ -959,7 +959,7 @@ def minio_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "minio", token, end_ts, duration, sub_report_dir, "net-xmt-minio", "Minio Network Transmit Throughput", "NET", w, h, q_names)
   # Volume Space used by Minio
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='minio'})"
-  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-minio", "Minio Volume Usage", "DISK", w, h, q_names)
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-minio", "Minio Volume Usage", "DISK_USAGE", w, h, q_names)
   # Minio is a single pod thus no need to split by pod
   return q_names
 
@@ -996,28 +996,28 @@ def node_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
 
   # Disk space utilization does not include Minio PV data (Separate PV Disk for Minio)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/sysroot'} - node_filesystem_avail_bytes{mountpoint='/sysroot'})"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-root-node", "Node / space utilization", "DISK", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-root-node", "Node / space utilization", "DISK_USAGE", w, h, q_names)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/var/lib/etcd'} - node_filesystem_avail_bytes{mountpoint='/var/lib/etcd'})"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-etcd-node", "Node /var/lib/etcd space utilization", "DISK", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-etcd-node", "Node /var/lib/etcd space utilization", "DISK_USAGE", w, h, q_names)
   q = "sum by (instance) (node_filesystem_size_bytes{mountpoint='/var/lib/containers'} - node_filesystem_avail_bytes{mountpoint='/var/lib/containers'})"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-containers-node", "Node /var/lib/containers space utilization", "DISK", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-util-containers-node", "Node /var/lib/containers space utilization", "DISK_USAGE", w, h, q_names)
 
   # Disk Throughput and Iops utilization by node for disk mounting / or /sysroot
   # Complexity in this query is due to device naming (/dev/sda1 vs sda) and grouping mountpoints to devices
   q = "sum by (instance) (irate(node_disk_read_bytes_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/sysroot'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-read-root-node", "Node / Read Throughput", "DISK_MB", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-read-root-node", "Node / Read Throughput", "DISK_TPUT_MB", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_written_bytes_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/sysroot'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-write-root-node", "Node / Write Throughput", "DISK_MB", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-write-root-node", "Node / Write Throughput", "DISK_TPUT_MB", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_reads_completed_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/sysroot'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-iops-read-root-node", "Node / Read Iops", "Iops", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_writes_completed_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/sysroot'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-iops-write-root-node", "Node / Write Iops", "Iops", w, h, q_names)
   # Disk Throughput and Iops utilization by node for disk mounting /var/lib/etcd
-  # /var/lib/etcd is usually placed on an nvme disk
+  # /var/lib/etcd is usually placed on a separate nvme disk
   q = "sum by (instance) (irate(node_disk_read_bytes_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/var/lib/etcd'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-read-etcd-node", "Node /var/lib/etcd Read Throughput", "DISK_MB", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-read-etcd-node", "Node /var/lib/etcd Read Throughput", "DISK_TPUT_MB", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_written_bytes_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/var/lib/etcd'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
-  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-write-etcd-node", "Node /var/lib/etcd Write Throughput", "DISK_MB", w, h, q_names)
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-tput-write-etcd-node", "Node /var/lib/etcd Write Throughput", "DISK_TPUT_MB", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_reads_completed_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/var/lib/etcd'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "disk-iops-read-etcd-node", "Node /var/lib/etcd Read Iops", "Iops", w, h, q_names)
   q = "sum by (instance) (irate(node_disk_writes_completed_total[5m]) * on(instance,device) group_left(mountpoint) (label_replace(node_filesystem_mount_info{mountpoint='/var/lib/etcd'}, 'device', '$1', 'device', '/dev/(nvme[0-9]+n[0-9]+|[a-z]+).*')))"
@@ -1061,7 +1061,7 @@ def resource_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by (instance) (apiserver_storage_objects{resource='secrets'})"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "secrets", "Secrets", "Count", w, h, q_names)
   q = "sum by (namespace) (kubelet_volume_stats_used_bytes)"
-  query_thanos(route, q, "namespace", token, end_ts, duration, sub_report_dir, "pvc-usage", "Volume Usage By Namespace", "DISK", w, h, q_names)
+  query_thanos(route, q, "namespace", token, end_ts, duration, sub_report_dir, "pvc-usage", "Volume Usage By Namespace", "DISK_USAGE", w, h, q_names)
   return q_names
 
 
@@ -1116,11 +1116,11 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
   elif y_unit == "MEM":
     y_title = "Memory (GiB)"
   elif y_unit == "NET":
-    y_title = "Network (MiB)"
-  elif y_unit == "DISK":
-    y_title = "Disk (GB)"
-  elif y_unit == "DISK_MB":
-    y_title = "Disk (MB)"
+    y_title = "Network (MiB/s)"
+  elif y_unit == "DISK_USAGE":
+    y_title = "Disk Usage (GB)"
+  elif y_unit == "DISK_TPUT_MB":
+    y_title = "Disk Throughput (MB/s)"
   else:
     y_title = y_unit
 
@@ -1169,12 +1169,17 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
             bytes_to_gib = 1024 * 1024 * 1024
             metric_values = [float(x[1]) / bytes_to_gib for x in metric["values"]]
           elif y_unit == "NET":
+            # Current network metrics are in MiB/s which is uncommon for network throughput metrics
+            # Consider converting to Mbps (megabits per second or Gigabits per second) for better readability
+            # To convert 100 MiB/s to Gbps:
+            # * Convert MiB to bits: 100 MiB/s * (1024 * 1024 * 8) = 838,860,800 bits/s
+            # * Convert bits to Gbps: 838,860,800 bits/s / 1,000,000,000 = 0.8388608 Gbps
             bytes_to_mib = 1024 * 1024
             metric_values = [float(x[1]) / bytes_to_mib for x in metric["values"]]
-          elif y_unit == "DISK":
+          elif y_unit == "DISK_USAGE":
             bytes_to_gb = 1000 * 1000 * 1000
             metric_values = [float(x[1]) / bytes_to_gb for x in metric["values"]]
-          elif y_unit == "DISK_MB":
+          elif y_unit == "DISK_TPUT_MB":
             bytes_to_mb = 1000 * 1000
             metric_values = [float(x[1]) / bytes_to_mb for x in metric["values"]]
           else:

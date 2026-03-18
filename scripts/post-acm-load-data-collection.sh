@@ -104,7 +104,7 @@ for cluster in $(cat ${output_dir}/aci.status | awk '{print $1}'); do
   echo "$(date -u) :: Collecting data for cluster ${cluster}"
   mkdir -p ${output_dir}/cluster-data/${cluster}
   oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusterversion > ${output_dir}/cluster-data/${cluster}/clusterversion
-  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig describe clusterversion > ${output_dir}/cluster-data/${cluster}/nodes
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get nodes > ${output_dir}/cluster-data/${cluster}/nodes
   oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusteroperators > ${output_dir}/cluster-data/${cluster}/clusteroperators
   oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get pods -A > ${output_dir}/cluster-data/${cluster}/pods
   ./acm-deploy-load/analyze-single-cluster-time.py -m agent -c ${cluster} ${output_dir}/cluster-data/
