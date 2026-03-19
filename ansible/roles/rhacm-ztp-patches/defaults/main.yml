@@ -1,0 +1,10 @@
+---
+# rhacm-ztp-patches default vars
+
+# Repository type: "cnf-features-deploy" (pre-4.21) or "telco-reference" (4.21+)
+# This should match the ztp_repo_type set in rhacm-ztp-setup role
+ztp_repo_type: "cnf-features-deploy"
+
+# Derived variables based on repo type (must match rhacm-ztp-setup)
+ztp_repo_name: "{{ 'telco-reference' if ztp_repo_type == 'telco-reference' else 'cnf-features-deploy' }}"
+ztp_argocd_base_path: "{{ 'telco-ran/configuration/argocd' if ztp_repo_type == 'telco-reference' else 'ztp/gitops-subscriptions/argocd' }}"

@@ -1,12 +1,12 @@
 ---
 # rhacm-ztp-setup tasks
 
-- name: Clear old cnf-features-deploy clone
+- name: Clear old {{ ztp_repo_name }} clone
   file:
     path: "{{ item }}"
     state: absent
   loop:
-  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}"
 
 - name: Create directories for rhacm-ztp
   file:
@@ -14,17 +14,17 @@
     state: directory
   loop:
   - "{{ install_directory }}/rhacm-ztp"
-  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}"
 
-- name: Clone cnf-features-deploy
+- name: Clone {{ ztp_repo_name }}
   git:
-    repo: "{{ cnf_features_deploy_repo }}"
-    dest: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy"
+    repo: "{{ ztp_repo_url }}"
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}"
     force: true
-    version: "{{ cnf_features_deploy_branch }}"
+    version: "{{ ztp_repo_branch }}"
 
 # Perhaps we can detect if the repo exists already instead of ignoring errors
-- name: Create cnf-features-deploy repo in gogs
+- name: Create {{ ztp_repo_name }} repo in gogs
   uri:
     url: "http://{{ gogs_host }}:{{ gogs_port }}/api/v1/admin/users/{{ gogs_username }}/repos"
     user: "{{ gogs_username }}"
@@ -34,7 +34,7 @@
     headers:
       content-type: application/json
       Accept: application/json
-    body: {"name": "cnf-features-deploy", "description": "test repo", "private": false}
+    body: {"name": "{{ ztp_repo_name }}", "description": "test repo", "private": false}
     body_format: json
     validate_certs: no
     status_code: 201
@@ -42,10 +42,10 @@
   ignore_errors: true
 
 # The --force flag on the git push forces the gogs fork of the repo to be reset to the above "clone"
-- name: Push cnf-features-deploy into gogs
+- name: Push {{ ztp_repo_name }} into gogs
   shell: |
-    cd {{ install_directory }}/rhacm-ztp/cnf-features-deploy
-    git remote add origin-gogs http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
+    cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
+    git remote add origin-gogs http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
     git push -u origin-gogs --all --force
 
 - name: Remove directories from cnf-features-deploy that prevent argocd app from syncing
@@ -53,13 +53,14 @@
     state: absent
     path: "{{ item }}"
   loop:
-  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/cnf-tests"
-  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/telco5g-konflux"
-  - "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/resource-generator/"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/cnf-tests"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/telco5g-konflux"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/ztp/resource-generator/"
+  when: ztp_repo_type == "cnf-features-deploy"
 
-- name: Patches for cnf-features-deploy argocd-openshift-gitops-patch.json
+- name: Patches for {{ ztp_repo_name }} argocd-openshift-gitops-patch.json
   replace:
-    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/argocd-openshift-gitops-patch.json"
+    path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/argocd-openshift-gitops-patch.json"
     replace: "{{ item.replace }}"
     regexp: "{{ item.regexp }}"
   when: item.enabled | default(true)
@@ -67,55 +68,46 @@
   - replace: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
     regexp: "quay.io"
     enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
-  # - replace: "openshift-kni"
-  #   regexp: "redhat_emp1"
-  # For rhacm policy generator release-4.14 branch
   - replace: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"
     regexp: "registry.redhat.io"
     enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
-  # - replace: "acm-d"
-  #   regexp: "rhacm2"
-  #   enabled: "{{ rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 }}"
-  # release-4.17 cnf-features-deploy
   - replace: "{{ rhacm_policy_generator_image_tag }}"
     regexp: "v2.11"
   - replace: "{{ rhacm_policy_generator_image_tag }}"
     regexp: "v2.7"
-  # release-4.11 cnf-features-deploy
   - replace: "{{ ztp_site_generator_image_tag }}"
     regexp: "latest"
-  # release-4.10 cnf-features-deploy
   - replace: "{{ ztp_site_generator_image_tag }}"
     regexp: "4.10.0"
 
 - name: Append ManagedClusterAddOn to namespaceResourceWhitelist in app-project.yaml
   ansible.builtin.blockinfile:
-    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/app-project.yaml"
+    path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/app-project.yaml"
     block: "  - group: 'addon.open-cluster-management.io'\n    kind: ManagedClusterAddOn"
     marker: "# {mark} ACM-deploy-load appended"
     create: true
     insertafter: "  kind: ManagedCluster"
-  when: append_managedclusteraddons_app_project
+  when: append_managedclusteraddons_app_project and ztp_repo_type == "cnf-features-deploy"
 
-- name: Remove the cluster/policies app from cnf-features-deploy argocd deployment
+- name: Remove the cluster/policies app from {{ ztp_repo_name }} argocd deployment
   file:
     state: absent
-    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/{{ item }}"
+    path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/{{ item }}"
   loop:
   - clusters-app.yaml
   - policies-app.yaml
 
-- name: Remove clusters-app.yaml and policies-app.yaml from cnf-features-deploy argocd deployment kustomization.yaml
+- name: Remove clusters-app.yaml and policies-app.yaml from {{ ztp_repo_name }} argocd deployment kustomization.yaml
   replace:
-    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/kustomization.yaml"
+    path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/kustomization.yaml"
     replace: ""
     regexp: "{{ item }}"
   loop:
   - ".*- clusters-app.yaml"
   - ".*- policies-app.yaml"
 
-- name: Commit and push ZTP initial configuration to cnf-features-deploy
+- name: Commit and push ZTP initial configuration to {{ ztp_repo_name }}
   shell: |
-    cd {{ install_directory }}/rhacm-ztp/cnf-features-deploy
+    cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
     git commit -a -m "Add common ZTP inital configuration"
     git push origin-gogs

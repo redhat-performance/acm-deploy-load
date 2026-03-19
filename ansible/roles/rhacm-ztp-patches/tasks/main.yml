@@ -3,11 +3,11 @@
 
 - name: Apply the ArgoCD Deployment kustomization
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -k {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -k {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment
 
-- name: Apply ArgoCD cnf-features-deploy argocd-openshift-gitops-patch.json
+- name: Apply ArgoCD {{ ztp_repo_name }} argocd-openshift-gitops-patch.json
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch argocd openshift-gitops -n openshift-gitops --patch-file {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/argocd-openshift-gitops-patch.json --type=merge
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch argocd openshift-gitops -n openshift-gitops --patch-file {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/argocd-openshift-gitops-patch.json --type=merge
 
 - name: Wait for openshift-gitops-repo-server pod running
   shell: |
@@ -31,9 +31,9 @@
 - name: Apply ArgoCD Cluster Applications
   when: setup_ztp_cluster_applications
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster-applications/
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/cluster-applications/
 
 - name: Apply the ArgoCD Policy Applications
   when: setup_ztp_policy_application
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/policy-applications/
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy-applications/

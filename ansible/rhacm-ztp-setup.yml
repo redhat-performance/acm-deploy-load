@@ -3,7 +3,11 @@
 #
 # Example Usage:
 #
+# Default (pre-4.21, cnf-features-deploy):
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-ztp-setup.yml
+#
+# For 4.21+ (telco-reference):
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-ztp-setup.yml -e ztp_repo_type=telco-reference
 #
 
 - name: Setup RHACM ZTP
