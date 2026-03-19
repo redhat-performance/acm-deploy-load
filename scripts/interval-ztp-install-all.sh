@@ -26,6 +26,22 @@ wan_em="(None)"
 # wan_em="(50ms/0.02) / 100Mbps"
 # wan_em="(50ms/0.02) / 20Mbps"
 
+# ArgoCD directory path - use -a argument to override
+# Default: cnf-features-deploy path (pre-4.21)
+# For 4.21+: use -a /root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd
+argocd_dir=""
+while getopts "a:" opt; do
+  case ${opt} in
+    a)
+      argocd_dir="${OPTARG}"
+      ;;
+    *)
+      echo "Usage: $0 [-a argocd_directory]"
+      exit 1
+      ;;
+  esac
+done
+
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="iz-all-${ts}.log"
 acm_ver=$(cat /root/snapshot.ver)
@@ -35,7 +51,13 @@ hub_ocp=$(oc version -o json | jq -r '.openshiftVersion')
 # grep will cause error code 141 since it prints only the first match
 cluster_ocp=$(cat /root/hv-vm/*/*/*.yml | grep "clusterImageSetNameRef:" -m 1 | awk '{print $NF}' | sed 's/openshift-//' || if [[ $? -eq 141 ]]; then true; else exit $?; fi)
 
-time ./acm-deploy-load/acm-deploy-load.py --acm-version "${acm_ver}" --aap-version "${aap_csv}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" -m "${method}" --clusters-per-app ${clusters_per_app} -w -i 60 -t ${clusters_per_app}cpa-${batch}b-${interval_period}i-${iteration} interval -b ${batch} -i ${interval_period} 2>&1 | tee ${log_file}
+# Build argocd directory argument if specified
+argocd_arg=""
+if [[ -n "${argocd_dir}" ]]; then
+  argocd_arg="-a ${argocd_dir}"
+fi
+
+time ./acm-deploy-load/acm-deploy-load.py --acm-version "${acm_ver}" --aap-version "${aap_csv}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" -m "${method}" --clusters-per-app ${clusters_per_app} ${argocd_arg} -w -i 60 -t ${clusters_per_app}cpa-${batch}b-${interval_period}i-${iteration} interval -b ${batch} -i ${interval_period} 2>&1 | tee ${log_file}
 
 results_dir=$(grep "Results data captured in:" $log_file | awk '{print $NF}')
 
