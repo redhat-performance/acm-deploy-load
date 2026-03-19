@@ -3,6 +3,8 @@
 set -e
 set -o pipefail
 
+results_dir_suffix="test-00"
+
 # 12 hour interval to deploy each batch of clusters
 deploy_interval=43200
 # deploy_interval=300
@@ -28,8 +30,8 @@ end_delay=21600
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="acm-telco-core-load-${ts}.log"
 
-echo "time ./acm-deploy-load/acm-telco-core-load.py -k /root/mno/kubeconfig -i ${deploy_interval} -l ${last_deploy_runtime} -b ${deploy_batch} -p ${policy_interval} -s ${start_delay} -e ${end_delay}" | tee ${log_file}
-time ./acm-deploy-load/acm-telco-core-load.py -k /root/mno/kubeconfig -i ${deploy_interval} -l ${last_deploy_runtime} -b ${deploy_batch} -p ${policy_interval} -s ${start_delay} -e ${end_delay} 2>&1 | tee -a ${log_file}
+echo "time ./acm-deploy-load/acm-telco-core-load.py -k /root/mno/kubeconfig -t ${results_dir_suffix} -i ${deploy_interval} -l ${last_deploy_runtime} -b ${deploy_batch} -p ${policy_interval} -s ${start_delay} -e ${end_delay}" | tee ${log_file}
+time ./acm-deploy-load/acm-telco-core-load.py -k /root/mno/kubeconfig -t ${results_dir_suffix} -i ${deploy_interval} -l ${last_deploy_runtime} -b ${deploy_batch} -p ${policy_interval} -s ${start_delay} -e ${end_delay} 2>&1 | tee -a ${log_file}
 
 results_dir=$(grep "Results data captured in:" $log_file | awk '{print $NF}')
 

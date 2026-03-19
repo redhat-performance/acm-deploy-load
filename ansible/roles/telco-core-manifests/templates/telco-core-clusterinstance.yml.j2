@@ -14,6 +14,20 @@ metadata:
 type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: "{{ pull_secret | to_json | b64encode }}"
+{% if telco_core_include_managedclusteraddon_cpc_tune %}
+---
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: ManagedClusterAddOn
+metadata:
+  name: config-policy-controller
+  namespace: {{ item.cluster_name }}
+spec:
+  configs:
+  - group: addon.open-cluster-management.io
+    resource: addondeploymentconfigs
+    namespace: open-cluster-management
+    name: config-policy-controller-tune
+{% endif %}
 {% for node in item.nodes %}
 ---
 apiVersion: v1
@@ -92,6 +106,11 @@ spec:
       region: "zone-1"
       name: {{ item.cluster_name }}
       vendor: OpenShift
+{% if item.labels %}
+{%   for key, value in item.labels.items() %}
+      {{ key }}: "{{ value }}"
+{%   endfor %}
+{% endif %}
 {% if telco_core_observability %}
       observability: enabled
 {% else %}

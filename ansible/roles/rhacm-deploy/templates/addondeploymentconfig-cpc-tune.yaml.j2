@@ -1,0 +1,13 @@
+apiVersion: addon.open-cluster-management.io/v1alpha1
+kind: AddOnDeploymentConfig
+metadata:
+  name: config-policy-controller-tune
+  namespace: open-cluster-management
+spec:
+  resourceRequirements:
+  - containerID: "*:*:*"
+    resources:
+      requests:
+        memory: {{ rhacm_config_policy_controller_memory_request }}
+      limits:
+        memory: {{ rhacm_config_policy_controller_memory_limit }}

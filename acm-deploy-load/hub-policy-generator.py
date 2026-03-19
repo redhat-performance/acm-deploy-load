@@ -242,13 +242,13 @@ def main():
   parser_gen.add_argument("--container-port", type=int, default=8000, help="The container port to expose (PORT Env Var)")
 
   parser_gen.add_argument("-i", "--container-image", type=str,
-                      # default="quay.io/redhat-performance/test-gohttp-probe:v0.0.2", help="The container image to use")
-                      default="e38-h01-000-r650.rdu2.scalelab.redhat.com:5000/redhat-performance/test-gohttp-probe:v0.0.2",
-                      help="The container image to use")
+                          default="quay.io/redhat-performance/test-gohttp-probe:v0.0.2",
+                          help="The container image to use")
 
   parser_gen.add_argument("-m", "--manifests-directory", type=str, help="The location to place hub policy manifests")
 
-  parser.add_argument("--hub-policy-namespace", type=str, default="policies", help="Namespace for the policies")
+  parser_gen.add_argument("--hub-policy-namespace", type=str, default="policies", help="Namespace for the policies")
+  parser_gen.add_argument("--hub-policy-name-prefix", type=str, default="policy", help="Prefix for each policy name (Ex: small, medium, large)")
   parser_gen.add_argument("--hub-policy-cm-name", type=str, default="policy-template-map", help="Name for hub side configmap for policy data keys")
   parser_gen.add_argument("--hub-policy-cm-keys", type=int, default=5, help="Number of keys for the hub side configmap")
 
@@ -297,7 +297,7 @@ def main():
       base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
       base_dir_down = os.path.dirname(base_dir)
       base_dir_manifests = os.path.join(base_dir_down, "manifests")
-      manifests_dir_name = "hub-policies-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
+      manifests_dir_name = "{}-{}".format(cliargs.hub_policy_namespace, datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
       manifests_dir = os.path.join(base_dir_manifests, manifests_dir_name)
       os.mkdir(manifests_dir)
       logger.info("Using created manifests directory: {}".format(manifests_dir))
@@ -309,7 +309,7 @@ def main():
     logger.info(" * 1 namespace ({}) for policies".format(cliargs.hub_policy_namespace))
     logger.info("   * 1 configmap ({}) with {} keys".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_cm_keys))
     if cliargs.policies > 1:
-      logger.info("   * {} policies".format(cliargs.policies))
+      logger.info("   * {} policies with prefix {}".format(cliargs.policies, cliargs.hub_policy_name_prefix))
     else:
       logger.info("   * 1 policy")
     logger.info("     * {} namespaces per policy".format(cliargs.namespaces))
@@ -368,7 +368,7 @@ def main():
       file1.writelines(hcm_template_rendered)
 
     for policy in range(cliargs.policies):
-      policy_name = "policy-{:04d}".format(policy)
+      policy_name = "{}-{:04d}".format(cliargs.hub_policy_name_prefix, policy)
       namespaces = []
       deployments = {}
       configmaps = {}

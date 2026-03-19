@@ -15,6 +15,8 @@
     dest: "{{ install_directory }}/rhacm-deploy/acm-operator.yaml"
   - src: mch.yaml.j2
     dest: "{{ install_directory }}/rhacm-deploy/mch.yaml"
+  - src: addondeploymentconfig-cpc-tune.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/addondeploymentconfig-cpc-tune.yaml"
 
 - name: Apply ACM Operator manifest
   shell: |
@@ -49,3 +51,8 @@
   when: setup_rhacm_search_api_route
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management
+
+- name: Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning for managed clusters
+  when: apply_addondeploymentconfig_cpc_tune
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/addondeploymentconfig-cpc-tune.yaml
