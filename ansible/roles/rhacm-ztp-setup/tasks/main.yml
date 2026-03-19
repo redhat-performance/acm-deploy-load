@@ -88,6 +88,15 @@
   - replace: "{{ ztp_site_generator_image_tag }}"
     regexp: "4.10.0"
 
+- name: Append ManagedClusterAddOn to namespaceResourceWhitelist in app-project.yaml
+  ansible.builtin.blockinfile:
+    path: "{{ install_directory }}/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/deployment/app-project.yaml"
+    block: "  - group: 'addon.open-cluster-management.io'\n    kind: ManagedClusterAddOn"
+    marker: "# {mark} ACM-deploy-load appended"
+    create: true
+    insertafter: "  kind: ManagedCluster"
+  when: append_managedclusteraddons_app_project
+
 - name: Remove the cluster/policies app from cnf-features-deploy argocd deployment
   file:
     state: absent

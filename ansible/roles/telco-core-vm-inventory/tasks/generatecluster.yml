@@ -51,7 +51,8 @@
         'service_network': 'fd02::/112' if hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'] | ansible.utils.ipv6 else '172.30.0.0/16',
         'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
         'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
-        'nodes': node_list
+        'nodes': node_list,
+        'labels': cluster_def.labels
       }
     ] }}"
 

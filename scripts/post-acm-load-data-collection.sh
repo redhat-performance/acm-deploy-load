@@ -10,6 +10,9 @@ mkdir -p ${output_dir}
 echo "$(date -u) :: Collecting managedcluster kubeconfigs"
 oc get managedcluster --no-headers | grep -v local | awk '{print $1}' | xargs -I % sh -c "mkdir -p /root/hv-vm/kc/% ;oc get secret %-admin-kubeconfig -n % -o json | jq -r '.data.kubeconfig' | base64 -d > /root/hv-vm/kc/%/kubeconfig"
 
+echo "$(date -u) :: Setting thanos-querier route timeout to 5 minutes on managed clusters"
+ls /root/hv-vm/kc/ | xargs -I % oc --kubeconfig /root/hv-vm/kc/%/kubeconfig annotate route -n openshift-monitoring thanos-querier haproxy.router.openshift.io/timeout=5m
+
 echo "$(date -u) :: Collecting clusterversion, csv, nodes, namespaces and pod/event data"
 
 oc get clusterversion > ${output_dir}/clusterversion
@@ -19,6 +22,10 @@ oc describe clusterversion > ${output_dir}/clusterversion.describe
 oc get clusteroperators > ${output_dir}/clusteroperators
 oc get clusteroperators -o yaml > ${output_dir}/clusteroperators.yaml
 oc describe clusteroperators > ${output_dir}/clusteroperators.describe
+
+oc get featuregate cluster -o yaml > ${output_dir}/featuregate.cluster.yaml
+
+oc get etcd cluster -o yaml > ${output_dir}/etcd.yaml
 
 # Get hub cluster install config
 oc get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/cluster-config-v1
@@ -37,11 +44,26 @@ oc describe pods -A > ${output_dir}/pods.describe
 oc get ev -A > ${output_dir}/events
 oc get ev -A -o yaml > ${output_dir}/events.yaml
 
+echo "$(date -u) :: Collecting clusterinstance data"
+
+oc get clusterinstance -A > ${output_dir}/clusterinstance
+oc get clusterinstance -A -o yaml > ${output_dir}/clusterinstance.yaml
+
+echo "$(date -u) :: Collecting agentclusterinstall data"
+
+oc get agentclusterinstall -A --no-headers -o custom-columns=NAME:'.metadata.name',COMPLETED:'.status.conditions[?(@.type=="Completed")].reason' > ${output_dir}/aci.status
+oc get agentclusterinstall -A > ${output_dir}/aci
+oc get agentclusterinstall -A -o yaml > ${output_dir}/aci.yaml
+
 echo "$(date -u) :: Collecting managedcluster data"
 
 oc get managedcluster -A > ${output_dir}/managedcluster
 oc get managedcluster -A -o yaml > ${output_dir}/managedcluster.yaml
-oc describe managedcluster -A > ${output_dir}/managedcluster.describe
+
+echo "$(date -u) :: Collecting clustergroupupgrades data"
+
+oc get clustergroupupgrades -A > ${output_dir}/cgu
+oc get clustergroupupgrades -A -o yaml > ${output_dir}/cgu.yaml
 
 echo "$(date -u) :: Collecting mch/mce/mco data"
 
@@ -69,5 +91,23 @@ oc describe placementrules -A > ${output_dir}/placementrules.describe
 oc get placementbinding -A > ${output_dir}/placementbinding
 oc get placementbinding -A -o yaml > ${output_dir}/placementbinding.yaml
 oc describe placementbinding -A > ${output_dir}/placementbinding.describe
+
+echo "$(date -u) :: Collecting openshift-gitops data"
+
+oc get applications.argoproj.io -n openshift-gitops > ${output_dir}/gitops.applications
+oc get applications.argoproj.io -n openshift-gitops -o yaml > ${output_dir}/gitops.applications.yaml
+
+echo "$(date -u) :: Collecting Each Managed Cluster data"
+mkdir -p ${output_dir}/cluster-data
+
+for cluster in $(cat ${output_dir}/aci.status | awk '{print $1}'); do
+  echo "$(date -u) :: Collecting data for cluster ${cluster}"
+  mkdir -p ${output_dir}/cluster-data/${cluster}
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusterversion > ${output_dir}/cluster-data/${cluster}/clusterversion
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get nodes > ${output_dir}/cluster-data/${cluster}/nodes
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get clusteroperators > ${output_dir}/cluster-data/${cluster}/clusteroperators
+  oc --kubeconfig /root/hv-vm/kc/${cluster}/kubeconfig get pods -A > ${output_dir}/cluster-data/${cluster}/pods
+  ./acm-deploy-load/analyze-single-cluster-time.py -m agent -c ${cluster} ${output_dir}/cluster-data/
+done
 
 echo "$(date -u) :: Done collecting data"

@@ -42,5 +42,12 @@ core_cluster_network_interface_idx: 0
 
 cluster_definitions:
 - workers: 3
+  labels:
+    size: "xsmall"
 - workers: 3
+  labels:
+    size: "xsmall"
+- workers: 3
+  labels:
+    size: "xsmall"
 
