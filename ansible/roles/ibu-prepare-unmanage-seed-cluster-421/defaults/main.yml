@@ -1,8 +1,0 @@
----
-# ibu-prepare-seed-cluster-unmanage default vars
-
-# Leave empty unless you selected a cluster and removed it from gitops
-seed_cluster: ""
-
-# The kubeconfig to the cluster being generated into a ibu seed image
-seedcluster_kubeconfig: "{{ install_directory }}/rhacm-ztp/ibu/seed/{{ seed_cluster }}.kubeconfig"

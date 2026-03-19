@@ -3,7 +3,11 @@
 #
 # Example Usage:
 #
+# Default (pre-4.21, cnf-features-deploy):
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/ibu-prepare-seed-cluster.yml
+#
+# For 4.21+ (telco-reference):
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/ibu-prepare-seed-cluster.yml -e argocd_repo_type=telco-reference
 #
 
 - name: Prepare IBU Seed Cluster and Image

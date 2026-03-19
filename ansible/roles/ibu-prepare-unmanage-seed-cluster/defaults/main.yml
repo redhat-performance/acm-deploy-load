@@ -6,3 +6,12 @@ seed_cluster: ""
 
 # The kubeconfig to the cluster being generated into a ibu seed image
 seedcluster_kubeconfig: "{{ install_directory }}/rhacm-ztp/ibu/seed/{{ seed_cluster }}.kubeconfig"
+
+# ArgoCD repository configuration
+# For pre-4.21: use "cnf-features-deploy" (default)
+# For 4.21+: use "telco-reference"
+argocd_repo_type: "cnf-features-deploy"
+
+# Derived paths based on repo type
+argocd_repo_name: "{{ 'telco-reference' if argocd_repo_type == 'telco-reference' else 'cnf-features-deploy' }}"
+argocd_base_path: "{{ 'telco-ran/configuration/argocd' if argocd_repo_type == 'telco-reference' else 'ztp/gitops-subscriptions/argocd' }}"
