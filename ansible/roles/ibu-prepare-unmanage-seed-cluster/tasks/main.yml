@@ -37,7 +37,7 @@
 
 - name: Get cluster application with seed cluster
   shell: |
-    grep -l "{{ seed_cluster }}" /root/rhacm-ztp/{{ argocd_repo_name }}/{{ argocd_base_path }}/cluster/ztp-clusters-*/kustomization.yaml
+    grep -l "{{ seed_cluster }}" /root/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/cluster/ztp-clusters-*/kustomization.yaml
   register: seed_cluster_kustomization
 
 - name: Set cluster application containing the seed cluster
@@ -57,10 +57,10 @@
   - replace: "#- ./{{ seed_cluster }}-clusterinstance.yml"
     regexp: "^- ./{{ seed_cluster }}-clusterinstance.yml"
 
-- name: Commit and push the above changes to {{ argocd_repo_name }}
+- name: Commit and push the above changes to {{ ztp_repo_name }}
   shell: |
-    cd {{ install_directory }}/rhacm-ztp/{{ argocd_repo_name }}
-    git add {{ argocd_base_path }}/cluster/ {{ argocd_base_path }}/cluster-applications/
+    cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
+    git add {{ ztp_argocd_base_path }}/cluster/ {{ ztp_argocd_base_path }}/cluster-applications/
     git commit -a -m "Remove seed cluster {{ seed_cluster }} from cluster application - {{ seed_cluster_application }}"
     git push origin-gogs
 

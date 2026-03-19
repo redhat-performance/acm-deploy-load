@@ -26,21 +26,11 @@ wan_em="(None)"
 # wan_em="(50ms/0.02) / 100Mbps"
 # wan_em="(50ms/0.02) / 20Mbps"
 
-# ArgoCD directory path - use -a argument to override
-# Default: cnf-features-deploy path (pre-4.21)
-# For 4.21+: use -a /root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd
-argocd_dir=""
-while getopts "a:" opt; do
-  case ${opt} in
-    a)
-      argocd_dir="${OPTARG}"
-      ;;
-    *)
-      echo "Usage: $0 [-a argocd_directory]"
-      exit 1
-      ;;
-  esac
-done
+# Location of ArgoCD cluster and cluster application directories:
+# 4.21+ and newer will use telco-reference repo/location
+argocd_arg="/root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd"
+# 4.20 and earlier versions use cnf-features-deploy repo/location
+# argocd_arg="/root/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd"
 
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="iz-all-${ts}.log"
