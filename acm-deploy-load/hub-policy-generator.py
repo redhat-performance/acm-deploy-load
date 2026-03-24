@@ -57,10 +57,12 @@ metadata:
 spec:
   clusterSelector:
     matchExpressions:
-    - key: {{ selector_key }}
+    {%- for rule in cluster_selector_rules %}
+    - key: {{ rule.key }}
       operator: In
       values:
-      - "{{ selector_value }}"
+      - "{{ rule.value }}"
+    {%- endfor %}
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
@@ -214,6 +216,27 @@ logger = logging.getLogger("acm-deploy-load")
 logging.Formatter.converter = time.gmtime
 
 
+def parse_cluster_selector_segments(raw_parts):
+  """Parse --cluster-selector CLI fragments into matchExpression-style dicts (key, value)."""
+  rules = []
+  for raw in raw_parts:
+    for seg in raw.split(","):
+      seg = seg.strip()
+      if not seg:
+        continue
+      if "=" not in seg:
+        logger.error(
+            "Invalid cluster selector segment {!r}. Use key=value (e.g., common=true or ztp-done=)".format(seg))
+        sys.exit(1)
+      key, value = seg.split("=", 1)
+      key = key.strip()
+      value = value.strip()
+      if (len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'"):
+        value = value[1:-1]
+      rules.append({"key": key, "value": value})
+  return rules
+
+
 def main():
   start_time = time.time()
 
@@ -252,8 +275,16 @@ def main():
   parser_gen.add_argument("--hub-policy-cm-name", type=str, default="policy-template-map", help="Name for hub side configmap for policy data keys")
   parser_gen.add_argument("--hub-policy-cm-keys", type=int, default=5, help="Number of keys for the hub side configmap")
 
-  parser_gen.add_argument("--cluster-selector", type=str, default="common=true",
-                      help="Cluster selector in key=value format (e.g., common=true, common=core)")
+  parser_gen.add_argument(
+      "--cluster-selector",
+      action="append",
+      dest="cluster_selectors",
+      metavar="KEY=VALUE",
+      help=(
+          "Cluster label rule: key=value (operator In). Repeat for multiple rules (AND). "
+          "One flag may list several rules comma-separated (e.g. common=true,ztp-done=). "
+          "Empty value is allowed (e.g. ztp-done=). Default if omitted: common=true."
+      ))
 
   parser_gen.add_argument("--node-selector", type=str, default=None,
                       help="Depoloyment pod nodeSelector as key=value (e.g. workload=true). Omit for no nodeSelector.")
@@ -269,11 +300,12 @@ def main():
   #### Generate Manifests
   if cliargs.action == "generate":
 
-    # Parse cluster selector
-    if "=" not in cliargs.cluster_selector:
-      logger.error("Invalid cluster selector format. Use key=value format (e.g., common=true)")
+    # Parse cluster selector(s): one or more key=value rules (AND in PlacementRule)
+    raw_selectors = cliargs.cluster_selectors if cliargs.cluster_selectors else ["common=true"]
+    cluster_selector_rules = parse_cluster_selector_segments(raw_selectors)
+    if not cluster_selector_rules:
+      logger.error("No cluster selector rules after parsing; provide at least one key=value")
       sys.exit(1)
-    selector_key, selector_value = cliargs.cluster_selector.split("=", 1)
 
     # Parse node selector (optional; one key=value or none)
     node_selector = {}
@@ -297,7 +329,7 @@ def main():
       base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
       base_dir_down = os.path.dirname(base_dir)
       base_dir_manifests = os.path.join(base_dir_down, "manifests")
-      manifests_dir_name = "{}-{}".format(cliargs.hub_policy_namespace, datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
+      manifests_dir_name = "{}-{}-{}".format(cliargs.hub_policy_name_prefix, cliargs.hub_policy_namespace, datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"))
       manifests_dir = os.path.join(base_dir_manifests, manifests_dir_name)
       os.mkdir(manifests_dir)
       logger.info("Using created manifests directory: {}".format(manifests_dir))
@@ -305,7 +337,9 @@ def main():
     phase_break()
 
     logger.info("Creating manifests with:")
-    logger.info(" * Cluster selector: {}={}".format(selector_key, selector_value))
+    logger.info(" * Cluster selector ({} rule(s)): {}".format(
+        len(cluster_selector_rules),
+        ", ".join("{}={!r}".format(r["key"], r["value"]) for r in cluster_selector_rules)))
     logger.info(" * 1 namespace ({}) for policies".format(cliargs.hub_policy_namespace))
     logger.info("   * 1 configmap ({}) with {} keys".format(cliargs.hub_policy_cm_name, cliargs.hub_policy_cm_keys))
     if cliargs.policies > 1:
@@ -399,8 +433,7 @@ def main():
       policy_template_rendered = t.render(
           name=policy_name,
           namespace=cliargs.hub_policy_namespace,
-          selector_key=selector_key,
-          selector_value=selector_value,
+          cluster_selector_rules=cluster_selector_rules,
           policy_namespaces=namespaces,
           deployments=deployments,
           replicas=cliargs.replicas,
