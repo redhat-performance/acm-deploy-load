@@ -1,7 +1,7 @@
 type: s3
 config:
   bucket: "thanos"
-  endpoint: "minio.minio.svc.cluster.local:9000"
+  endpoint: "{{ observability_thanos_s3_bucket_endpoint }}"
   insecure: true
-  access_key: minio
-  secret_key: minio123
+  access_key: "{{ observability_thanos_s3_bucket_access_key }}"
+  secret_key: "{{ observability_thanos_s3_bucket_secret_key }}"

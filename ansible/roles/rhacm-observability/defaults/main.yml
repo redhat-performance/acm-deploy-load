@@ -8,3 +8,7 @@ observability_compactStorageSize: 100Gi
 observability_receiveStorageSize: 100Gi
 observability_ruleStorageSize: 1Gi
 observability_storeStorageSize: 10Gi
+
+observability_thanos_s3_bucket_endpoint: minio.minio.svc.cluster.local:9000
+observability_thanos_s3_bucket_access_key: minio
+observability_thanos_s3_bucket_secret_key: minio123

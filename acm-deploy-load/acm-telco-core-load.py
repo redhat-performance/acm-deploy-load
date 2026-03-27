@@ -120,8 +120,8 @@ def launch_prometheus_analysis(report_dir, phase_name, start_ts, end_ts, kubecon
   start_str = datetime.fromtimestamp(start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
   end_str = datetime.fromtimestamp(end_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
   duration_seconds = round(end_ts - start_ts)
-  if duration_seconds < 300:
-    logger.warning("Skipping prometheus analysis phase {}: window {}s < 5 minutes".format(phase_name, duration_seconds))
+  if duration_seconds < 900:
+    logger.warning("Skipping prometheus analysis phase {}: window {}s < 15 minutes".format(phase_name, duration_seconds))
     return
   # No buffer time since script is running against end time that is less than 5 minutes from now
   cmd = [
