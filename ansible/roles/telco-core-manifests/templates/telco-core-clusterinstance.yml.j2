@@ -146,7 +146,9 @@ spec:
       node-role.kubernetes.io/infra: ""
 {% elif node.role == 'worker' %}
     nodeLabels:
+{%   if telco_core_clusterinstance_custom_manifests %}
       node-role.kubernetes.io/worker-{{ (loop.index % 3) + 1 }}: ""
+{%   endif %}
       workload: "true"
 {% endif %}
     automatedCleaningMode: disabled
