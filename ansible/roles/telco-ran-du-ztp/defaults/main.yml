@@ -9,6 +9,7 @@ ztp_repo_type: "cnf-features-deploy"
 ztp_repo_name: "{{ 'telco-reference' if ztp_repo_type == 'telco-reference' else 'cnf-features-deploy' }}"
 ztp_argocd_base_path: "{{ 'telco-ran/configuration/argocd' if ztp_repo_type == 'telco-reference' else 'ztp/gitops-subscriptions/argocd' }}"
 ztp_source_crs_path: "{{ 'telco-ran/configuration/source-crs' if ztp_repo_type == 'telco-reference' else 'ztp/source-crs' }}"
+ztp_repo_branch: "{{ telco_reference_branch if ztp_repo_type == 'telco-reference' else cnf_features_deploy_branch }}"
 
 # Pre-creates manifests for the desired number of argocd cluster applications
 cluster_applications_count: 40

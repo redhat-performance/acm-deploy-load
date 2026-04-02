@@ -10,9 +10,9 @@ spec:
     namespace: ztp-site
   project: policy-app-project
   source:
-    path: ztp/gitops-subscriptions/argocd/policy/common-and-group
-    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
-    targetRevision: {{ cnf_features_deploy_branch }}
+    path: {{ ztp_argocd_base_path }}/policy/common-and-group
+    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
+    targetRevision: {{ ztp_repo_branch }}
   syncPolicy:
     automated:
       prune: true

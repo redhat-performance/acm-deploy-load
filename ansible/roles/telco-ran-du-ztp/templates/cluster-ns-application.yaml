@@ -15,9 +15,9 @@ spec:
     namespace: ztp-clusters-{{ '%02d' | format(item) }}
   project: ztp-app-project
   source:
-    path: ztp/gitops-subscriptions/argocd/cluster/ztp-clusters-{{ '%02d' | format(item) }}
-    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
-    targetRevision: {{ cnf_features_deploy_branch }}
+    path: {{ ztp_argocd_base_path }}/cluster/ztp-clusters-{{ '%02d' | format(item) }}
+    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
+    targetRevision: {{ ztp_repo_branch }}
   ignoreDifferences: # recommended way to allow ACM controller to manage its fields. alternative approach documented below (1)
   - group: cluster.open-cluster-management.io
     kind: ManagedCluster
