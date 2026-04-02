@@ -28,9 +28,9 @@ wan_em="(None)"
 
 # Location of ArgoCD cluster and cluster application directories:
 # 4.21+ and newer will use telco-reference repo/location
-argocd_arg="/root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd"
+argocd_arg="--argocd-directory /root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd"
 # 4.20 and earlier versions use cnf-features-deploy repo/location
-# argocd_arg="/root/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd"
+# argocd_arg="--argocd-directory /root/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd"
 
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="iz-all-${ts}.log"
