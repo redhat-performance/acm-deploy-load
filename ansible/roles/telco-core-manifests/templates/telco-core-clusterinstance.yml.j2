@@ -106,7 +106,7 @@ spec:
       region: "zone-1"
       name: {{ item.cluster_name }}
       vendor: OpenShift
-{% if item.labels %}
+{% if item.labels is defined and item.labels is not none %}
 {%   for key, value in item.labels.items() %}
       {{ key }}: "{{ value }}"
 {%   endfor %}
