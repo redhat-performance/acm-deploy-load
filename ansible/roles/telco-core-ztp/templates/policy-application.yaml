@@ -11,8 +11,8 @@ spec:
   project: policy-app-project
   source:
     path: ztp/gitops-subscriptions/argocd/policy/telco-core
-    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/cnf-features-deploy.git
-    targetRevision: {{ cnf_features_deploy_branch }}
+    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
+    targetRevision: {{ ztp_repo_branch }}
   syncPolicy:
     automated:
       prune: true
