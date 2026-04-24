@@ -10,7 +10,7 @@ spec:
     namespace: ztp-core-cluster
   project: ztp-app-project
   source:
-    path: ztp/gitops-subscriptions/argocd/cluster/ztp-core
+    path: "{{ ztp_argocd_base_path }}/cluster/ztp-core"
     repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
     targetRevision: {{ ztp_repo_branch }}
   ignoreDifferences: # recommended way to allow ACM controller to manage its fields. alternative approach documented below (1)

@@ -10,7 +10,7 @@ spec:
     namespace: ztp-core-policies
   project: policy-app-project
   source:
-    path: ztp/gitops-subscriptions/argocd/policy/telco-core
+    path: "{{ ztp_argocd_base_path }}/policy/telco-core"
     repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
     targetRevision: {{ ztp_repo_branch }}
   syncPolicy:
