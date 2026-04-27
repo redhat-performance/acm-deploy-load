@@ -15,6 +15,7 @@ telco_core_include_managedclusteraddon_cpc_tune: false
 
 telco_core_clusterinstance_extra_manifests: false
 telco_core_clusterinstance_custom_manifests: false
+telco_core_clusterinstance_prega_manifests: false
 
 # Manifest must exist in acm-deploy-load directory in order to be added to the extra-manifests configmap
 telco_core_extra_manifests:
@@ -34,6 +35,10 @@ telco_core_custom_manifests:
 - mcp-worker-1.yaml
 - mcp-worker-2.yaml
 - mcp-worker-3.yaml
+
+# Manifests required for preGA testing
+telco_core_prega_idms_link: ""
+telco_core_prega_manifests: []
 
 # Enable observability for Telco Core clusters
 telco_core_observability: true
