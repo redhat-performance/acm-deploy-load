@@ -19,7 +19,10 @@
   slurp:
     src: "{{ registry_path }}/certs/domain.crt"
   register: mirror_cert
-  when: rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
+  when:
+  - rhacm_disconnected_registry is defined
+  - rhacm_disconnected_registry is not none
+  - rhacm_disconnected_registry | length > 1
 
 - name: Template files for mce/rhacm assisted-installer
   template:
