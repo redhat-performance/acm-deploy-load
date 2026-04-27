@@ -117,6 +117,30 @@ Set ZTP-specific variables in `ansible/vars/all.yml`:
 (.venv) [root@<bastion> acm-deploy-load]# ansible-playbook -i ansible/inventory/<cloudname>.local ansible/rhacm-ztp-setup.yml
 ```
 
+### Pre-GA content
+
+In order to use preGA builds/content you need additional parameters and overrides in `ansible/vars/all.yml`
+
+| Variable | Value | Description |
+| - | - | - |
+| `ztp_repo_branch` | `main` | Should be set to main for pulling non-branched version |
+| `ztp_repo_type` | `telco-reference` | Old repo no longer supported |
+| `telco_core_operator_index` | `<registry>/<namespace>/<catalog>:<build>` | Desired catalog source image |
+| `telco_core_clusterinstance_prega_manifests` | `true` | Required to apply Pre-GA configs from `ansible/roles/telco-core-manifests/templates/prega-manifests` and IDMS |
+| `telco_core_prega_idms_link` | `<source>/imageDigestMirrorSet.yaml` | Link to the Pre-GA IDMS configuration |
+| `pull_secret` | `"{{ lookup('file', '../<pull-secret-file>') }}"` | Path to the pull secret with Pre-GA content access |
+
+Example:
+```yaml
+# Pre-GA section
+ztp_repo_branch: main
+ztp_repo_type: telco-reference
+telco_core_operator_index: example.com/early/test-operator-index:v4.22.0-latest
+telco_core_clusterinstance_prega_manifests: true
+telco_core_prega_idms_link: https://example.com/latest_build/imageDigestMirrorSet.yaml
+pull_secret: "{{ lookup('file', '../merged-pull-secret.txt') }}"
+```
+
 ## Step 3: Deploy ACM Hub
 
 Deploy ACM, MCE, TALM, assisted-installer, SiteConfig Operator, and related components and configuration on the hub cluster.

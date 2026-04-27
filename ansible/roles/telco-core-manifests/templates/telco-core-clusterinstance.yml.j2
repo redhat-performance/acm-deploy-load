@@ -66,6 +66,19 @@ data:
     {{ lookup('file', 'custom-manifests/' + item ) | indent(4) }}
 {%   endfor %}
 {% endif %}
+{% if telco_core_clusterinstance_prega_manifests and telco_core_prega_manifests | length > 0 %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prega-manifests-configmap
+  namespace: {{ item.cluster_name }}
+data:
+{% for item in telco_core_prega_manifests %}
+  {{ item | basename }}: |
+    {{ lookup('file', 'prega-manifests/' + item ) | indent(4) }}
+{% endfor %}
+{% endif %}
 ---
 apiVersion: siteconfig.open-cluster-management.io/v1alpha1
 kind: ClusterInstance
@@ -82,7 +95,7 @@ spec:
   networkType: OVNKubernetes
   clusterType: HighlyAvailable
   # Reference configuration extra manifests
-{% if telco_core_clusterinstance_extra_manifests or telco_core_clusterinstance_custom_manifests %}
+{% if telco_core_clusterinstance_extra_manifests or telco_core_clusterinstance_custom_manifests or telco_core_clusterinstance_prega_manifests %}
   extraManifestsRefs:
 {%   if telco_core_clusterinstance_extra_manifests %}
   - name: extra-manifests-configmap
@@ -93,6 +106,11 @@ spec:
   - name: custom-manifests-configmap
 {%   else %}
   # - name: custom-manifests-configmap
+{%   endif %}
+{%   if telco_core_clusterinstance_prega_manifests and telco_core_prega_manifests | length > 0 %}
+  - name: prega-manifests-configmap
+{%   else %}
+  # - name: prega-manifests-configmap
 {%   endif %}
 {% else %}
   # extraManifestsRefs:

@@ -3,7 +3,7 @@
 
 # Base repo with branch to host both cluster and policy applications and data
 cnf_features_deploy_repo: https://github.com/openshift-kni/cnf-features-deploy.git
-cnf_features_deploy_branch: release-4.20
+cnf_features_deploy_branch: release-4.22
 
 # Gogs service to commit repo to
 gogs_host: "[fc00:1000::1]"
@@ -11,8 +11,8 @@ gogs_port: 10880
 gogs_username: testadmin
 gogs_password: testadmin
 
-# 4.18 or 4.20 profiles are available
-telco_core_profile_version: "4.20"
+# 4.18, 4.20, and 4.22 profiles are available
+telco_core_profile_version: "4.22"
 telco_core_operator_index: registry.redhat.io/redhat/redhat-operator-index:v{{ telco_core_profile_version }}
 
 # For vm-telco-core scale testing, include local storage operator for managedcluster prometheus to have PV
@@ -21,17 +21,17 @@ telco_core_lso_device_path: /dev/disk/by-path/pci-0000:02:00.0-scsi-0:0:0:1
 
 # Enable overriding the clusterlogging subscription reference CR channel
 telco_core_reference_cluster_logging_channel_override_enable: true
-telco_core_reference_cluster_logging_channel_override: stable-6.1
+telco_core_reference_cluster_logging_channel_override: stable-6.5
 
 # Enabling a cluster logging version refers to enabling a specific target version for
 # the cluster logging operator status to be compliant with. Setting as false means the
 # version will be commented and your policy will be compliant regardless of the version
 # of the cluster logging operator installed.
 telco_core_cluster_logging_version_enable: false
-telco_core_cluster_logging_version: cluster-logging.v6.2.0
+telco_core_cluster_logging_version: cluster-logging.v6.5.0
 
 # Node Resource Topology scheduler image
-telco_core_nrt_scheduler_image: registry.redhat.io/openshift4/noderesourcetopology-scheduler-rhel9:v4.20.0
+telco_core_nrt_scheduler_image: registry.redhat.io/openshift4/noderesourcetopology-scheduler-rhel9:v4.22.0
 
 # Telco Core Monitoring configuration options
 telco_core_prometheus_retention_period: 8d

@@ -34,6 +34,34 @@
   - rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1
   - disconnected_pull_secret is string
 
+- name: Get preGA Content
+  when:
+    - telco_core_clusterinstance_prega_manifests | bool
+    - telco_core_prega_idms_link != ''
+  block:
+    - name: Ensure destination directory exists
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/roles/telco-core-manifests/templates/prega-manifests/"
+        state: directory
+        mode: '0755'
+
+    - name: Remove existing IDMS yaml
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/roles/telco-core-manifests/templates/prega-manifests/prega-idms.yaml"
+        state: absent
+
+    - name: Download custom IDMS
+      ansible.builtin.uri:
+        url: "{{ telco_core_prega_idms_link }}"
+        dest: "{{ playbook_dir }}/roles/telco-core-manifests/templates/prega-manifests/prega-idms.yaml"
+        mode: '0644'
+      retries: 3
+      delay: 5
+
+    - name: Append prega idms to the manifest list
+      set_fact:
+        telco_core_prega_manifests: "{{ telco_core_prega_manifests + ['prega-idms.yaml'] }}"
+
 - name: Create telco-core clusterinstances
   template:
     src: telco-core-clusterinstance.yml.j2
