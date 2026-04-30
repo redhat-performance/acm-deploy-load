@@ -1,7 +1,12 @@
 type: s3
 config:
-  bucket: "thanos"
+  bucket: "{{ observability_thanos_s3_bucket_name }}"
   endpoint: "{{ observability_thanos_s3_bucket_endpoint }}"
-  insecure: true
+  insecure: {{ observability_thanos_s3_bucket_insecure }}
   access_key: "{{ observability_thanos_s3_bucket_access_key }}"
   secret_key: "{{ observability_thanos_s3_bucket_secret_key }}"
+{% if observability_thanos_s3_ca_file | default('') | length > 0 %}
+  http_config:
+    tls_config:
+      ca_file: {{ observability_thanos_s3_ca_file }}
+{% endif %}

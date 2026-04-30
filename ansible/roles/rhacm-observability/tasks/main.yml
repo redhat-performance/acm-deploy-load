@@ -1,6 +1,58 @@
 ---
 # rhacm-observability tasks
 
+- name: Template out RHACM Observability namespace and OBC manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: namespace.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/rhacm-observability-namespace.yaml"
+  - src: obc.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/rhacm-observability-obc.yaml"
+
+- name: Apply RHACM Observability namespace
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/rhacm-observability-namespace.yaml
+
+- name: ODF thanos object storage setup
+  block:
+  - name: Apply ODF ObjectBucketClaim
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/rhacm-observability-obc.yaml
+
+  - name: Wait for OBC to be Bound
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get objectbucketclaim {{ observability_odf_obc_name }} \
+        -n open-cluster-management-observability \
+        -o jsonpath='{.status.phase}'
+    register: obc_phase
+    until: obc_phase.stdout == "Bound"
+    retries: 60
+    delay: 10
+
+  - name: Get OBC Secret (S3 credentials)
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret {{ observability_odf_obc_name }} \
+        -n open-cluster-management-observability -o json
+    register: obc_secret_raw
+
+  - name: Get OBC ConfigMap (bucket name and endpoint)
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get configmap {{ observability_odf_obc_name }} \
+        -n open-cluster-management-observability -o json
+    register: obc_cm_raw
+
+  - name: Set ODF thanos S3 facts from OBC
+    set_fact:
+      observability_thanos_s3_bucket_name: "{{ (obc_cm_raw.stdout | from_json).data.BUCKET_NAME }}"
+      observability_thanos_s3_bucket_access_key: "{{ (obc_secret_raw.stdout | from_json).data.AWS_ACCESS_KEY_ID | b64decode }}"
+      observability_thanos_s3_bucket_secret_key: "{{ (obc_secret_raw.stdout | from_json).data.AWS_SECRET_ACCESS_KEY | b64decode }}"
+      observability_thanos_s3_bucket_endpoint: "{{ (obc_cm_raw.stdout | from_json).data.BUCKET_HOST }}:{{ (obc_cm_raw.stdout | from_json).data.BUCKET_PORT }}"
+      observability_thanos_s3_bucket_insecure: "{{ observability_odf_insecure }}"
+      observability_thanos_s3_ca_file: "{{ observability_odf_service_ca_file }}"
+  when: observability_storage_method == "odf"
+
 - name: Template out RHACM Observability
   template:
     src: rhacm-observability.yaml.j2

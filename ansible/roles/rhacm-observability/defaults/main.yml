@@ -1,14 +1,31 @@
 ---
 # rhacm-observability default vars
 
-rhacm_observability_storageclass: localstorage-sc
+# For localstorage provided storage use "localstorage-sc"
+# For ODF provided storage use "ocs-storagecluster-ceph-rbd"
+rhacm_observability_sc: localstorage-sc
 
-observability_alertmanagerStorageSize: 1Gi
+observability_alertmanagerStorageSize: 20Gi
 observability_compactStorageSize: 100Gi
 observability_receiveStorageSize: 100Gi
-observability_ruleStorageSize: 1Gi
-observability_storeStorageSize: 10Gi
+observability_ruleStorageSize: 20Gi
+observability_storeStorageSize: 100Gi
 
-observability_thanos_s3_bucket_endpoint: minio.minio.svc.cluster.local:9000
+# Storage method for thanos object storage: minio or odf
+observability_storage_method: minio
+
+# MinIO settings (used when observability_storage_method == "minio")
+# MinIO on cluster: minio.minio.svc.cluster.local:9000
+# MinIO on bastion: {{ groups['bastion'][0] }}:9000
+observability_thanos_s3_bucket_name: thanos
+observability_thanos_s3_bucket_endpoint: "{{ groups['bastion'][0] }}:9000"
+observability_thanos_s3_bucket_insecure: true
 observability_thanos_s3_bucket_access_key: minio
 observability_thanos_s3_bucket_secret_key: minio123
+
+# ODF settings (used when observability_storage_method == "odf")
+observability_odf_obc_name: acm-observability-thanos
+observability_odf_storageclass: openshift-storage.noobaa.io
+observability_odf_insecure: false
+# OpenShift automatically mounts the service CA at this path in every pod
+observability_odf_service_ca_file: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
