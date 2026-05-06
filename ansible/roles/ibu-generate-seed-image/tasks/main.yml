@@ -44,6 +44,24 @@
     KUBECONFIG={{ seedcluster_kubeconfig }} oc delete localvolume -n openshift-local-storage --all
   ignore_errors: true
 
+# ignore_errors in the event the prometheusrules have already been removed
+- name: Delete acm prometheusrules from seed cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc delete prometheusrule {{ item }} -n openshift-monitoring
+  loop:
+  - acm-rs-namespace-prometheus-rules
+  - acm-rs-virt-prometheus-rules
+  ignore_errors: true
+
+# ignore_errors in the event the configurationpolicies have already had finalizers removed
+- name: Remove finalizers from configurationpolicies on hub cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc patch configurationpolicy {{ item }} -n {{ seed_cluster }} -p '{"metadata":{"finalizers":null}}' --type=merge
+  loop:
+  - rs-virt-prom-rules-policy-config
+  - rs-prom-rules-policy-config
+  ignore_errors: true
+
 - name: Apply seedgen-secret to seed cluster
   shell: |
     KUBECONFIG={{ seedcluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-ztp/ibu/seed/seedgen-secret-{{ ibu_seed_image_version }}.yml
