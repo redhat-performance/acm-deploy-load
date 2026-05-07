@@ -24,7 +24,7 @@ logger = logging.getLogger("acm-deploy-load")
 def detect_talm_minor(default_talm_version, dry_run):
   talm_version = default_talm_version
   logger.info("Detecting TALM version by image tag")
-  # Try cluster-group-upgrades-controller-manager-v2 first, perhaps try cluster-group-upgrades-controller-manager afterwards
+  # Try repo install (openshift-cluster-group-upgrades) — image tag carries version
   oc_cmd = ["oc", "get", "deploy", "-n", "openshift-cluster-group-upgrades", "cluster-group-upgrades-controller-manager-v2", "-o", "json"]
   rc, output = command(oc_cmd, dry_run, retries=3, no_log=True)
   if rc != 0:
@@ -38,12 +38,23 @@ def detect_talm_minor(default_talm_version, dry_run):
           if container["name"] == "manager":
             talm_image_ver = container["image"].split(":")[-1]
             break
-      if talm_image_ver != "":
+      if talm_image_ver != "" and "." in talm_image_ver:
         logger.info("Detected TALM Version: {}".format(talm_image_ver))
-        if "." not in talm_image_ver:
-          logger.warning("Unable to detect TALM version, defaulting to: {}".format(talm_version))
-        else:
-          talm_version = talm_image_ver
-      else:
-        logger.warning("Unable to detect TALM version, defaulting to: {}".format(talm_version))
+        return talm_image_ver.split(".")[1]
+      logger.warning("Unable to detect TALM version from image tag, trying CSV")
+
+  # OLM/subscription install places TALM in openshift-operators with a SHA digest
+  # instead of a version tag; fall back to the ClusterServiceVersion name
+  logger.info("Detecting TALM version from ClusterServiceVersion (OLM install)")
+  oc_cmd = ["oc", "get", "csv", "-n", "openshift-operators", "-o", "json"]
+  rc, output = command(oc_cmd, dry_run, retries=3, no_log=True)
+  if rc == 0 and not dry_run:
+    for item in json.loads(output).get("items", []):
+      name = item.get("metadata", {}).get("name", "")
+      if "topology-aware-lifecycle-manager" in name and ".v" in name:
+        talm_csv_ver = name.split(".v")[-1]
+        if "." in talm_csv_ver:
+          logger.info("Detected TALM Version from CSV: {}".format(talm_csv_ver))
+          return talm_csv_ver.split(".")[1]
+  logger.warning("Unable to detect TALM version, defaulting to: {}".format(talm_version))
   return talm_version.split(".")[1]

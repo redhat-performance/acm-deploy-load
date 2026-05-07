@@ -31,8 +31,8 @@ def detect_aap_install(kubeconfig=None, dry_run=False):
     oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "aap", "-n", "ansible-automation-platform", "-o", "json"]
   rc, output = command(oc_cmd, dry_run, no_log=True)
   if rc != 0:
-    logger.error("oc get aap rc: {}".format(rc))
-    sys.exit(1)
+    logger.warning("AAP not detected (oc get aap rc: {}), assuming not installed".format(rc))
+    return False
   if not dry_run:
     aap_data = json.loads(output)
     if len(aap_data["items"]) > 0:
