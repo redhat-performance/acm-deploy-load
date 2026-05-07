@@ -4,12 +4,12 @@
 - name: Set BMC base URL for ipv6
   set_fact:
     base_url: "http://[{{ hostvars[hv_vm_target].hv_ip }}]:{{ redfish_bmc_port }}/redfish/v1/Systems/{{  hostvars[hv_vm_target].domain_uuid }}"
-  when: hostvars[hv_vm_target].ip | ansible.utils.ipv6
+  when: hostvars[hv_vm_target].ip is ansible.utils.ipv6
 
 - name: Set BMC base URL for ipv4
   set_fact:
     base_url: "http://{{ hostvars[hv_vm_target].hv_ip }}:{{ redfish_bmc_port }}/redfish/v1/Systems/{{  hostvars[hv_vm_target].domain_uuid }}"
-  when: hostvars[hv_vm_target].ip | ansible.utils.ipv4
+  when: hostvars[hv_vm_target].ip is ansible.utils.ipv4
 
 - name: Power Down SNO
   uri:
