@@ -965,6 +965,204 @@ def minio_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def odf_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "odf")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # ODF openshift-storage Namespace CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage'})"
+  query_thanos(route, q, "openshift-storage", token, end_ts, duration, sub_report_dir, "cpu-odf", "ODF CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage'})"
+  query_thanos(route, q, "openshift-storage", token, end_ts, duration, sub_report_dir, "mem-odf", "ODF Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-storage'}[5m]))"
+  query_thanos(route, q, "openshift-storage", token, end_ts, duration, sub_report_dir, "net-rcv-odf", "ODF Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-storage'}[5m]))"
+  query_thanos(route, q, "openshift-storage", token, end_ts, duration, sub_report_dir, "net-xmt-odf", "ODF Network Transmit Throughput", "NET", w, h, q_names)
+
+  # ODF Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'odf-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-operator", "ODF Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'odf-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-operator", "ODF Operator Memory Usage", "MEM", w, h, q_names)
+  # OCS Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ocs-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ocs-operator", "OCS Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ocs-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ocs-operator", "OCS Operator Memory Usage", "MEM", w, h, q_names)
+  # Rook-Ceph Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-rook-ceph-operator", "Rook-Ceph Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-rook-ceph-operator", "Rook-Ceph Operator Memory Usage", "MEM", w, h, q_names)
+  # NooBaa Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'noobaa-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-noobaa-operator", "NooBaa Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'noobaa-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-noobaa-operator", "NooBaa Operator Memory Usage", "MEM", w, h, q_names)
+  # Ceph CSI Controller Manager pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ceph-csi-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-csi-controller-manager", "Ceph CSI Controller Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ceph-csi-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-csi-controller-manager", "Ceph CSI Controller Manager Memory Usage", "MEM", w, h, q_names)
+  # CSI Addons Controller Manager pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'csi-addons-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-csi-addons-controller-manager", "CSI Addons Controller Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'csi-addons-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-csi-addons-controller-manager", "CSI Addons Controller Manager Memory Usage", "MEM", w, h, q_names)
+  # OCS Client Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ocs-client-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ocs-client-operator", "OCS Client Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ocs-client-operator-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ocs-client-operator", "OCS Client Operator Memory Usage", "MEM", w, h, q_names)
+  # OCS Client Operator Console pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ocs-client-operator-console-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ocs-client-operator-console", "OCS Client Operator Console CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ocs-client-operator-console-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ocs-client-operator-console", "OCS Client Operator Console Memory Usage", "MEM", w, h, q_names)
+  # OCS Metrics Exporter pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ocs-metrics-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ocs-metrics-exporter", "OCS Metrics Exporter CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ocs-metrics-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ocs-metrics-exporter", "OCS Metrics Exporter Memory Usage", "MEM", w, h, q_names)
+  # OCS Provider Server pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ocs-provider-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ocs-provider-server", "OCS Provider Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ocs-provider-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ocs-provider-server", "OCS Provider Server Memory Usage", "MEM", w, h, q_names)
+  # ODF Blackbox Exporter pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'odf-blackbox-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-blackbox-exporter", "ODF Blackbox Exporter CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'odf-blackbox-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-blackbox-exporter", "ODF Blackbox Exporter Memory Usage", "MEM", w, h, q_names)
+  # ODF Console pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'odf-console-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-console", "ODF Console CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'odf-console-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-console", "ODF Console Memory Usage", "MEM", w, h, q_names)
+  # ODF External Snapshotter Operator pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'odf-external-snapshotter-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-external-snapshotter-operator", "ODF External Snapshotter Operator CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'odf-external-snapshotter-operator-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-external-snapshotter-operator", "ODF External Snapshotter Operator Memory Usage", "MEM", w, h, q_names)
+  # UX Backend Server pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'ux-backend-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ux-backend-server", "UX Backend Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'ux-backend-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ux-backend-server", "UX Backend Server Memory Usage", "MEM", w, h, q_names)
+
+  # Ceph Monitor pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-mon-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-mon", "Ceph Monitor CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-mon-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-mon", "Ceph Monitor Memory Usage", "MEM", w, h, q_names)
+  # Ceph Manager pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-mgr-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-mgr", "Ceph Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-mgr-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-mgr", "Ceph Manager Memory Usage", "MEM", w, h, q_names)
+  # Ceph OSD pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-osd-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-osd", "Ceph OSD CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-osd-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-osd", "Ceph OSD Memory Usage", "MEM", w, h, q_names)
+  # Ceph MDS pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-mds-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-mds", "Ceph MDS CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-mds-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-mds", "Ceph MDS Memory Usage", "MEM", w, h, q_names)
+  # Ceph RGW pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-rgw-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-rgw", "Ceph RGW CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-rgw-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-rgw", "Ceph RGW Memory Usage", "MEM", w, h, q_names)
+  # Ceph Crash Collector pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-crashcollector-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-crashcollector", "Ceph Crash Collector CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-crashcollector-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-crashcollector", "Ceph Crash Collector Memory Usage", "MEM", w, h, q_names)
+
+  # Rook-Ceph Exporter pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'rook-ceph-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-ceph-exporter", "Ceph Exporter CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'rook-ceph-exporter-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-ceph-exporter", "Ceph Exporter Memory Usage", "MEM", w, h, q_names)
+
+  # CSI RBD Node Plugin pods (DaemonSet)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'openshift-storage.rbd.csi.ceph.com-nodeplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-csi-rbd-nodeplugin", "CSI RBD Node Plugin CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'openshift-storage.rbd.csi.ceph.com-nodeplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-csi-rbd-nodeplugin", "CSI RBD Node Plugin Memory Usage", "MEM", w, h, q_names)
+  # CSI RBD Controller Plugin pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'openshift-storage.rbd.csi.ceph.com-ctrlplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-csi-rbd-ctrlplugin", "CSI RBD Controller Plugin CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'openshift-storage.rbd.csi.ceph.com-ctrlplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-csi-rbd-ctrlplugin", "CSI RBD Controller Plugin Memory Usage", "MEM", w, h, q_names)
+  # CSI CephFS Node Plugin pods (DaemonSet)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'openshift-storage.cephfs.csi.ceph.com-nodeplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-csi-cephfs-nodeplugin", "CSI CephFS Node Plugin CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'openshift-storage.cephfs.csi.ceph.com-nodeplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-csi-cephfs-nodeplugin", "CSI CephFS Node Plugin Memory Usage", "MEM", w, h, q_names)
+  # CSI CephFS Controller Plugin pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'openshift-storage.cephfs.csi.ceph.com-ctrlplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-csi-cephfs-ctrlplugin", "CSI CephFS Controller Plugin CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'openshift-storage.cephfs.csi.ceph.com-ctrlplugin-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-csi-cephfs-ctrlplugin", "CSI CephFS Controller Plugin Memory Usage", "MEM", w, h, q_names)
+
+  # NooBaa Core pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'noobaa-core-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-noobaa-core", "NooBaa Core CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'noobaa-core-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-noobaa-core", "NooBaa Core Memory Usage", "MEM", w, h, q_names)
+  # NooBaa Endpoint pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'noobaa-endpoint-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-noobaa-endpoint", "NooBaa Endpoint CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'noobaa-endpoint-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-noobaa-endpoint", "NooBaa Endpoint Memory Usage", "MEM", w, h, q_names)
+  # NooBaa DB (PostgreSQL) pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'noobaa-db-pg-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-noobaa-db-pg", "NooBaa DB CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'noobaa-db-pg-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-noobaa-db-pg", "NooBaa DB Memory Usage", "MEM", w, h, q_names)
+  # CNPG Controller Manager pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-storage',pod=~'cnpg-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-odf-cnpg-controller-manager", "CNPG Controller Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-storage',pod=~'cnpg-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-odf-cnpg-controller-manager", "CNPG Controller Manager Memory Usage", "MEM", w, h, q_names)
+
+  # Ceph Storage Capacity and Usage
+  # Ceph cluster total raw capacity (divide by 1e12 to convert bytes to TB, avoids plotly showing "k GB" on the y-axis)
+  q = "(ceph_cluster_total_bytes / 1e12)"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "ceph-cluster-total-capacity", "Ceph Cluster Total Raw Capacity", "Capacity (TB)", w, h, q_names)
+  q = "ceph_cluster_total_used_bytes"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "ceph-cluster-used-capacity", "Ceph Cluster Used Raw Capacity", "DISK_USAGE", w, h, q_names)
+  # Per-pool stored data with human-readable pool names from ceph_pool_metadata
+  q = "sum by (name) (ceph_pool_stored_raw * on(pool_id) group_left(name) ceph_pool_metadata)"
+  query_thanos(route, q, "name", token, end_ts, duration, sub_report_dir, "ceph-pool-stored-raw", "Ceph Pool Stored Raw Data By Pool", "DISK_USAGE", w, h, q_names)
+  # OSD storage: total used across all OSDs, per-OSD used, per-OSD capacity
+  q = "sum(ceph_osd_stat_bytes_used)"
+  query_thanos(route, q, "Ceph OSD Total", token, end_ts, duration, sub_report_dir, "ceph-osd-used-total", "Ceph OSD Aggregate Used", "DISK_USAGE", w, h, q_names)
+  q = "ceph_osd_stat_bytes_used"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-used-per-osd", "Ceph OSD Used Per OSD", "DISK_USAGE", w, h, q_names)
+  q = "ceph_osd_stat_bytes"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-capacity-per-osd", "Ceph OSD Capacity Per OSD", "DISK_USAGE", w, h, q_names)
+  # ODF filesystem PVC usage (block PVCs are not reported by kubelet_volume_stats_used_bytes)
+  q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='openshift-storage'})"
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-odf", "ODF PVC Filesystem Usage", "DISK_USAGE", w, h, q_names)
+
+  # Ceph OSD Performance
+  q = "rate(ceph_osd_op_r_latency_sum[5m])"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-read-latency", "Ceph OSD Read Latency Per OSD", "Latency (ms)", w, h, q_names)
+  q = "rate(ceph_osd_op_w_latency_sum[5m])"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-write-latency", "Ceph OSD Write Latency Per OSD", "Latency (ms)", w, h, q_names)
+
+  # Ceph Health Status (0=HEALTH_OK, 1=HEALTH_WARN, 2=HEALTH_ERR)
+  q = "ceph_health_status"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "ceph-health-status", "Ceph Health Status", "Status", w, h, q_names)
+
+  return q_names
+
+
 def node_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
@@ -1432,6 +1630,9 @@ def main():
   if "openshift-local-storage" in namespaces:
     logger.info("openshift-local-storage namespace found, querying for lso metrics")
     report_data["lso"] = lso_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "openshift-storage" in namespaces:
+    logger.info("openshift-storage namespace found, querying for odf metrics")
+    report_data["odf"] = odf_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
   # Minio is a "workload" running on hub clusters to provide object storage for the cluster
   if "minio" in namespaces:
