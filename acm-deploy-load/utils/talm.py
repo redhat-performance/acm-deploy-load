@@ -21,6 +21,23 @@ from utils.command import command
 logger = logging.getLogger("acm-deploy-load")
 
 
+def detect_talm_csv(kubeconfig=None):
+  logger.info("Checking for TALM ClusterServiceVersion in openshift-operators")
+  if kubeconfig is None:
+    oc_cmd = ["oc", "get", "csv", "-n", "openshift-operators", "-o", "json"]
+  else:
+    oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "openshift-operators", "-o", "json"]
+  rc, output = command(oc_cmd, False, retries=3, no_log=True)
+  if rc == 0:
+    for item in json.loads(output).get("items", []):
+      name = item.get("metadata", {}).get("name", "")
+      if "topology-aware-lifecycle-manager" in name:
+        logger.info("Detected TALM CSV in openshift-operators: {}".format(name))
+        return True
+  logger.info("No TALM CSV found in openshift-operators")
+  return False
+
+
 def detect_talm_minor(default_talm_version, dry_run):
   talm_version = default_talm_version
   logger.info("Detecting TALM version by image tag")

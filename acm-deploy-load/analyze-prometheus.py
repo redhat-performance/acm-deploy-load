@@ -25,6 +25,7 @@ from utils.common_ocp import get_ocp_namespace_list
 from utils.common_ocp import get_ocp_version
 from utils.common_ocp import get_prometheus_token
 from utils.common_ocp import get_thanos_querier_route
+from utils.talm import detect_talm_csv
 import json
 import logging
 import os
@@ -1065,7 +1066,7 @@ def resource_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
-def talm_queries(report_dir, route, token, end_ts, duration, w, h):
+def talm_queries(report_dir, route, token, end_ts, duration, w, h, talm_namespace):
   sub_report_dir = os.path.join(report_dir, "talm")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
@@ -1073,13 +1074,19 @@ def talm_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "talm-cgu", "ClusterGroupUpgrades Objects", "Count", w, h, q_names)
 
   # TALM CPU/Memory/Network
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-cluster-group-upgrades'})"
+  # When TALM is installed via OLM subscription it runs in openshift-operators alongside other
+  # operators, so filter by pod name to isolate TALM metrics
+  if talm_namespace == "openshift-operators":
+    ns_filter = "namespace='openshift-operators',pod=~'cluster-group-upgrades-.*'"
+  else:
+    ns_filter = "namespace='openshift-cluster-group-upgrades'"
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{{cluster='',{}}})".format(ns_filter)
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "cpu-talm", "TALM CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-cluster-group-upgrades'})"
+  q = "sum(container_memory_working_set_bytes{{cluster='',container!='',{}}})".format(ns_filter)
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "mem-talm", "TALM Memory Usage", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-cluster-group-upgrades'}[5m]))"
+  q = "sum(irate(container_network_receive_bytes_total{{cluster='',{}}}[5m]))".format(ns_filter)
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "net-rcv-talm", "TALM Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-cluster-group-upgrades'}[5m]))"
+  q = "sum(irate(container_network_transmit_bytes_total{{cluster='',{}}}[5m]))".format(ns_filter)
   query_thanos(route, q, "TALM", token, end_ts, duration, sub_report_dir, "net-xmt-talm", "TALM Network Transmit Throughput", "NET", w, h, q_names)
   # TALM is a single pod thus no need to split by pod
   return q_names
@@ -1413,9 +1420,12 @@ def main():
     report_data["hypershift"] = hypershift_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
     report_data["hypershift-uwm"] = hypershift_uwm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
-  if "openshift-cluster-group-upgrades" in namespaces:
+  if detect_talm_csv(cliargs.kubeconfig):
+    logger.info("TALM CSV detected in openshift-operators, querying for talm metrics with pod filter")
+    report_data["talm"] = talm_queries(report_dir, route, token, q_end_ts, q_duration, w, h, "openshift-operators")
+  elif "openshift-cluster-group-upgrades" in namespaces:
     logger.info("openshift-cluster-group-upgrades namespace found, querying for talm metrics")
-    report_data["talm"] = talm_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+    report_data["talm"] = talm_queries(report_dir, route, token, q_end_ts, q_duration, w, h, "openshift-cluster-group-upgrades")
   if "openshift-gitops-operator" in namespaces:
     logger.info("openshift-gitops-operator namespace found, querying for gitops metrics")
     report_data["gitops"] = gitops_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
