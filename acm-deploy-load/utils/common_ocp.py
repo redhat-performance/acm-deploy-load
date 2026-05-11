@@ -45,8 +45,7 @@ def detect_aap_install(kubeconfig=None, dry_run=False):
 
 
 def get_base_ocp_namespaces(ocp_version):
-  # TODO: Add other versions as needed (4.21 ...)
-  # 4.20 OpenShift Namespaces for "Base OCP"
+  # 4.20/4.21 OpenShift Namespaces for "Base OCP"
   ocp_4_20_base_namespaces = [
     "openshift-apiserver",
     "openshift-apiserver-operator",
@@ -101,7 +100,8 @@ def get_base_ocp_namespaces(ocp_version):
     "openshift-service-ca",
     "openshift-service-ca-operator",
   ]
-  if ocp_version["major"] == 4 and ocp_version["minor"] == 20:
+  # 4.20 and 4.21 have the same base namespaces
+  if ocp_version["major"] == 4 and ocp_version["minor"] in [20, 21]:
     return ocp_4_20_base_namespaces
   else:
     return ocp_4_20_base_namespaces
