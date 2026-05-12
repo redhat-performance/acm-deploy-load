@@ -1171,6 +1171,20 @@ def odf_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "rate(ceph_osd_op_w_latency_sum[5m])"
   query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-write-latency", "Ceph OSD Write Latency Per OSD", "Latency (ms)", w, h, q_names)
 
+  # Ceph IOPS
+  q = "sum(rate(ceph_osd_op_r[5m]))"
+  query_thanos(route, q, "Ceph Total", token, end_ts, duration, sub_report_dir, "ceph-iops-read-total", "Ceph Cluster Read IOPS", "IOPS", w, h, q_names)
+  q = "sum(rate(ceph_osd_op_w[5m]))"
+  query_thanos(route, q, "Ceph Total", token, end_ts, duration, sub_report_dir, "ceph-iops-write-total", "Ceph Cluster Write IOPS", "IOPS", w, h, q_names)
+  q = "rate(ceph_osd_op_r[5m])"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-iops-read-per-osd", "Ceph Read IOPS Per OSD", "IOPS", w, h, q_names)
+  q = "rate(ceph_osd_op_w[5m])"
+  query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-iops-write-per-osd", "Ceph Write IOPS Per OSD", "IOPS", w, h, q_names)
+  q = "sum by (name) (rate(ceph_pool_rd[5m]) * on(pool_id) group_left(name) ceph_pool_metadata)"
+  query_thanos(route, q, "name", token, end_ts, duration, sub_report_dir, "ceph-iops-read-per-pool", "Ceph Read IOPS Per Pool", "IOPS", w, h, q_names)
+  q = "sum by (name) (rate(ceph_pool_wr[5m]) * on(pool_id) group_left(name) ceph_pool_metadata)"
+  query_thanos(route, q, "name", token, end_ts, duration, sub_report_dir, "ceph-iops-write-per-pool", "Ceph Write IOPS Per Pool", "IOPS", w, h, q_names)
+
   # Ceph Health Status (0=HEALTH_OK, 1=HEALTH_WARN, 2=HEALTH_ERR)
   q = "ceph_health_status"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "ceph-health-status", "Ceph Health Status", "Status", w, h, q_names)
