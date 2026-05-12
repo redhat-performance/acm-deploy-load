@@ -1,0 +1,8 @@
+# Sample Ansible inventory file for acm-deploy-load
+#
+# Copy this file and fill in your environment details:
+#   cp ansible/inventory/hosts.sample ansible/inventory/<cloudname>.local
+#
+
+[bastion]
+# <bastion-hostname> ansible_user=root

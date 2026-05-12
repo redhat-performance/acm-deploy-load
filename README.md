@@ -1,80 +1,157 @@
 # acm-deploy-load
 
-Tools and scripts to prepare, load, and analyze a large scale OCP cluster with ACM with cluster
-deployments and upgrades. Clusters can be deployed via assisted-installer or via image-based
-installer. Either Manifests, SiteConfigs, or clusterinstances can be deployed or pushed via GitOps
-to deploy clusters.
+Tools, Ansible playbooks, and scripts to prepare, load, and analyze a large-scale OCP cluster with ACM (Advanced Cluster Management) for cluster deployments, upgrades, and policy workloads. Supports deploying SNO (Single Node OpenShift), Compact, and Standard (MNO) clusters via Assisted Installer (AI) or Image-Based Installer (IBI), using direct manifest apply, ClusterInstance API, or ArgoCD/ZTP GitOps workflows.
+
+_**Table of Contents**_
+
+<!-- TOC -->
+- [Workflow Overview](#workflow-overview)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Configuration Files](#configuration-files)
+- [Documentation](#documentation)
+- [Workload Scripts](#workload-scripts)
+- [Manifest Generation Scripts](#manifest-generation-scripts)
+- [Analysis Scripts](#analysis-scripts)
+- [Graphing Scripts](#graphing-scripts)
+- [Other Scripts](#other-scripts)
+- [Patch Scripts](#patch-scripts)
+<!-- /TOC -->
+
+## Workflow Overview
+
+Every scale test generally follows three phases:
+
+```
+Phase 1: Setup            Phase 2: Run               Phase 3: Analyze
+──────────────────        ──────────────────         ─────────────────────
+Generate manifests  →     Deploy clusters at    →    Prometheus metrics
+Setup ZTP/ArgoCD          scale via workload         Cluster install stats
+Deploy ACM hub            scripts                    Timing analysis
+Prep Seed Image                                      Graphs and reports
+```
+
+1. **Setup** — Use Ansible playbooks to generate deployment manifests, configure ZTP, and deploy ACM/MCE on the hub cluster
+2. **Run** — Execute Python workload scripts to deploy managed clusters in batches at configurable intervals
+3. **Analyze** — Run analysis scripts to query Prometheus, compute timing statistics, and generate graphs
+
+## Prerequisites
+
+- **Jetlag** has provisioned your infrastructure — OCP hub cluster installed, bastion accessible, hypervisor nodes configured. See [jetlag](https://github.com/redhat-performance/jetlag) for provisioning guides.
+- **`oc` CLI** installed and authenticated against the hub cluster
+- **Python 3** on the bastion machine
+- **Chrome** (for static plotly graph export via kaleido)
+
+## Setup
+
+Bootstrap the Python virtual environment and install dependencies:
+
+```console
+[root@<bastion> acm-deploy-load]# ./bootstrap.sh
+[root@<bastion> acm-deploy-load]# source .venv/bin/activate
+(.venv) [root@<bastion> acm-deploy-load]#
+```
+
+Then follow the quickstart guides in [Documentation](#documentation) to set up and run your test.
+
+## Configuration Files
+
+| File | Description |
+| - | - |
+| `ansible/vars/all.yml` | Primary Ansible variables file (sample at `ansible/vars/all.sample.yml`) |
+| `ansible/vars/telco-core.yml` | Telco Core-specific variables (sample at `ansible/vars/telco-core.sample.yml`) |
+| `ansible/inventory/<cloudname>.local` | Ansible inventory (sample at `ansible/inventory/hosts.sample`) |
+
+## Documentation
+
+| Document | Description |
+| - | - |
+| [Ansible Playbook Reference](docs/ansible-playbook-reference.md) | Complete reference for all playbooks, roles, variables, and patch scripts |
+| [Deploy SNO via AI](docs/deploy-sno-ai.md) | Deploy SNO clusters at scale using Assisted Installer |
+| [Deploy SNO via IBI](docs/deploy-sno-ibi.md) | Deploy SNO clusters at scale using Image-Based Installer |
 
 ## Workload Scripts
 
 ### acm-deploy-load.py
 
-Tool to load ACM with cluster deployments via manifests or GitOps ZTP
+Deploys SNO, Compact, or Standard clusters via Assisted Installer or Image-Based Installer in configurable batches at timed intervals.
 
-Methods
+**Deployment Methods:**
 
-* `ai-manifest` - Assisted-installer installed clusters via oc apply yaml manifests
-* `ai-clusterinstance` - Assisted-installer installed clusters via oc apply ClusterInstance
-* `ai-clusterinstance-gitops` - Assisted-installer installed clusters via ClusterInstances in GitOps
-* `ai-siteconfig-gitops` - Default - Assisted-installer installed clusters via SiteConfigs in GitOps
-* `ibi-manifest` - Image-based installer installed clusters via oc apply yaml manifests
-* `ibi-clusterinstance` - Image-based installer installed clusters via oc apply ClusterInstance
-* `ibi-clusterinstance-gitops` - Image-based installer installed clusters via ClusterInstances in GitOps
+| Method | Description |
+| - | - |
+| `ai-manifest` | AI clusters via direct `oc apply` YAML manifests |
+| `ai-clusterinstance` | AI clusters via `oc apply` ClusterInstance |
+| `ai-clusterinstance-gitops` | AI clusters via ClusterInstances in ArgoCD/ZTP GitOps |
+| `ai-siteconfig-gitops` | AI clusters via SiteConfigs in ArgoCD/ZTP GitOps |
+| `ibi-manifest` | IBI clusters via direct `oc apply` YAML manifests |
+| `ibi-clusterinstance` | IBI clusters via `oc apply` ClusterInstance |
+| `ibi-clusterinstance-gitops` | IBI clusters via ClusterInstances in ArgoCD/ZTP GitOps |
 
-Load/Rate Option
+**Workload Phases:**
 
-* interval - Deploys X number of clusters per Y interval time period
-
-Phases of the Workload
-
-1. Deploy Phase - Apply Manifests or GitOps ZTP to deploy clusters
+1. Deploy Phase — Apply manifests or push to GitOps to deploy clusters
 2. Wait for Cluster Install Completion
-3. Wait for DU Profile Completion
+3. Wait for DU Profile Completion (optional)
 4. Report Card / Graphing
 
-### acm-mc-workload.py
+### acm-telco-core-load.py
 
-Tool to load ACM with previously deployed clusters and on interval update a configmap that maps to
-policy templates triggering re-enforcing policies.
+Deploys Telco Core MNO clusters via GitOps in configurable batches, and runs a policy churn workload that periodically updates a ConfigMap triggering policy re-enforcement across managed clusters. Used for capacity guidelines testing with two test profiles:
 
-### mc-workload.py
+**Three Phase Run** — Full capacity guidelines test with certificate rotation measurement:
 
-Tool to load a managed cluster with namespaces, deployments, pods, configmaps, and secrets.
+1. Cert Rotation / Quiesce — 25-hour quiet period to capture certificate rotation resource spikes as a baseline before deployment begins
+2. Deployment Batches and Policy Churn — Deploy 1 batch per 12-hour period with concurrent policy ConfigMap updates. Prometheus measurements are taken between phase and batch boundaries to determine resource requirements as cluster count and workload increases.
+3. Steady State Measurement — Post-deployment measurement period with all clusters managed and policy churn continuing
+
+**Two Phase Accelerated Run** — Faster test that completes before certificate rotation:
+
+1. Deployment Batches and Policy Churn — Deploy 1 batch per 10-minute period with concurrent policy churn. After the last batch deploys, policy churn continues for 6 hours while clusters finish deploying and applying policies.
+2. Steady State Measurement — Resource consumption levels off as policy churn ends and the hub cluster reaches steady state
+
+### acm-mc-load.py
+
+Imports (manages) previously deployed clusters into ACM in batches on an interval while running a concurrent policy churn workload. Updates a ConfigMap on interval, causing policies to cycle between compliant and non-compliant states across the managed clusters.
+
+## Manifest Generation Scripts
+
+| Script | Description |
+| - | - |
+| `hub-policy-generator.py` | Generate policy manifests (namespaces, ConfigMaps, and policy templates) used by the policy churn workload in `acm-telco-core-load.py` and `acm-mc-load.py` |
+| `mc-workload.py` | Generate and apply managed cluster workload manifests (namespaces, deployments, pods, configmaps, secrets) to load a target cluster with objects |
 
 ## Analysis Scripts
 
-Analysis scripts can be run after deploying or upgrading clusters to understand success and performance of the system.
+| Script | Description |
+| - | - |
+| `analyze-prometheus.py` | Query Prometheus/Thanos for hub resource consumption metrics and generate time-series graphs |
+| `analyze-agentclusterinstalls.py` | AI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
+| `analyze-imageclusterinstalls.py` | IBI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
+| `analyze-clusterinstances.py` | ClusterInstance resource timing analysis |
+| `analyze-clustergroupupgrades.py` | CGU/TALM completion timing for ZTP install |
+| `analyze-acm-deploy-time.py` | Deployment duration metrics and peak concurrency from monitoring data |
+| `analyze-ansiblejobs.py` | AAP AnsibleJob timing analysis |
+| `analyze-single-cluster-time.py` | Individual cluster deploy and DU profile timing |
 
-* analyze-agentclusterinstalls.py - Summarize and report count, min/avg/max, and 50/95/99 percentiles for cluster
-installation timing
-* analyze-clustergroupupgrades.py - Summarize and report count, min/avg/max, and 50/95/99 percentiles for ztp-install
-clustergroupupgrade custom resources
-* analyze-acm-deploy-time.py - Determine deployment duration metrics and peak concurrency from acm-deploy-load
-monitoring data
-* analyze-upgrade.py - Summarize platform and operator upgrade success and timings from CGUs across upgraded Clusters
-* analyze-clusterversion.py - Summarizes cluster upgrade success and timing as observed from the cluster's
-clusterversion resources and generates csv of upgrades to be consumed by graphing script
+See each script's `--help` output for detailed usage.
 
 ## Graphing Scripts
 
-* graph-clusterversion.py - Graph csv data from analyze-clusterversion.py script
-* graph-acm-deploy.py - Graph monitor_data.csv from acm-deploy-load.py
-* graph-upgrade.py - Graph csv data as time-series from analyze-upgrade script
-
-## Patch Scripts
-
-Located in the [patch directory](patch), and provide memory limits tuning or image patches specific to scale tests for
-specific versions.
+| Script | Description |
+| - | - |
+| `graph-acm-deploy.py` | Deployment timeline visualization from `monitor_data.csv` |
 
 ## Other Scripts
 
-* ocp-health.py - Check if a cluster is healthy/stable
-  * Check if clusterversion is available and/or failing
-  * Check if all clusteroperators are available and/or degraded
-  * Check if all nodes are ready, unknown or under memory/disk/pid pressure
-  * Check if all machineconfigpools updated and/or degraded
-  * Check for etcd leader elections
-* acm-health.py - Check if ACM is healthy/stable
-  * Check if multiclusterhub is available
-  * Check if multiclusterengine is available
-  * Check if multiclusterobservability is available
+| Script | Description |
+| - | - |
+| `ocp-health.py` | Verify OCP cluster health (ClusterVersion, ClusterOperators, nodes, MCPs, etcd) |
+| `acm-health.py` | Verify ACM health (MCH, MCE, MCO availability) |
+| `benchmark-search.py` | Benchmark ACM Search API performance |
+| `etcd-defrag.py` | Trigger etcd defragmentation |
+| `report-per-cluster.py` | Generate per-cluster timing reports |
+
+## Patch Scripts
+
+Version-specific scripts in the [`patch/`](patch) directory provide memory limits tuning or image patches generally used with experimental builds of specific versions to test fixes during scale testing.

@@ -1,2 +1,3 @@
 # Ignore local copies of an inventory
 *.local
+hosts
