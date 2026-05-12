@@ -307,7 +307,7 @@ def acm_mce_complete_queries(report_dir, route, token, end_ts, duration, w, h):
 
 
 # ACM - open-cluster-management-observability namespace only
-def acm_observability_queries(report_dir, route, token, end_ts, duration, w, h):
+def acm_observability_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   sub_report_dir = os.path.join(report_dir, "acm-observability")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
@@ -340,6 +340,12 @@ def acm_observability_queries(report_dir, route, token, end_ts, duration, w, h):
   # Volume Space used by OBS
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='open-cluster-management-observability'})"
   query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-obs", "ACM Observability Volume Usage", "DISK_USAGE", w, h, q_names)
+
+  if "openshift-storage" in namespaces:
+    # NooBaa bucket used by ACM Observability Thanos object storage
+    q = "NooBaa_bucket_used_bytes{bucket_name=~'acm-observability-thanos.*'}"
+    query_thanos(route, q, "bucket_name", token, end_ts, duration, sub_report_dir, "noobaa-obs-bucket-used", "ACM Observability NooBaa Bucket Used", "DISK_USAGE", w, h, q_names)
+
   return q_names
 
 
@@ -1150,6 +1156,15 @@ def odf_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='openshift-storage'})"
   query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-odf", "ODF PVC Filesystem Usage", "DISK_USAGE", w, h, q_names)
 
+  # Ceph Object Store (RGW) object count and stored size
+  q = "sum(ceph_pool_objects * on(pool_id) group_left(name) ceph_pool_metadata{name=~'.*rgw.*'})"
+  query_thanos(route, q, "Ceph RGW Total", token, end_ts, duration, sub_report_dir, "ceph-rgw-object-count", "Ceph RGW Object Count", "Objects", w, h, q_names)
+  q = "sum(ceph_pool_stored * on(pool_id) group_left(name) ceph_pool_metadata{name=~'.*rgw.*'})"
+  query_thanos(route, q, "Ceph RGW Total", token, end_ts, duration, sub_report_dir, "ceph-rgw-object-size", "Ceph RGW Object Store Used", "DISK_USAGE", w, h, q_names)
+  # NooBaa total storage usage
+  q = "NooBaa_total_usage"
+  query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "noobaa-total-usage", "NooBaa Total Usage", "DISK_USAGE", w, h, q_names)
+
   # Ceph OSD Performance
   q = "rate(ceph_osd_op_r_latency_sum[5m])"
   query_thanos(route, q, "ceph_daemon", token, end_ts, duration, sub_report_dir, "ceph-osd-read-latency", "Ceph OSD Read Latency Per OSD", "Latency (ms)", w, h, q_names)
@@ -1604,7 +1619,7 @@ def main():
     report_data["acm-hub"] = acm_hub_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
   if "open-cluster-management-observability" in namespaces:
     logger.info("open-cluster-management-observability namespace found, querying for acm observability metrics")
-    report_data["acm-observability"] = acm_observability_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+    report_data["acm-observability"] = acm_observability_queries(report_dir, route, token, q_end_ts, q_duration, w, h, namespaces)
   if "open-cluster-management-agent" in namespaces:
     logger.info("open-cluster-management-agent namespace found, querying for acm agent metrics")
     report_data["acm-agent"] = acm_agent_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
