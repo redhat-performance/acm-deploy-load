@@ -1,0 +1,7 @@
+---
+- op: replace
+  path: /spec/imageTagMirrors
+  value:
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-v4.0-art-dev
+    source: quay.io/openshift-release-dev/ocp-v4.0-art-dev

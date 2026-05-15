@@ -1,0 +1,13 @@
+---
+- op: replace
+  path: /spec/imageTagMirrors
+  value:
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ubi8
+    source: registry.redhat.io/ubi8
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4
+    source: registry.redhat.io/openshift4
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel8
+    source: registry.redhat.io/rhel8

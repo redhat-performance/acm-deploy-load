@@ -69,6 +69,7 @@ Then follow the quickstart guides in [Documentation](#documentation) to set up a
 | [Ansible Playbook Reference](docs/ansible-playbook-reference.md) | Complete reference for all playbooks, roles, variables, and patch scripts |
 | [Deploy SNO via AI](docs/deploy-sno-ai.md) | Deploy SNO clusters at scale using Assisted Installer |
 | [Deploy SNO via IBI](docs/deploy-sno-ibi.md) | Deploy SNO clusters at scale using Image-Based Installer |
+| [Deploy Telco Hub via ArgoCD](docs/deploy-telco-hub.md) | Deploy Telco Hub using ArgoCD/GitOps RDS |
 
 ## Workload Scripts
 

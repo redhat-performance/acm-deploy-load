@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../reference-crs/required/acm/
+
+patches:
+  - target:
+      group: operators.coreos.com
+      version: v1alpha1
+      kind: Subscription
+      name: open-cluster-management-subscription
+    path: acm-subscription-patch.yaml
+
+  - target:
+      group: observability.open-cluster-management.io
+      version: v1beta2
+      kind: MultiClusterObservability
+      name: observability
+    path: storage-mco-patch.yaml
+
+  - target:
+      group: agent-install.openshift.io
+      version: v1beta1
+      kind: AgentServiceConfig
+      name: agent
+    path: options-agentserviceconfig-patch.yaml
+
+  - target:
+      group: objectbucket.io
+      version: v1alpha1
+      kind: ObjectBucketClaim
+      name: observability-obc
+    path: observability-obc-patch.yaml
+
+  - target:
+      group: policy.open-cluster-management.io
+      version: v1
+      kind: Policy
+      name: obs-thanos-secret
+    path: obs-thanos-secret-policy-patch.yaml
+
+  - target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: mirror-registry-config
+    path: acmMirrorRegistryCM-patch.yaml
+
+{% if setup_acm_mch_fix | bool %}
+  - target:
+      group: operator.open-cluster-management.io
+      version: v1
+      kind: MultiClusterHub
+      name: multiclusterhub
+    path: acmMCH-patch.yaml
+
+  - target:
+      group: multicluster.openshift.io
+      version: v1
+      kind: MultiClusterEngine
+      name: multiclusterengine
+    path: acmMCE-patch.yaml
+{% endif %}

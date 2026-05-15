@@ -1,0 +1,11 @@
+# Fix for RDS: upstream telco-reference is missing "cluster-api-provider-azure-preview"
+# component in the MCE spec. The MCE operator adds it automatically, but ArgoCD
+# re-applies the spec without it, causing the MCE to flap between Running and Pending.
+# See: https://github.com/openshift-kni/telco-reference/blob/main/telco-hub/configuration/reference-crs/required/acm/acmMCE.yaml
+---
+- op: add
+  path: /spec/overrides/components/-
+  value:
+    configOverrides: {}
+    enabled: false
+    name: cluster-api-provider-azure-preview

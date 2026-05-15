@@ -1,0 +1,8 @@
+---
+- op: replace
+  path: /spec/policy-templates/0/objectDefinition/spec/object-templates/0/objectDefinition/spec/repo/initContainers/0/image
+  value: "{{ ztp_site_generate_image }}"
+
+- op: replace
+  path: /spec/policy-templates/0/objectDefinition/spec/object-templates/0/objectDefinition/spec/repo/initContainers/1/image
+  value: "{{ ztp_policy_generator_image }}"

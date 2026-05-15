@@ -1,0 +1,11 @@
+---
+# telco-hub-deploy default vars
+
+# Set false to skip GitOps operator installation (e.g., when already installed)
+setup_gitops_operator: true
+
+# Must match the telco-hub-prepare role's setup_odf toggle
+setup_odf: true
+
+# Set true to disable container image policy checks in assisted-service (for OCP 4.22+)
+setup_asc_disable_image_policy: false

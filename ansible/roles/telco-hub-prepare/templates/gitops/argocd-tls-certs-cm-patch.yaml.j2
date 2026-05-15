@@ -1,0 +1,8 @@
+---
+- op: replace
+  path: "/data"
+  value:
+{% for cert in argocd_tls_certs %}
+    {{ cert.hostname }}: |
+{{ cert.certificate | indent(6, true) }}
+{% endfor %}

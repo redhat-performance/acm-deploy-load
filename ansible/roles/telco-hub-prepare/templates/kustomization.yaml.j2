@@ -1,0 +1,47 @@
+# kustomization file including different overays over the
+# reference crs
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # if you use LocalStorage operator, edit and configure the patch
+{% if setup_lso | bool %}
+  - custom-overlays-config/lso/
+{% else %}
+  # - custom-overlays-config/lso/
+{% endif %}
+
+  # if you use ODF, edit and configure storage settings
+{% if setup_odf | bool %}
+  - custom-overlays-config/odf/
+{% else %}
+    # - custom-overlays-config/odf/
+{% endif %}
+
+  # other not optional overlays
+  - custom-overlays-config/gitops/
+  - custom-overlays-config/acm/
+{% if setup_registry_mirror | bool %}
+  - custom-overlays-config/registry/
+{% else %}
+    # - custom-overlays-config/registry/
+{% endif %}
+
+  # mandatory resources not managed by any overlay
+  - reference-crs/required/talm/
+
+  # include this content if you want to include the argocd
+  # configuration and apps for gitops ztp management of cluster
+  # installation and configuration
+{% if setup_ztp | bool %}
+  - custom-overlays-config/ztp/
+{% else %}
+  # - custom-overlays-config/ztp/
+{% endif %}
+
+  # cluster monitoring configuration
+{% if setup_cluster_monitoring | bool %}
+  - custom-overlays-config/monitoring/
+{% else %}
+  # - custom-overlays-config/monitoring/
+{% endif %}

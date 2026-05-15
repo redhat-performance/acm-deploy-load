@@ -1,0 +1,19 @@
+# Fix for RDS: upstream telco-reference has "fine-grained-rbac-preview" and "cnv-mtv-integrations-preview"
+# but the components have been renamed to "fine-grained-rbac" and "cnv-mtv-integrations".
+# See: https://github.com/openshift-kni/telco-reference/blob/main/telco-hub/configuration/reference-crs/required/acm/acmMCH.yaml
+---
+- op: replace
+  path: /spec/overrides/components/13/name
+  value: fine-grained-rbac
+
+- op: replace
+  path: /spec/overrides/components/14/name
+  value: cnv-mtv-integrations
+
+- op: replace
+  path: /metadata/annotations/installer.open-cluster-management.io~1mce-subscription-spec
+  value: '{"source": "{{ acm_operator_source }}", "installPlanApproval": "Automatic"}'
+
+- op: replace
+  path: /metadata/annotations/installer.open-cluster-management.io~1oadp-subscription-spec
+  value: '{"source": "{{ acm_operator_source }}", "installPlanApproval": "Automatic"}'

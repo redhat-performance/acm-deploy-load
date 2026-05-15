@@ -1,0 +1,15 @@
+---
+- op: replace
+  path: "/spec/source"
+  value:
+    path: "telco-hub/configuration"
+    repoURL: "http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/{{ gogs_username }}/{{ telco_hub_gogs_repo_name }}.git"
+    targetRevision: "{{ telco_hub_repo_branch }}"
+- op: add
+  path: "/spec/syncPolicy/retry"
+  value:
+    limit: 30
+    backoff:
+      duration: 10s
+      factor: 2
+      maxDuration: 3m

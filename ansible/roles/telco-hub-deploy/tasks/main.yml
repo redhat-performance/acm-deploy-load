@@ -1,0 +1,122 @@
+---
+# telco-hub-deploy tasks
+# Installs GitOps operator, applies the ArgoCD Application, and waits for MCH
+# Reference: https://github.com/openshift-kni/telco-reference/tree/main/telco-hub/configuration
+
+- name: Install GitOps operator manifests
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply \
+      -f {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration/reference-crs/required/gitops/clusterrole.yaml \
+      -f {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration/reference-crs/required/gitops/clusterrolebinding.yaml \
+      -f {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration/reference-crs/required/gitops/gitopsNS.yaml \
+      -f {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration/reference-crs/required/gitops/gitopsOperatorGroup.yaml \
+      -f {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration/reference-crs/required/gitops/gitopsSubscription.yaml
+  when: setup_gitops_operator | bool
+
+- name: Wait for GitOps operator subscription to be AtLatestKnown
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n openshift-gitops-operator get subscriptions.operators.coreos.com openshift-gitops-operator -o jsonpath='{.status.state}'
+  register: gitops_sub_state
+  until: gitops_sub_state.stdout == "AtLatestKnown"
+  retries: 60
+  delay: 10
+  when: setup_gitops_operator | bool
+
+- name: Wait for ArgoCD instance to be Available
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc -n openshift-gitops get argocd openshift-gitops -o jsonpath='{.status.phase}'
+  register: argocd_available
+  until: argocd_available.stdout == "Available"
+  retries: 60
+  delay: 10
+  when: setup_gitops_operator | bool
+
+# Expected errors from oc apply -k on the gitops overlay:
+# - AlreadyExists for operator resources (applied in the earlier install step)
+# - Missing CRDs for ZTP policy resources (Placement, Policy, etc.) which will
+#   be created by ArgoCD sync-waves after ACM deploys the required CRDs
+# The task succeeds as long as the hub-config ArgoCD Application is created.
+- name: Apply ArgoCD hub-config application via kustomize
+  ansible.builtin.shell: |
+    cd {{ install_directory }}/telco-hub-deploy/telco-reference/telco-hub/configuration
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -k custom-overlays-config/gitops/
+  register: apply_result
+  failed_when:
+  - apply_result.rc != 0
+  - "'application.argoproj.io/hub-config' not in apply_result.stdout"
+
+- name: Wait until ArgoCD hub-config application is Synced
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get application.argoproj.io hub-config -n openshift-gitops -o jsonpath='{.status.sync.status}'
+  register: hub_config_sync
+  until: hub_config_sync.stdout == "Synced"
+  retries: 300
+  delay: 10
+
+- name: Wait until ODF StorageCluster is Ready
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get storagecluster -n openshift-storage ocs-storagecluster -o jsonpath='{.status.phase}'
+  register: odf_status
+  until: odf_status.stdout == "Ready"
+  retries: 120
+  delay: 10
+  when: setup_odf | bool
+
+- name: Wait until MultiClusterHub is Running
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterhub -n open-cluster-management multiclusterhub -o go-template={%raw%}'{{ .status.phase }}'{%endraw%}
+  register: mch_status
+  until: mch_status.stdout == "Running"
+  retries: 120
+  delay: 10
+
+- name: Verify MultiClusterEngine is Available
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterengine multiclusterengine -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+  register: mce_status
+  failed_when: mce_status.stdout != "True"
+
+- name: Verify MultiClusterObservability is Ready
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get multiclusterobservability observability -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: mco_status
+  failed_when: mco_status.stdout != "True"
+
+- name: Verify TALM operator pod is Running
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n openshift-operators -l app.kubernetes.io/component=talm -o jsonpath='{.items[0].status.phase}'
+  register: talm_status
+  failed_when: talm_status.stdout != "Running"
+
+- name: Apply assisted-service-config ConfigMap to disable image policy
+  ansible.builtin.shell: |
+    cat <<'EOF' | KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f -
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: assisted-service-config
+      namespace: multicluster-engine
+    data:
+      OPENSHIFT_INSTALL_EXPERIMENTAL_DISABLE_IMAGE_POLICY: "true"
+    EOF
+  when: setup_asc_disable_image_policy | bool
+
+- name: Annotate AgentServiceConfig to use assisted-service-config ConfigMap
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc annotate agentserviceconfig agent \
+      unsupported.agent-install.openshift.io/assisted-service-configmap=assisted-service-config \
+      --overwrite
+  when: setup_asc_disable_image_policy | bool
+
+- name: Delete assisted-service pods to pick up new config
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc delete pods -n multicluster-engine -l app=assisted-service
+  when: setup_asc_disable_image_policy | bool
+
+- name: Wait for assisted-service pod to be Running
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n multicluster-engine -l app=assisted-service -o jsonpath='{.items[0].status.phase}'
+  register: assisted_status
+  until: assisted_status.stdout == "Running"
+  retries: 60
+  delay: 10

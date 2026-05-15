@@ -1,0 +1,37 @@
+---
+- op: replace
+  path: /spec/imageDigestMirrors
+  value:
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/oadp
+    source: registry.redhat.io/oadp
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine
+    source: registry.redhat.io/multicluster-engine
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel8
+    source: registry.redhat.io/rhel8
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/odf4
+    source: registry.redhat.io/odf4
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel9
+    source: registry.redhat.io/rhel9
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhceph
+    source: registry.redhat.io/rhceph
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-gitops-1
+    source: registry.redhat.io/openshift-gitops-1
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rh-sso-7
+    source: registry.redhat.io/rh-sso-7
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2
+    source: registry.redhat.io/rhacm2
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4
+    source: registry.redhat.io/openshift4
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine/assisted-installer-agent-rhel9
+    source: registry.redhat.io/multicluster-engine/assisted-installer-agent-rhel9

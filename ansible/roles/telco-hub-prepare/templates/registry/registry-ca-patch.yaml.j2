@@ -1,0 +1,6 @@
+---
+- op: replace
+  path: "/data"
+  value:
+    {{ rhacm_disconnected_registry }}..{{ rhacm_disconnected_registry_port }}: |
+      {{ mirror_cert.content | b64decode | indent(width=6) }}

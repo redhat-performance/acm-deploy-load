@@ -1,0 +1,7 @@
+---
+- op: replace
+  path: "/spec/storageClassDevices/0/devicePaths"
+  value:
+{% for device in lso_device_paths %}
+    - {{ device }}
+{% endfor %}

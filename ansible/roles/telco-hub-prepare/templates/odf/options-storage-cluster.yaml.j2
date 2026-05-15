@@ -1,0 +1,36 @@
+---
+- op: replace
+  path: /spec/storageDeviceSets/0/dataPVCTemplate/spec/resources/requests/storage
+  value: "{{ odf_storage_size }}"
+
+- op: replace
+  path: /spec/storageDeviceSets/0/dataPVCTemplate/spec/storageClassName
+  value: "{{ odf_storage_class_name }}"
+
+- op: replace
+  path: /spec/storageDeviceSets/0/count
+  value: {{ odf_device_set_count }}
+
+- op: replace
+  path: /spec/storageDeviceSets/0/replica
+  value: {{ odf_device_set_replica }}
+
+- op: replace
+  path: /spec/storageDeviceSets/0/resources
+  value:
+    limits:
+      cpu: "{{ odf_osd_cpu }}"
+      memory: "{{ odf_osd_memory }}"
+    requests:
+      cpu: "{{ odf_osd_cpu }}"
+      memory: "{{ odf_osd_memory }}"
+
+- op: replace
+  path: /spec/resources/mds
+  value:
+    limits:
+      cpu: "{{ odf_mds_cpu }}"
+      memory: "{{ odf_mds_memory }}"
+    requests:
+      cpu: "{{ odf_mds_cpu }}"
+      memory: "{{ odf_mds_memory }}"

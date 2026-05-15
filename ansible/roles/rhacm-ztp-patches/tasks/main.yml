@@ -4,10 +4,12 @@
 - name: Apply the ArgoCD Deployment kustomization
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -k {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment
+  when: setup_ztp_argocd_patches
 
 - name: Apply ArgoCD {{ ztp_repo_name }} argocd-openshift-gitops-patch.json
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch argocd openshift-gitops -n openshift-gitops --patch-file {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/argocd-openshift-gitops-patch.json --type=merge
+  when: setup_ztp_argocd_patches
 
 - name: Wait for openshift-gitops-repo-server pod running
   shell: |
@@ -16,11 +18,13 @@
   delay: 2
   register: as_pod
   until: as_pod.stdout == "Running"
+  when: setup_ztp_argocd_patches
 
 # Although we wait for the new repo-server pod to be running, we can still apply the cluster and policy applications too quickly
 - name: Pause for 15s
   pause:
     seconds: 15
+  when: setup_ztp_argocd_patches
 
 # View the resources with oc get argocd -n openshift-gitops openshift-gitops -o json | jq '.spec.redis.resources'
 - name: Patch openshift-gitops redis memory requests/limits

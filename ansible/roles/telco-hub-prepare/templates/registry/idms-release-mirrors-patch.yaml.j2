@@ -1,0 +1,16 @@
+---
+- op: replace
+  path: /spec/imageDigestMirrors
+  value:
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev
+    source: quay.io/openshift-release-dev
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-v4.0-art-dev
+    source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine/assisted-installer-agent-rhel9
+    source: registry.redhat.io/multicluster-engine/assisted-installer-agent-rhel9
+  - mirrors:
+    - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine/assisted-installer-rhel9
+    source: registry.redhat.io/multicluster-engine/assisted-installer-rhel9

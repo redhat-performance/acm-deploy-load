@@ -8,3 +8,7 @@ ztp_repo_type: "cnf-features-deploy"
 # Derived variables based on repo type (must match rhacm-ztp-setup)
 ztp_repo_name: "{{ 'telco-reference' if ztp_repo_type == 'telco-reference' else 'cnf-features-deploy' }}"
 ztp_argocd_base_path: "{{ 'telco-ran/configuration/argocd' if ztp_repo_type == 'telco-reference' else 'ztp/gitops-subscriptions/argocd' }}"
+
+# Set false to skip ArgoCD deployment patching (e.g., when ArgoCD is already
+# configured by the telco-hub RDS overlay)
+setup_ztp_argocd_patches: true

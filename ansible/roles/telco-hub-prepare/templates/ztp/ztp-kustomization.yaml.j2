@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../reference-crs/required/gitops/ztp-installation/
+
+patches:
+  - target:
+      kind: Application
+      name: clusters
+    patch: |-
+      $patch: delete
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: clusters
+  - target:
+      version: v1
+      kind: Namespace
+      name: clusters-sub
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: clusters-sub
+  - target:
+      kind: Application
+      name: policies
+    patch: |-
+      $patch: delete
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: policies
+  - target:
+      version: v1
+      kind: Namespace
+      name: policies-sub
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: policies-sub

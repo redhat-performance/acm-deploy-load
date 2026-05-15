@@ -1,0 +1,49 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../reference-crs/required/registry/
+
+patches:
+  - target:
+      group: operators.coreos.com
+      version: v1alpha1
+      kind: CatalogSource
+      name: redhat-operators-disconnected
+    path: catalog-source-image-patch.yaml
+{% if setup_registry_idms_itms | bool %}
+
+  - target:
+      version: v1
+      kind: ConfigMap
+      name: registry-ca
+    path: registry-ca-patch.yaml
+
+  - target:
+      group: config.openshift.io
+      version: v1
+      kind: ImageDigestMirrorSet
+      name: idms-operator-0
+    path: idms-operator-mirrors-patch.yaml
+
+  - target:
+      group: config.openshift.io
+      version: v1
+      kind: ImageDigestMirrorSet
+      name: idms-release-0
+    path: idms-release-mirrors-patch.yaml
+
+  - target:
+      group: config.openshift.io
+      version: v1
+      kind: ImageTagMirrorSet
+      name: itms-generic-0
+    path: itms-generic-mirrors-patch.yaml
+
+  - target:
+      group: config.openshift.io
+      version: v1
+      kind: ImageTagMirrorSet
+      name: itms-release-0
+    path: itms-release-mirrors-patch.yaml
+{% endif %}

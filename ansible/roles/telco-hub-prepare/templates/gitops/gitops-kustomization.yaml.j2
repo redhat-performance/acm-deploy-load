@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../reference-crs/required/gitops/
+
+patches:
+  - target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: hub-config
+    path: init-argocd-app.yaml
+{% if rhacm_disconnected_registry is defined and rhacm_disconnected_registry | length > 1 %}
+  - target:
+      group: policy.open-cluster-management.io
+      version: v1
+      kind: Policy
+      name: ztp-argocd-plugins-installer
+    path: addPluginsPolicy-images-patch.yaml
+{% endif %}
+{% if setup_argocd_tls_cert | bool %}
+  - target:
+      group: ""
+      version: v1
+      kind: ConfigMap
+      name: argocd-tls-certs-cm
+    path: argocd-tls-certs-cm-patch.yaml
+{% endif %}

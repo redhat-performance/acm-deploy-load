@@ -1,0 +1,136 @@
+---
+- op: replace
+  path: /data/ca-bundle.crt
+  value: |
+    {{ mirror_cert.content | b64decode | indent(width=4) }}
+- op: replace
+  path: /data/registries.conf
+  value: |
+    unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
+
+    [[registry]]
+      prefix = ""
+      location = "quay.io/openshift-release-dev/ocp-release"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-release"
+        pull-from-mirror = "digest-only"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "quay.io/openshift-release-dev/ocp-v4.0-art-dev"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-v4.0-art-dev"
+        pull-from-mirror = "digest-only"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/multicluster-engine"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/odf4"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/odf4"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/openshift4"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/rhacm2"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/rhceph"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhceph"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/rhel8"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel8"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/rhel9"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhel9"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/ubi9"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ubi9"
+        pull-from-mirror = "tag-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/ubi8"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ubi8"
+        pull-from-mirror = "tag-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/oadp"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/oadp"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/openshift-gitops-1"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-gitops-1"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/rh-sso-7"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rh-sso-7"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io/openshift-logging"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-logging"
+        pull-from-mirror = "digest-only"
+
+{% for entry in acm_mirror_registry_extra_entries %}
+    [[registry]]
+      prefix = ""
+      location = "{{ entry.location }}"
+      [[registry.mirror]]
+        location = "{{ entry.mirror }}"
+        pull-from-mirror = "{{ entry.pull_from_mirror | default('digest-only') }}"
+
+{% endfor %}
+    [[registry]]
+      prefix = ""
+      location = "registry.redhat.io"
+      mirror-by-digest-only = false
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}"

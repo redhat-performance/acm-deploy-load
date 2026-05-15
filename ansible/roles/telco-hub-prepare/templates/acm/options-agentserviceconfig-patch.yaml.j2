@@ -1,0 +1,28 @@
+---
+- op: replace
+  path: /spec/databaseStorage/storageClassName
+  value: "{{ asc_db_storage_class }}"
+
+- op: replace
+  path: /spec/filesystemStorage/storageClassName
+  value: "{{ asc_fs_storage_class }}"
+
+- op: replace
+  path: /spec/imageStorage/storageClassName
+  value: "{{ asc_image_storage_class }}"
+
+- op: replace
+  path: "/spec/osImages"
+  value:
+{% for image in mce_os_images %}
+    - cpuArchitecture: x86_64
+      openshiftVersion: "{{ image.openshiftVersion }}"
+      rootFSUrl: {{ image.rootFSUrl }}
+      url: {{ image.url }}
+      version: {{ image.version }}
+{% endfor %}
+{% if asc_remove_mirror_registry_ref | bool %}
+
+- op: remove
+  path: /spec/mirrorRegistryRef
+{% endif %}

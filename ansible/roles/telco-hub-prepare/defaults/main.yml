@@ -1,0 +1,102 @@
+---
+# telco-hub-prepare default vars
+
+# Repository settings
+telco_hub_repo_url: https://github.com/openshift-kni/telco-reference.git
+telco_hub_repo_branch: release-4.21
+telco_hub_gogs_repo_name: telco-hub-deploy
+
+# Gogs service to commit repo to
+gogs_host: "[fc00:1000::1]"
+gogs_port: 10880
+gogs_username: testadmin
+gogs_password: testadmin
+
+registry_path: /opt/registry
+# Http store host is required due to mce-assisted-installer role populating os_images
+http_store_host: "{{ groups['bastion'][0] }}"
+http_store_port: 8081
+
+# GitOps operator settings
+gitops_operator_source: redhat-operators-disconnected
+gitops_operator_channel: gitops-1.20
+
+# ZTP ArgoCD plugin images for repo-server init containers
+ztp_site_generate_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift4/ztp-site-generate-rhel8:v4.21"
+ztp_policy_generator_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2/multicluster-operators-subscription-rhel9:v{{ acm_operator_channel | regex_replace('^release-', '') }}"
+
+# ArgoCD TLS certificates for git repo access
+# Set false to remove the TLS cert patch entirely (e.g., when using HTTP-only Gogs)
+setup_argocd_tls_cert: false
+# List of {hostname, certificate} entries for the argocd-tls-certs-cm ConfigMap
+# argocd_tls_certs:
+# - hostname: registry.example.com
+#   certificate: |
+#     -----BEGIN CERTIFICATE-----
+#     ...
+#     -----END CERTIFICATE-----
+argocd_tls_certs: []
+
+# Component toggles — controls which overlays are included in the root kustomization
+setup_lso: true
+setup_odf: true
+setup_registry_mirror: true
+setup_ztp: true
+setup_cluster_monitoring: true
+
+# LSO Overlay Options (Local Storage Operator)
+lso_device_paths:
+- /dev/nvme1n1
+
+# ODF Overlay Options (OpenShift Data Foundation)
+odf_storage_size: "400Gi"
+odf_storage_class_name: "local-sc"
+# StorageDeviceSets configuration
+odf_device_set_count: 1
+odf_device_set_replica: 3
+odf_osd_cpu: "2"
+odf_osd_memory: "5Gi"
+# MDS (Metadata Server) resources
+odf_mds_cpu: "3"
+odf_mds_memory: "8Gi"
+
+# ACM Overlay Options (Advanced Cluster Management for Kubernetes)
+# ACM operator subscription
+acm_operator_source: redhat-operators-disconnected
+acm_operator_channel: release-2.16
+# MCO — MultiClusterObservability storage class (filesystem type)
+mco_storage_class: "ocs-storagecluster-cephfs"
+# MCO — Observability OBC storage class (object type)
+mco_obc_storage_class: "openshift-storage.noobaa.io"
+# AgentServiceConfig storage classes
+asc_db_storage_class: "ocs-storagecluster-cephfs"
+asc_fs_storage_class: "ocs-storagecluster-cephfs"
+asc_image_storage_class: "ocs-storagecluster-cephfs"
+# RHCOS OS images for AgentServiceConfig are built dynamically from
+# mce_assisted_ocp_versions (defined in vars/all.sample.yml) using the
+# mce-assisted-installer role's mce-ocp-version.yml tasks
+# Set true for connected environments to remove mirrorRegistryRef from AgentServiceConfig
+asc_remove_mirror_registry_ref: false
+# Set true to disable container image policy checks in assisted-service
+setup_asc_disable_image_policy: false
+# Set true to replace the upstream MCH manifest (fixes fine-grained-rbac-preview and cnv-mtv-integrations-preview component names)
+setup_acm_mch_fix: true
+# Extra mirror-registry entries for the ACM mirror-registry-config ConfigMap
+# Each entry needs: location (upstream registry path) and mirror (local mirror path)
+# Optionally set pull_from_mirror (default: digest-only) to tag-only or omit
+# acm_mirror_registry_extra_entries:
+# - location: "registry.example.com/my-images"
+#   mirror: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/my-images"
+#   pull_from_mirror: "digest-only"
+acm_mirror_registry_extra_entries: []
+
+# Registry Overlay Options
+registry_catalog_source_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/redhat/redhat-operator-index:v4.21"
+# Set true to include IDMS/ITMS mirror sets, registry-ca, operator-hub, and image-config resources
+# Set false to only include the CatalogSource (when cluster already has mirror registry configured)
+setup_registry_idms_itms: false
+
+# Cluster Monitoring Overlay Options (openshift-monitoring)
+monitoring_retention_period: "15d"
+monitoring_storage_class: "ocs-storagecluster-cephfs"
+monitoring_storage_size: "100Gi"
