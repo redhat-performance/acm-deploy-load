@@ -9,6 +9,9 @@ data:
 {% else %}
   ALLOW_CONVERGED_FLOW: "false"
 {% endif %}
+{% if setup_asc_disable_image_policy | default(false) | bool %}
+  OPENSHIFT_INSTALL_EXPERIMENTAL_DISABLE_IMAGE_POLICY: "true"
+{% endif %}
   HW_VALIDATOR_REQUIREMENTS: |
     [{
       "version": "default",

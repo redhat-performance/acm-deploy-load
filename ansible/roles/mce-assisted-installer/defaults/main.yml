@@ -20,3 +20,6 @@ agentservice_database_storage_size: 20Gi
 agentservice_filesystem_storage_size: 20Gi
 
 wait_for_assisted_service_pod: true
+
+# Set true to disable container image policy checks placed in /etc/containers/policy.json (for OCP 4.22+)
+setup_asc_disable_image_policy: false

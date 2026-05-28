@@ -76,6 +76,8 @@ mce_assisted_ocp_versions:
 - quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
 - quay.io/openshift-release-dev/ocp-release:4.20.11-x86_64
 mce_assisted_service_namespace: multicluster-engine
+# Set true to disable container image policy checks in assisted-service (for OCP 4.22+ RC builds)
+setup_asc_disable_image_policy: false
 mce_clusterimagesets:
 - name: openshift-4.20.10
   releaseImage: quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
