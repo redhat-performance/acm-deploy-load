@@ -188,10 +188,17 @@ spec:
       status:
         connectionState:
           lastObservedState: READY
+{% if ztp_repo_type == "telco-reference" %}
+    - fileName: disconnected-registry/DisconnectedIDMS.yaml
+      policyName: "config-policy"
+      spec:
+        imageDigestMirrors:
+{% else %}
     - fileName: DisconnectedICSP.yaml
       policyName: "config-policy"
       spec:
         repositoryDigestMirrors:
+{% endif %}
         - mirrors:
           - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
           source: registry.redhat.io
