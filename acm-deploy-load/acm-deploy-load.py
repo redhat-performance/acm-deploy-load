@@ -244,7 +244,7 @@ def main():
   parser.add_argument("-cm", "--cluster-manifests", type=str, default="/root/hv-vm/",
                       help="The location of the cluster manifests, siteconfigs and resource files")
   parser.add_argument("-a", "--argocd-directory", type=str,
-                      default="/root/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd",
+                      default="/root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd",
                       help="The location of the ArgoCD cluster and cluster applications directories")
   parser.add_argument("-s", "--start", type=int, default=0,
                       help="Cluster start index, follows array logic starting at 0 for '00001'")

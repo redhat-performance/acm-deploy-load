@@ -1,9 +1,9 @@
 ---
 # rhacm-ztp-patches default vars
 
-# Repository type: "cnf-features-deploy" (pre-4.21) or "telco-reference" (4.21+)
+# Repository type: "cnf-features-deploy" (4.19 and earlier) or "telco-reference" (4.20+)
 # This should match the ztp_repo_type set in rhacm-ztp-setup role
-ztp_repo_type: "cnf-features-deploy"
+ztp_repo_type: "telco-reference"
 
 # Derived variables based on repo type (must match rhacm-ztp-setup)
 ztp_repo_name: "{{ 'telco-reference' if ztp_repo_type == 'telco-reference' else 'cnf-features-deploy' }}"

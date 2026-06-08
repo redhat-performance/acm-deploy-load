@@ -1,14 +1,15 @@
 ---
 # rhacm-ztp-setup default vars
 
-# Repository type: "cnf-features-deploy" (pre-4.21) or "telco-reference" (4.21+)
-ztp_repo_type: "cnf-features-deploy"
+# Repository type: "cnf-features-deploy" (4.19 and earlier) or "telco-reference" (4.20+)
+# cnf-features-deploy gitops-subscriptions was frozen at 4.19; source-crs removed at 4.21
+ztp_repo_type: "telco-reference"
 
-# Repository settings for cnf-features-deploy (pre-4.21)
+# Repository settings for cnf-features-deploy (4.19 and earlier)
 cnf_features_deploy_repo: https://github.com/openshift-kni/cnf-features-deploy.git
 cnf_features_deploy_branch: release-4.20
 
-# Repository settings for telco-reference (4.21+)
+# Repository settings for telco-reference (4.20+)
 telco_reference_repo: https://github.com/openshift-kni/telco-reference.git
 telco_reference_branch: release-4.21
 
@@ -33,4 +34,4 @@ rhacm_policy_generator_image_tag: v2.13.4-2
 # Append ManagedClusterAddOn to namespaceResourceWhitelist in app-project.yaml (Used to enable Gitops to create/manage ManagedClusterAddOn CRs)
 # This allows a ManagedClusterAddOn CR to be created for each managed cluster via Gitops which will apply the tuning in the AddOnDeploymentConfig
 # Only applicable for cnf-features-deploy
-append_managedclusteraddons_app_project: true
+append_managedclusteraddons_app_project: false

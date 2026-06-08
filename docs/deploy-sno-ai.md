@@ -107,7 +107,7 @@ Set ZTP-specific variables in `ansible/vars/all.yml`:
 | `setup_ztp_sno_policy` | Create SNO cluster policy | `true` |
 | `setup_ztp_compact_policy` | Create Compact cluster policy | `false` |
 | `setup_ztp_standard_policy` | Create Standard cluster policy | `false` |
-| `ztp_repo_type` | ZTP repo type (`telco-reference` for 4.21+) | `telco-reference` |
+| `ztp_repo_type` | ZTP repo type (`telco-reference` for 4.20+) | `telco-reference` |
 | `ztp_site_generator_image_tag` | ZTP site generator image tag | `v4.21.0-2` |
 | `du_profile_version` | DU profile version | `4.21` |
 | `operator_index_tag` | Operator index tag version | `v4.21` |
@@ -220,7 +220,7 @@ With the hub configured and manifests generated, run the deployment workload:
   interval -b 500 -i 3600
 ```
 
-This example deploys all available SNO clusters in batches of 500 every hour (3600 seconds), with 100 clusters per ArgoCD application, waiting for DU profile completion, and monitoring every 60 seconds. The `--argocd-directory` flag points to the telco-reference ArgoCD directory used with 4.21+ ZTP repos.
+This example deploys all available SNO clusters in batches of 500 every hour (3600 seconds), with 100 clusters per ArgoCD application, waiting for DU profile completion, and monitoring every 60 seconds. The `--argocd-directory` flag points to the telco-reference ArgoCD directory used with 4.20+ ZTP repos.
 
 > [!NOTE]
 > AI installations take significantly longer than IBI. A typical AI SNO installation takes 45-90 minutes per cluster, so batch sizes and intervals should be planned accordingly to avoid overloading the hub.

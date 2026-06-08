@@ -107,54 +107,54 @@ spec:
     #
     # LCA operator is used for orchestrating Image Based Upgrade for SNO
 {% if include_lca_operator %}
-    - fileName: LcaSubscriptionNS.yaml
+    - fileName: lca/LcaSubscriptionNS.yaml
       policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
-    - fileName: LcaSubscriptionOperGroup.yaml
+    - fileName: lca/LcaSubscriptionOperGroup.yaml
       policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
-    - fileName: LcaSubscription.yaml
+    - fileName: lca/LcaSubscription.yaml
       policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
       spec:
         channel: {{ lifecycle_agent_channel }}
 {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
         source: {{ common_catalogsource_name }}
 {% endif %}
-    - fileName: LcaOperatorStatus.yaml
+    - fileName: lca/LcaOperatorStatus.yaml
       policyName: "{{ 'lca-subs' if manyPolicies else 'subscriptions' }}-policy"
 
 {% else %}
-    # - fileName: LcaSubscriptionNS.yaml
+    # - fileName: lca/LcaSubscriptionNS.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: LcaSubscriptionOperGroup.yaml
+    # - fileName: lca/LcaSubscriptionOperGroup.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: LcaSubscription.yaml
+    # - fileName: lca/LcaSubscription.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: LcaOperatorStatus.yaml
+    # - fileName: lca/LcaOperatorStatus.yaml
     #   policyName: "subscriptions-policy"
     #
 {% endif %}
     # OADP operator is used for backing up and restoring application during Image Based Upgrade
 {% if include_oadp_operator %}
-    - fileName: OadpSubscriptionNS.yaml
+    - fileName: data-protection/OadpSubscriptionNS.yaml
       policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
-    - fileName: OadpSubscriptionOperGroup.yaml
+    - fileName: data-protection/OadpSubscriptionOperGroup.yaml
       policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
-    - fileName: OadpSubscription.yaml
+    - fileName: data-protection/OadpSubscription.yaml
       policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
 {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
       spec:
         source: {{ common_catalogsource_name }}
 {% endif %}
-    - fileName: OadpOperatorStatus.yaml
+    - fileName: data-protection/OadpOperatorStatus.yaml
       policyName: "{{ 'oadp-subs' if manyPolicies else 'subscriptions' }}-policy"
 
 {% else %}
-    # - fileName: OadpSubscriptionNS.yaml
+    # - fileName: data-protection/OadpSubscriptionNS.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: OadpSubscriptionOperGroup.yaml
+    # - fileName: data-protection/OadpSubscriptionOperGroup.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: OadpSubscription.yaml
+    # - fileName: data-protection/OadpSubscription.yaml
     #   policyName: "subscriptions-policy"
-    # - fileName: OadpOperatorStatus.yaml
+    # - fileName: data-protection/OadpOperatorStatus.yaml
     #   policyName: "subscriptions-policy"
     #
 {% endif %}

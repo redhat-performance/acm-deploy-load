@@ -136,7 +136,7 @@ Configure the ZTP repository, ArgoCD applications, and policy templates. Set ZTP
 | - | - | - |
 | `rhacm_disconnected_registry` | Disconnected registry hostname | `registry.example.com` |
 | `setup_ran_du_ztp` | Enable RAN DU ZTP policies | `true` |
-| `ztp_repo_type` | ZTP repo type (`telco-reference` for 4.21+) | `telco-reference` |
+| `ztp_repo_type` | ZTP repo type (`telco-reference` for 4.20+) | `telco-reference` |
 | `ztp_site_generator_image_tag` | ZTP site generator image tag | `v4.21.0-2` |
 | `du_profile_version` | DU profile version | `4.21` |
 | `operator_index_tag` | Operator index tag version | `v4.21` |

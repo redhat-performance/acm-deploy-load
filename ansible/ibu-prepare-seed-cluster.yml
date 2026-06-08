@@ -3,11 +3,11 @@
 #
 # Example Usage:
 #
-# Default (pre-4.21, cnf-features-deploy):
+# Default (4.20+, telco-reference):
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/ibu-prepare-seed-cluster.yml
 #
-# For 4.21+ (telco-reference):
-# time ansible-playbook -i ansible/inventory/cloud30.local ansible/ibu-prepare-seed-cluster.yml -e ztp_repo_type=telco-reference
+# For 4.19 and earlier (cnf-features-deploy):
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/ibu-prepare-seed-cluster.yml -e ztp_repo_type=cnf-features-deploy
 #
 
 - name: Prepare IBU Seed Cluster and Image

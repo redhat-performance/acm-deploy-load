@@ -13,11 +13,11 @@ spec:
   mcp: "master"
   sourceFiles:
 {% if include_oadp_operator %}
-    - fileName: OadpSecret.yaml
+    - fileName: data-protection/OadpSecret.yaml
       policyName: "{{ 'oadp-config' if manyPolicies else 'config' }}-policy"
       data:
         cloud: {{ lookup('template', './s3-creds.j2') | b64encode }}
-    - fileName: DataProtectionApplication.yaml
+    - fileName: data-protection/DataProtectionApplication.yaml
       policyName: "{{ 'oadp-config' if manyPolicies else 'config' }}-policy"
       spec:
         backupLocations:
@@ -27,13 +27,13 @@ spec:
                 s3Url: {{ oadp_s3Url }}
               objectStorage:
                 bucket: '{% raw %}{{hub (printf "%s" .ManagedClusterName) hub}}{% endraw %}-ibu'
-    - fileName: OadpBackupStorageLocationStatus.yaml
+    - fileName: data-protection/OadpBackupStorageLocationStatus.yaml
       policyName: "{{ 'oadp-config' if manyPolicies else 'config' }}-policy"
-    - fileName: OadpCm.yaml
+    - fileName: data-protection/OadpCm.yaml
       policyName: "config-policy"
 {% endif %}
 {% if include_lca_operator %}
-    - fileName: LcaSecret.yaml
+    - fileName: lca/LcaSecret.yaml
       policyName: "{{ 'lca-config' if manyPolicies else 'config' }}-policy"
       data:
         seedAuth: {{ lookup('template', './seedgen-auth.j2') | to_json | b64encode }}

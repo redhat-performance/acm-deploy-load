@@ -164,7 +164,7 @@ def main():
   parser.add_argument("-m", "--cluster-manifests", type=str, default="/root/telco-core-manifests/",
                       help="The location of the Telco Core manifest files")
   parser.add_argument("-g", "--gitops-dir", type=str,
-                      default="/root/rhacm-ztp/cnf-features-deploy/ztp/gitops-subscriptions/argocd/cluster/ztp-core/",
+                      default="/root/rhacm-ztp/telco-reference/telco-ran/configuration/argocd/cluster/ztp-core/",
                       help="The location of the GitOps cluster directory for Telco Core")
 
   parser.add_argument("--hub-policy-namespace", type=str, default="policies", help="Namespace for the policies")
