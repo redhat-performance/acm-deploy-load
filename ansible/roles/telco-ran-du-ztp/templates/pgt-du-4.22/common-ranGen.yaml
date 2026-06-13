@@ -68,7 +68,7 @@ spec:
 {% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
       spec:
         source: {{ common_catalogsource_name }}
-        channel: stable-6.4
+        channel: stable-6.5
 {% endif %}
     - fileName: cluster-logging/ClusterLogOperatorStatus.yaml
       policyName: "{{ 'log-subs' if manyPolicies else 'subscriptions' }}-policy"
@@ -182,7 +182,7 @@ spec:
           {%- endraw +%}
 {% endif %}
         labels:
-          lca.openshift.io/target-ocp-version: "4.21.0"
+          lca.openshift.io/target-ocp-version: "4.22.0"
       spec:
         displayName: disconnected-redhat-operators
         image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_operator_index_name }}:{{ operator_index_tag }}

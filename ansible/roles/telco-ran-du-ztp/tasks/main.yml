@@ -230,12 +230,6 @@
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/common-and-group/source-crs/lca/LcaSecret.yaml"
   when: du_profile_version is version('4.20', '>=')
 
-- name: Template ReduceMonitoringFootprint for telco-reference (4.21+)
-  template:
-    src: source-crs/ReduceMonitoringFootprint.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/common-and-group/source-crs/ReduceMonitoringFootprint.yaml"
-  when: ztp_repo_type == "telco-reference"
-
 - name: Commit and push RAN DU ZTP to {{ ztp_repo_name }}
   shell: |
     cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
