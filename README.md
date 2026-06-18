@@ -91,10 +91,14 @@ Deploys SNO, Compact, or Standard clusters via Assisted Installer or Image-Based
 
 **Workload Phases:**
 
-1. Deploy Phase — Apply manifests or push to GitOps to deploy clusters
-2. Wait for Cluster Install Completion
-3. Wait for DU Profile Completion (optional)
-4. Report Card / Graphing
+1. Phase 1 / Idle Baseline — Pre-deployment delay for baseline resource measurements (`--start-delay`)
+2. Phase 2 / Cluster Deployment — Apply manifests or push to GitOps to deploy clusters
+   - Wait for Cluster Install Completion
+   - Wait for DU Profile Completion (optional)
+   - Wait for Playbook Completion (optional)
+3. Phase 3 / Soak Baseline — Post-deployment delay for steady-state resource measurements (`--end-delay`)
+
+Optional per-phase Prometheus analysis runs automatically at phase boundaries (disable with `--no-prometheus-analysis`).
 
 ### acm-telco-core-load.py
 

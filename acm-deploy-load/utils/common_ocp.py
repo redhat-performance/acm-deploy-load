@@ -204,3 +204,12 @@ def get_thanos_querier_route(kubeconfig):
   else:
     logger.error("Failed to find route for thanos-querier")
     return ""
+
+
+def validate_kubeconfig(kubeconfig):
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "whoami"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0:
+    logger.error("Kubeconfig validation failed (oc whoami rc: {}): {}".format(rc, kubeconfig))
+    sys.exit(1)
+  logger.info("Kubeconfig validated, connected as: {}".format(output.strip()))

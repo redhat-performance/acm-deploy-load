@@ -28,7 +28,7 @@ logger = logging.getLogger("acm-deploy-load")
 
 
 class ZTPMonitor(Thread):
-  def __init__(self, method, talm_minor, monitor_data, csv_file, dry_run, sample_interval):
+  def __init__(self, method, talm_minor, monitor_data, csv_file, dry_run, sample_interval, kubeconfig):
     super(ZTPMonitor, self).__init__()
     if method in ["ai-manifest", "ai-clusterinstance", "ai-clusterinstance-gitops", "ai-siteconfig-gitops"]:
       self.method = "agent"
@@ -39,6 +39,7 @@ class ZTPMonitor(Thread):
     self.csv_file = csv_file
     self.dry_run = dry_run
     self.sample_interval = sample_interval
+    self.kubeconfig = kubeconfig
     self.signal = True
 
   def _real_run(self):
@@ -52,7 +53,7 @@ class ZTPMonitor(Thread):
 
       if self.method == "agent":
         # Get agentclusterinstall data
-        oc_cmd = ["oc", "get", "agentclusterinstall", "-A", "-o", "json"]
+        oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "agentclusterinstall", "-A", "-o", "json"]
         rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
         if rc != 0:
           logger.error("acm-deploy-load, oc get agentclusterinstall rc: {}".format(rc))
@@ -66,7 +67,7 @@ class ZTPMonitor(Thread):
               logger.warning("aci JSONDecodeError: {}".format(output[:2500]))
       elif self.method == "image":
         # Get imageclusterinstall data
-        oc_cmd = ["oc", "get", "imageclusterinstall", "-A", "-o", "json"]
+        oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "imageclusterinstall", "-A", "-o", "json"]
         rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
         if rc != 0:
           logger.error("acm-deploy-load, oc get imageclusterinstall rc: {}".format(rc))
@@ -80,7 +81,7 @@ class ZTPMonitor(Thread):
               logger.warning("ici JSONDecodeError: {}".format(output[:2500]))
 
       # Get baremetalhost data
-      oc_cmd = ["oc", "get", "baremetalhost", "-A", "-o", "json"]
+      oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "baremetalhost", "-A", "-o", "json"]
       rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
       if rc != 0:
         logger.error("acm-deploy-load, oc get baremetalhost rc: {}".format(rc))
@@ -95,7 +96,7 @@ class ZTPMonitor(Thread):
 
       if self.method == "agent":
         # Get agent data
-        oc_cmd = ["oc", "get", "agent", "-A", "-o", "json"]
+        oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "agent", "-A", "-o", "json"]
         rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
         if rc != 0:
           logger.error("acm-deploy-load, oc get agent rc: {}".format(rc))
@@ -112,7 +113,7 @@ class ZTPMonitor(Thread):
         agent_data = {"items": []}
 
       # Get managedcluster data
-      oc_cmd = ["oc", "get", "managedcluster", "-A", "-o", "json"]
+      oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "managedcluster", "-A", "-o", "json"]
       rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
       if rc != 0:
         logger.error("acm-deploy-load, oc get managedcluster rc: {}".format(rc))
@@ -126,7 +127,7 @@ class ZTPMonitor(Thread):
             logger.warning("mc JSONDecodeError: {}".format(output[:2500]))
 
       # Get clustergroupupgrades data
-      oc_cmd = ["oc", "get", "clustergroupupgrades", "-n", "ztp-install", "-o", "json"]
+      oc_cmd = ["oc", "--kubeconfig", self.kubeconfig, "get", "clustergroupupgrades", "-n", "ztp-install", "-o", "json"]
       rc, output = command(oc_cmd, self.dry_run, retries=3, no_log=True)
       if rc != 0:
         logger.error("acm-deploy-load, oc get clustergroupupgrades rc: {}".format(rc))

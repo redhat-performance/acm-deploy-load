@@ -22,13 +22,15 @@ from datetime import datetime, timedelta, timezone
 import glob
 from math import ceil
 from jinja2 import Template
+from utils.analysis import launch_prometheus_analysis
 from utils.command import command
+from utils.common_ocp import validate_kubeconfig
+from utils.output import generate_telco_core_load_report
 from utils.output import log_write
 from utils.output import phase_break
 import logging
 import os
 import shutil
-import subprocess
 import sys
 import time
 
@@ -111,46 +113,6 @@ def update_policy_cm(policy_ns, cm_name, policy_keys, policy_dir, hub_kc):
   logger.debug(output.strip())
 
 
-def launch_prometheus_analysis(report_dir, phase_name, start_ts, end_ts, kubeconfig, base_dir):
-  """Launch analyze-prometheus.py in the background for the given time window."""
-  analyzer_script = os.path.join(base_dir, "analyze-prometheus.py")
-  if not os.path.isfile(analyzer_script):
-    logger.warning("analyze-prometheus.py not found at {}, skipping phase {}".format(analyzer_script, phase_name))
-    return
-  start_str = datetime.fromtimestamp(start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-  end_str = datetime.fromtimestamp(end_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-  duration_seconds = round(end_ts - start_ts)
-  if duration_seconds < 900:
-    logger.warning("Skipping prometheus analysis phase {}: window {}s < 15 minutes".format(phase_name, duration_seconds))
-    return
-  # No buffer time since script is running against end time that is less than 5 minutes from now
-  cmd = [
-    sys.executable,
-    analyzer_script,
-    "-k", kubeconfig,
-    "-s", start_str,
-    "-e", end_str,
-    "-b", "0",
-    "-p", phase_name,
-    report_dir,
-  ]
-  logger.info("Prometheus analysis command: {}".format(" ".join(cmd)))
-  log_file = os.path.join(report_dir, "pa-{}.log".format(phase_name))
-  try:
-    with open(log_file, "w") as f:
-      proc = subprocess.Popen(
-        cmd,
-        stdout=f,
-        stderr=subprocess.STDOUT,
-        cwd=base_dir,
-        start_new_session=True,
-      )
-    logger.info("Launched prometheus analysis phase '{}' in background (pid {}, log: {})".format(
-      phase_name, proc.pid, os.path.basename(log_file)))
-  except Exception as e:
-    logger.warning("Failed to launch prometheus analysis for phase {}: {}".format(phase_name, e))
-
-
 def main():
   start_time = time.time()
 
@@ -186,9 +148,10 @@ def main():
   parser.add_argument("--max-policy-intervals", type=int, default=10,
                       help="Maximum number of policy intervals to run (Used with --no-deploy only)")
 
-  # Delay args are idle time before and after the workload
-  parser.add_argument("-s", "--start-delay", type=int, default=120, help="Delay on start of script")
-  parser.add_argument("-e", "--end-delay", type=int, default=120, help="Delay on end of script")
+  parser.add_argument("-s", "--start-delay", type=int, default=120,
+                      help="Phase 1 / Idle baseline delay before starting deploys (seconds)")
+  parser.add_argument("-e", "--end-delay", type=int, default=120,
+                      help="Phase 3 / Soak baseline delay after deploys complete (seconds)")
 
   parser.add_argument("-t", "--results-dir-suffix", type=str, default="test-00",
                       help="Suffix to be appended to results directory name")
@@ -207,6 +170,8 @@ def main():
     parser.error("Cannot set both --no-deploy and --no-policy. Modes are: Deploy+Policy (default), "
                  "Deploy only (--no-policy), or Policy only (--no-deploy).")
 
+  validate_kubeconfig(cliargs.kubeconfig)
+
   phase_break()
   logger.info("ACM Telco Core Load")
   phase_break()
@@ -222,6 +187,7 @@ def main():
   logger.info("Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
 
   clusterinstance_files = []
+  deploy_batch_count = 0
   if cliargs.no_deploy == False:
     # Detect all clusterinstance file manifests to be deployed
     logger.info("Checking {}clusterinstance/ for cluster instance manifests".format(cliargs.cluster_manifests))
@@ -238,39 +204,58 @@ def main():
   phase_break()
 
   logger.info("Workload Parameters")
-  if cliargs.no_deploy == False:
+  if cliargs.no_deploy == False and cliargs.no_policy == False:
     # Subtract 1 from deploy batch count to account that on last batch, the phase will wait for last_deploy_runtime instead of interval_deploy
     expected_run_time = cliargs.start_delay + (deploy_batch_count - 1) * cliargs.interval_deploy + cliargs.last_deploy_runtime + cliargs.end_delay
-    if cliargs.no_policy == False:
-      logger.info("* Mode: Deploy+Policy")
-    else:
-      logger.info("* Mode: Deploy Clusters only")
-    logger.info(f" * Start delay: {cliargs.start_delay}s :: {str(timedelta(seconds=cliargs.start_delay))}")
-    logger.info(f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s :: {str(timedelta(seconds=cliargs.interval_deploy))} interval")
-    logger.info(f"  * Available clusters: {len(clusterinstance_files)}")
-    logger.info(f"  * Total batches: {deploy_batch_count}")
-    logger.info(f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s :: {str(timedelta(seconds=cliargs.last_deploy_runtime))}")
-    if cliargs.no_policy == False:
-      logger.info(f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
-    else:
-      logger.info(f" * No policy updates")
-    logger.info(f" * End delay: {cliargs.end_delay}s :: {str(timedelta(seconds=cliargs.end_delay))}")
+    logger.info(" * Mode: Deploy+Policy")
+    logger.info(" * Phase 1 / Idle Baseline (Start delay): {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    logger.info(" * Phase 2 (Cluster Deployment + Policy Updates):")
+    logger.info("  * Deploy {} cluster(s) per {}s :: {} interval".format(
+        cliargs.batch, cliargs.interval_deploy, str(timedelta(seconds=cliargs.interval_deploy))))
+    logger.info("   * Available clusters: {}".format(len(clusterinstance_files)))
+    logger.info("   * Total batches: {}".format(deploy_batch_count))
+    logger.info("   * Last deploy runtime: {}s :: {}".format(
+        cliargs.last_deploy_runtime, str(timedelta(seconds=cliargs.last_deploy_runtime))))
+    logger.info("  * Update policy configmap ({} keys) in namespace {} per {}s interval".format(
+        cliargs.hub_policy_cm_keys, cliargs.hub_policy_namespace, cliargs.interval_policy))
+    logger.info(" * Phase 3 / Soak Baseline (End delay): {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
     if not cliargs.no_prometheus_analysis:
       logger.info(" * Run analyze-prometheus.py in background at phase boundaries")
-    logger.info(f"* Expected run time: {expected_run_time}s :: {str(timedelta(seconds=expected_run_time))}")
-  elif cliargs.no_deploy == True:
+    logger.info(" * Expected run time: {}s :: {}".format(expected_run_time, str(timedelta(seconds=expected_run_time))))
+  elif cliargs.no_deploy == False and cliargs.no_policy == True:
+    expected_run_time = cliargs.start_delay + (deploy_batch_count - 1) * cliargs.interval_deploy + cliargs.last_deploy_runtime + cliargs.end_delay
+    logger.info(" * Mode: Deploy Clusters only")
+    logger.info(" * Phase 1 / Idle Baseline (Start delay): {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    logger.info(" * Phase 2 (Cluster Deployment):")
+    logger.info("  * Deploy {} cluster(s) per {}s :: {} interval".format(
+        cliargs.batch, cliargs.interval_deploy, str(timedelta(seconds=cliargs.interval_deploy))))
+    logger.info("   * Available clusters: {}".format(len(clusterinstance_files)))
+    logger.info("   * Total batches: {}".format(deploy_batch_count))
+    logger.info("   * Last deploy runtime: {}s :: {}".format(
+        cliargs.last_deploy_runtime, str(timedelta(seconds=cliargs.last_deploy_runtime))))
+    logger.info(" * Phase 3 / Soak Baseline (End delay): {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+    if not cliargs.no_prometheus_analysis:
+      logger.info(" * Run analyze-prometheus.py in background at phase boundaries")
+    logger.info(" * Expected run time: {}s :: {}".format(expected_run_time, str(timedelta(seconds=expected_run_time))))
+  elif cliargs.no_deploy == True and cliargs.no_policy == False:
     # Subtract 1 from max policy intervals to account that on last interval, loop ends immediately
     expected_run_time = cliargs.start_delay + (cliargs.max_policy_intervals - 1) * cliargs.interval_policy + cliargs.end_delay
-    logger.info("* Mode: Policy configmap updates only")
-    logger.info(f" * Start delay: {cliargs.start_delay}s :: {str(timedelta(seconds=cliargs.start_delay))}")
-    logger.info(f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
-    logger.info(f"  * Maximum number of policy intervals to run: {cliargs.max_policy_intervals}")
-    logger.info(f" * End delay: {cliargs.end_delay}s :: {str(timedelta(seconds=cliargs.end_delay))}")
-    logger.info(f"* Expected run time: {expected_run_time}s :: {str(timedelta(seconds=expected_run_time))}")
-  else:
-    # Should not occur due to cliargs check above
-    logger.error("* Invalid mode.")
-    sys.exit(1)
+    logger.info(" * Mode: Policy configmap updates only")
+    logger.info(" * Phase 1 / Idle Baseline (Start delay): {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    logger.info(" * Phase 2 (Policy Updates):")
+    logger.info("  * Update policy configmap ({} keys) in namespace {} per {}s interval".format(
+        cliargs.hub_policy_cm_keys, cliargs.hub_policy_namespace, cliargs.interval_policy))
+    logger.info("   * Maximum number of policy intervals to run: {}".format(cliargs.max_policy_intervals))
+    logger.info(" * Phase 3 / Soak Baseline (End delay): {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+    if not cliargs.no_prometheus_analysis:
+      logger.info(" * Run analyze-prometheus.py in background at phase boundaries")
+    logger.info(" * Expected run time: {}s :: {}".format(expected_run_time, str(timedelta(seconds=expected_run_time))))
 
   phase_break()
   # Detect a policy configmap
@@ -295,33 +280,33 @@ def main():
   os.mkdir(report_dir)
   os.mkdir(policy_dir)
 
-  ###################################
-  # Phase 1 of workload: Start delay
-  ###################################
-  # Start of workload with start delay
+  #############################################################################
+  # Phase 1: Idle Baseline
+  #############################################################################
   workload_start_time = time.time()
   if cliargs.start_delay > 0:
     phase_break()
-    logger.info("Sleeping {}s :: {} for start delay".format(cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
-    total_start_delay = cliargs.start_delay
-    while(total_start_delay > 300):
+    logger.info("Phase 1: Idle Baseline - Sleeping {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    remaining_start_delay = cliargs.start_delay
+    while remaining_start_delay > 300:
       time.sleep(300)
-      total_start_delay -= 300
-      logger.info("{}s :: {} remaining in start delay".format(total_start_delay, str(timedelta(seconds=total_start_delay))))
-    # Sleep remaining less than 5 minutes time
-    time.sleep(total_start_delay)
+      remaining_start_delay -= 300
+      logger.info("{}s :: {} remaining in idle baseline".format(
+          remaining_start_delay, str(timedelta(seconds=remaining_start_delay))))
+    time.sleep(remaining_start_delay)
   start_delay_complete_ts = time.time()
 
-  # Phase 1 Prometheus analysis: start delay window
+  # Phase 1 Prometheus analysis: idle baseline window
   if not cliargs.no_prometheus_analysis and cliargs.no_deploy == False:
     launch_prometheus_analysis(
-      report_dir, "phase1-start-delay",
+      report_dir, "phase1-idle-baseline",
       workload_start_time, start_delay_complete_ts,
       cliargs.kubeconfig, base_dir)
 
-  ###################################
-  # Phase 2 of workload: Deploy clusters and/or update policy configmap
-  ###################################
+  #############################################################################
+  # Phase 2: Cluster Deployment and/or Policy Updates
+  #############################################################################
   total_clusters_deployed = 0
   total_policy_cm_updates = 0
   deployed_clusters = []
@@ -334,7 +319,7 @@ def main():
   next_policy_time = next_deploy_time
   last_logged = start_delay_complete_ts
   phase_break()
-  logger.info("Begin Telco Core ACM Load - {}".format(int(time.time() * 1000)))
+  logger.info("Phase 2: Begin Telco Core ACM Load - {}".format(int(time.time() * 1000)))
   phase_break()
   current_time = time.time()
   while True:
@@ -425,72 +410,37 @@ def main():
     current_time = time.time()
     # End run loop
 
-  ###################################
-  # Phase 3 of workload: End delay
-  ###################################
+  #############################################################################
+  # Phase 3: Soak Baseline
+  #############################################################################
   end_delay_start_ts = time.time()
   if cliargs.end_delay > 0:
     phase_break()
-    logger.info("Sleeping {}s :: {} for end delay".format(cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
-    total_end_delay = cliargs.end_delay
-    while(total_end_delay > 300):
+    logger.info("Phase 3: Soak Baseline - Sleeping {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+    remaining_end_delay = cliargs.end_delay
+    while remaining_end_delay > 300:
       time.sleep(300)
-      total_end_delay -= 300
-      logger.info("{}s :: {} remaining in end delay".format(total_end_delay, str(timedelta(seconds=total_end_delay))))
-    # Sleep remaining less than 5 minutes time
-    time.sleep(total_end_delay)
+      remaining_end_delay -= 300
+      logger.info("{}s :: {} remaining in soak baseline".format(
+          remaining_end_delay, str(timedelta(seconds=remaining_end_delay))))
+    time.sleep(remaining_end_delay)
 
   end_time = time.time()
 
-  # Phase 3 Prometheus analysis: end delay window
+  # Phase 3 Prometheus analysis: soak baseline window
   if not cliargs.no_prometheus_analysis and cliargs.no_deploy == False:
     launch_prometheus_analysis(
-      report_dir, "phase3-end-delay",
+      report_dir, "phase3-soak-baseline",
       end_delay_start_ts, end_time,
       cliargs.kubeconfig, base_dir)
 
-  total_elapsed_time = round(end_time - workload_start_time)
-  # Make a report card
-  with open("{}/report.txt".format(report_dir), "w") as report:
-    phase_break(True, report)
-    log_write(report, "acm-telco-core-load Report Card")
-    phase_break(True, report)
-    log_write(report, "Workload Parameters")
-    if cliargs.no_deploy == False and cliargs.no_policy == False:
-      log_write(report, "* Mode: Deploy+Policy")
-      log_write(report, f" * Start delay: {cliargs.start_delay}s :: {str(timedelta(seconds=cliargs.start_delay))}")
-      log_write(report, f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s :: {str(timedelta(seconds=cliargs.interval_deploy))} interval")
-      log_write(report, f"  * Available clusters: {len(clusterinstance_files)}")
-      log_write(report, f"  * Total batches: {deploy_batch_count}")
-      log_write(report, f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s :: {str(timedelta(seconds=cliargs.last_deploy_runtime))}")
-      log_write(report, f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
-      log_write(report, f" * End delay: {cliargs.end_delay}s :: {str(timedelta(seconds=cliargs.end_delay))}")
-    elif cliargs.no_deploy == False and cliargs.no_policy == True:
-      log_write(report, "* Mode: Deploy Clusters only")
-      log_write(report, f" * Start delay: {cliargs.start_delay}s :: {str(timedelta(seconds=cliargs.start_delay))}")
-      log_write(report, f" * Deploy {cliargs.batch} cluster(s) per {cliargs.interval_deploy}s :: {str(timedelta(seconds=cliargs.interval_deploy))} interval")
-      log_write(report, f"  * Available clusters: {len(clusterinstance_files)}")
-      log_write(report, f"  * Total batches: {deploy_batch_count}")
-      log_write(report, f"  * Last deploy runtime: {cliargs.last_deploy_runtime}s :: {str(timedelta(seconds=cliargs.last_deploy_runtime))}")
-      log_write(report, f" * End delay: {cliargs.end_delay}s :: {str(timedelta(seconds=cliargs.end_delay))}")
-    elif cliargs.no_deploy == True and cliargs.no_policy == False:
-      log_write(report, "* Mode: Policy configmap updates only")
-      log_write(report, f" * Start delay: {cliargs.start_delay}s :: {str(timedelta(seconds=cliargs.start_delay))}")
-      log_write(report, f" * Update policy configmap ({cliargs.hub_policy_cm_keys} keys) in namespace {cliargs.hub_policy_namespace} per {cliargs.interval_policy}s interval")
-      log_write(report, f"  * Maximum number of policy intervals to run: {cliargs.max_policy_intervals}")
-      log_write(report, f" * End delay: {cliargs.end_delay}s :: {str(timedelta(seconds=cliargs.end_delay))}")
-    log_write(report, "Workload Results")
-    log_write(report, " * Total elapsed time: {}s :: {}".format(total_elapsed_time, str(timedelta(seconds=total_elapsed_time))))
-    log_write(report, " * Total cluster(s) deployed: {}".format(total_clusters_deployed))
-    log_write(report, " * Total policy cm updates: {}".format(total_policy_cm_updates))
-    log_write(report, "Workload Timestamps")
-    log_write(report, " * Start Time: {} {}".format(datetime.fromtimestamp(workload_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(workload_start_time * 1000)))
-    log_write(report, " * Start Delay Complete Time: {}".format(datetime.fromtimestamp(start_delay_complete_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
-    for i, ts in enumerate(cluster_deployed_timestamps):
-      log_write(report, " * Cluster(s) Batch {} deployed: {}".format(i, datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
-    log_write(report, " * End Delay Start Time: {}".format(datetime.fromtimestamp(end_delay_start_ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")))
-    log_write(report, " * End Time: {} {}".format(datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(end_time * 1000)))
+  generate_telco_core_load_report(workload_start_time, end_time, start_delay_complete_ts,
+      end_delay_start_ts, cluster_deployed_timestamps, total_clusters_deployed,
+      total_policy_cm_updates, len(clusterinstance_files), deploy_batch_count,
+      cliargs, report_dir)
 
+  total_elapsed_time = round(end_time - workload_start_time)
   logger.info("Took {}s :: {}".format(total_elapsed_time, str(timedelta(seconds=total_elapsed_time))))
 
 

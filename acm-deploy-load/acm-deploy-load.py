@@ -21,9 +21,10 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 import glob
 from jinja2 import Template
-from utils.common_ocp import detect_aap_install
+from utils.analysis import launch_prometheus_analysis
+from utils.common_ocp import detect_aap_install, validate_kubeconfig
 from utils.command import command
-from utils.output import generate_report
+from utils.output import generate_deploy_load_report
 from utils.output import phase_break
 from utils.ztp_monitor import ZTPMonitor
 from utils.talm import detect_talm_minor
@@ -237,10 +238,12 @@ def main():
       description="Tool to load ACM with Cluster deployments via manifests or GitOps ZTP",
       prog="acm-deploy-load.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-  parser.add_argument("-m", "--method", choices=install_methods, default="ai-siteconfig-gitops",
+  parser.add_argument("-m", "--method", choices=install_methods, default="ibi-clusterinstance-gitops",
                       help="The method of cluster install, ai - Assisted-Installer, ibi - Image-Based-Installer")
 
   # "Global" args
+  parser.add_argument("-k", "--kubeconfig", type=str, default="/root/mno/kubeconfig",
+                      help="Changes which kubeconfig to connect to the hub cluster")
   parser.add_argument("-cm", "--cluster-manifests", type=str, default="/root/hv-vm/",
                       help="The location of the cluster manifests, siteconfigs and resource files")
   parser.add_argument("-a", "--argocd-directory", type=str,
@@ -252,9 +255,9 @@ def main():
   parser.add_argument("-n", "--no-shuffle", action="store_true", default=False,
                       help="Do not shuffle the list of discovered installable clusters")
   parser.add_argument("--start-delay", type=int, default=15,
-                      help="Delay to starting deploys, allowing monitor thread to gather data (seconds)")
+                      help="Phase 1 / Idle baseline delay before starting deploys (seconds)")
   parser.add_argument("--end-delay", type=int, default=120,
-                      help="Delay on end, allows monitor thread to gather additional data points (seconds)")
+                      help="Phase 3 / Soak baseline delay after deploys complete (seconds)")
   parser.add_argument("--clusters-per-app", type=int, default=100,
                       help="Maximum number of clusters per cluster application")
   parser.add_argument("--wait-cluster-max", type=int, default=10800,
@@ -291,6 +294,10 @@ def main():
   parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
   parser.add_argument("--dry-run", action="store_true", default=False, help="Echos commands instead of executing them")
 
+  # Prometheus analysis options
+  parser.add_argument("--no-prometheus-analysis", action="store_true", default=False,
+                      help="Do not run analyze-prometheus.py in background post each phase")
+
   subparsers = parser.add_subparsers(dest="rate")
 
   parser_interval = subparsers.add_parser("interval", help="Interval rate method of deploying clusters",
@@ -323,20 +330,21 @@ def main():
   phase_break()
   logger.debug("CLI Args: {}".format(cliargs))
 
+  # Validate kubeconfig
+  validate_kubeconfig(cliargs.kubeconfig)
+
   # Detect TALM version
   talm_minor = int(detect_talm_minor(cliargs.talm_version, cliargs.dry_run))
   logger.info("Using TALM cgu monitoring based on TALM minor version: {}".format(talm_minor))
 
   # Detect AAP install
-  if detect_aap_install(dry_run=cliargs.dry_run):
+  if detect_aap_install(cliargs.kubeconfig, cliargs.dry_run):
     logger.info("AAP install detected, waiting for playbook completion")
     cliargs.wait_playbook = True
   else:
     logger.info("AAP install not detected")
 
-  # Validate parameters and display rate and method plan
-  logger.info("Deploying Clusters rate: {}".format(cliargs.rate))
-  logger.info("Deploying Clusters method: {}".format(cliargs.method))
+  # Validate parameters
   if (cliargs.start < 0):
     logger.error("Cluster start index must be equal to or greater than 0")
     sys.exit(1)
@@ -356,29 +364,6 @@ def main():
     if not (cliargs.interval >= 0):
       logger.error("Interval must be equal to or greater than 0")
       sys.exit(1)
-    logger.info(" * {} Cluster(s) per {}s interval".format(cliargs.batch, cliargs.interval))
-    logger.info(" * Start Index: {}, End Index: {}".format(cliargs.start, cliargs.end))
-    if cliargs.skip_wait_install:
-      logger.info(" * Skip waiting for cluster install completion")
-    else:
-      if cliargs.wait_cluster_max > 0:
-        logger.info(" * Wait for cluster install completion (Max {}s)".format(cliargs.wait_cluster_max))
-      else:
-        logger.info(" * Wait for cluster install completion (Infinite wait)")
-  if not cliargs.wait_du_profile:
-    logger.info(" * Skip waiting for DU Profile completion")
-  else:
-    if cliargs.wait_du_profile_max > 0:
-      logger.info(" * Wait for DU Profile completion (Max {}s)".format(cliargs.wait_du_profile_max))
-    else:
-      logger.info(" * Wait for DU Profile completion (Infinite wait)")
-  if not cliargs.wait_playbook:
-    logger.info(" * Skip waiting for Playbook completion")
-  else:
-    if cliargs.wait_playbook_max > 0:
-      logger.info(" * Wait for Playbook completion (Max {}s)".format(cliargs.wait_playbook_max))
-    else:
-      logger.info(" * Wait for Playbook completion (Infinite wait)")
 
   # Determine where the report directory will be located
   base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -386,13 +371,8 @@ def main():
   base_dir_results = os.path.join(base_dir_down, "results")
   report_dir_name = "{}-{}-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"), cliargs.method, cliargs.results_dir_suffix)
   report_dir = os.path.join(base_dir_results, report_dir_name)
-  logger.info("Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
 
   monitor_data_csv_file = "{}/monitor_data.csv".format(report_dir)
-
-  logger.info("Monitoring data captured to: {}".format("/".join(monitor_data_csv_file.split("/")[-3:])))
-  logger.info(" * Monitoring interval: {}".format(cliargs.monitor_interval))
-  phase_break()
 
   # Get starting data and list directories for manifests/siteconfigs/cluster applications
   available_clusters = 0
@@ -457,8 +437,54 @@ def main():
     random.shuffle(cluster_list)
     logger.debug("Randomized the cluster order: {}".format(cluster_list))
 
+  # Display workload parameters
+  phase_break()
+  logger.info("Workload Parameters")
+  logger.info(" * Method: {}".format(cliargs.method))
+  logger.info(" * Rate: {}".format(cliargs.rate))
+  logger.info(" * Phase 1 / Idle Baseline (Start delay): {}s :: {}".format(
+      cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+  logger.info(" * Phase 2 (Cluster Deployment):")
+  if cliargs.rate == "interval":
+    logger.info("  * Deploy {} cluster(s) per {}s :: {} interval".format(
+        cliargs.batch, cliargs.interval, str(timedelta(seconds=cliargs.interval))))
+    logger.info("   * Available clusters: {}".format(available_clusters))
+    logger.info("   * Cluster range: {} to {}".format(cliargs.start, cliargs.end))
+    logger.info("   * Clusters per ZTP argoCD application: {}".format(cliargs.clusters_per_app))
+    if cliargs.skip_wait_install:
+      logger.info("  * Skip waiting for cluster install completion")
+    else:
+      if cliargs.wait_cluster_max > 0:
+        logger.info("  * Wait for cluster install completion (Max {}s :: {})".format(
+            cliargs.wait_cluster_max, str(timedelta(seconds=cliargs.wait_cluster_max))))
+      else:
+        logger.info("  * Wait for cluster install completion (Infinite wait)")
+  if not cliargs.wait_du_profile:
+    logger.info("  * Skip waiting for DU Profile completion")
+  else:
+    if cliargs.wait_du_profile_max > 0:
+      logger.info("  * Wait for DU Profile completion (Max {}s :: {})".format(
+          cliargs.wait_du_profile_max, str(timedelta(seconds=cliargs.wait_du_profile_max))))
+    else:
+      logger.info("  * Wait for DU Profile completion (Infinite wait)")
+  if not cliargs.wait_playbook:
+    logger.info("  * Skip waiting for Playbook completion")
+  else:
+    if cliargs.wait_playbook_max > 0:
+      logger.info("  * Wait for Playbook completion (Max {}s :: {})".format(
+          cliargs.wait_playbook_max, str(timedelta(seconds=cliargs.wait_playbook_max))))
+    else:
+      logger.info("  * Wait for Playbook completion (Infinite wait)")
+  logger.info(" * Phase 3 / Soak Baseline (End delay): {}s :: {}".format(
+      cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+  if not cliargs.no_prometheus_analysis:
+    logger.info(" * Run analyze-prometheus.py in background at phase boundaries")
+  logger.info(" * Monitor interval: {}s".format(cliargs.monitor_interval))
+  logger.info(" * Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
+  phase_break()
+
   # Create the results directory to store data into
-  logger.info("Creating report directory: {}".format(report_dir))
+  logger.debug("Creating report directory: {}".format(report_dir))
   os.mkdir(report_dir)
 
   #############################################################################
@@ -484,13 +510,35 @@ def main():
     "playbook_running": 0,
     "playbook_completed": 0
   }
-  monitor_thread = ZTPMonitor(cliargs.method, talm_minor, monitor_data, monitor_data_csv_file, cliargs.dry_run, cliargs.monitor_interval)
+  monitor_thread = ZTPMonitor(cliargs.method, talm_minor, monitor_data, monitor_data_csv_file, cliargs.dry_run, cliargs.monitor_interval, cliargs.kubeconfig)
   monitor_thread.start()
+
+  #############################################################################
+  # Phase 1: Idle Baseline
+  #############################################################################
   if cliargs.start_delay > 0:
     phase_break()
-    logger.info("Sleeping {}s for start delay".format(cliargs.start_delay))
-    time.sleep(cliargs.start_delay)
+    logger.info("Phase 1: Idle Baseline - Sleeping {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    remaining_start_delay = cliargs.start_delay
+    while remaining_start_delay > 300:
+      time.sleep(300)
+      remaining_start_delay -= 300
+      logger.info("{}s :: {} remaining in idle baseline".format(
+          remaining_start_delay, str(timedelta(seconds=remaining_start_delay))))
+    time.sleep(remaining_start_delay)
   deploy_start_time = time.time()
+
+  # Phase 1 Prometheus analysis: idle baseline window
+  if not cliargs.no_prometheus_analysis:
+    launch_prometheus_analysis(
+      report_dir, "phase1-idle-baseline",
+      start_time, deploy_start_time,
+      cliargs.kubeconfig, base_dir)
+
+  #############################################################################
+  # Phase 2: Cluster Deployment
+  #############################################################################
   if cliargs.rate == "interval":
     phase_break()
     logger.info("Starting interval based cluster deployment rate - {}".format(int(time.time() * 1000)))
@@ -518,7 +566,7 @@ def main():
         # Apply the clusters
         for cluster in cluster_list[start_cluster_index:end_cluster_index]:
           monitor_data["cluster_applied_committed"] += 1
-          oc_cmd = ["oc", "apply", "-f", cluster]
+          oc_cmd = ["oc", "--kubeconfig", cliargs.kubeconfig, "apply", "-f", cluster]
           # Might need to add retries and have method to count retries
           rc, output = command(oc_cmd, cliargs.dry_run)
           if rc != 0:
@@ -659,13 +707,37 @@ def main():
         wait_logger = 0
   wait_playbook_end_time = time.time()
 
-  end_time = time.time()
+  # Phase 2 Prometheus analysis: cluster deployment window (deploy through all wait phases)
+  soak_start_time = time.time()
+  if not cliargs.no_prometheus_analysis:
+    launch_prometheus_analysis(
+      report_dir, "phase2-cluster-deployment",
+      deploy_start_time, soak_start_time,
+      cliargs.kubeconfig, base_dir)
 
-  # End of Workload delay
+  #############################################################################
+  # Phase 3: Soak Baseline
+  #############################################################################
   if cliargs.end_delay > 0:
     phase_break()
-    logger.info("Sleeping {}s for end delay".format(cliargs.end_delay))
-    time.sleep(cliargs.end_delay)
+    logger.info("Phase 3: Soak Baseline - Sleeping {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+    remaining_end_delay = cliargs.end_delay
+    while remaining_end_delay > 300:
+      time.sleep(300)
+      remaining_end_delay -= 300
+      logger.info("{}s :: {} remaining in soak baseline".format(
+          remaining_end_delay, str(timedelta(seconds=remaining_end_delay))))
+    time.sleep(remaining_end_delay)
+
+  end_time = time.time()
+
+  # Phase 3 Prometheus analysis: soak baseline window
+  if not cliargs.no_prometheus_analysis:
+    launch_prometheus_analysis(
+      report_dir, "phase3-soak-baseline",
+      soak_start_time, end_time,
+      cliargs.kubeconfig, base_dir)
 
   # Stop monitoring thread
   logger.info("Stopping monitoring thread may take up to: {}".format(cliargs.monitor_interval))
@@ -675,10 +747,10 @@ def main():
   #############################################################################
   # Report Card / Graph Phase
   #############################################################################
-  generate_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
+  generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
       wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time,
-      wait_playbook_start_time, wait_playbook_end_time, available_clusters, monitor_data,
-      cliargs, total_intervals, report_dir)
+      wait_playbook_start_time, wait_playbook_end_time, soak_start_time,
+      available_clusters, monitor_data, cliargs, total_intervals, report_dir)
 
 if __name__ == "__main__":
   sys.exit(main())

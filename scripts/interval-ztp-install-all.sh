@@ -6,19 +6,30 @@ set -o pipefail
 iteration=1
 
 # Method to deploy clusters (AI = Assisted Installer, IBI = Image Based Installer)
-# method="ai-siteconfig-gitops"
 # method="ai-clusterinstance-gitops"
 method="ibi-clusterinstance-gitops"
 
-# Rate 500/30m
+# Phase 1 (Idle baseline) delay in seconds
+start_delay=15
+
+# Phase 2 (Cluster deployment) rate in clusters per interval
+# Rate 500 clusters every 30 minutes
 interval_period=1800
 batch=500
-# Rate 80/5m
+# Rate 80 clusters every 5 minutes
 # interval_period=300
 # batch=80
 
+# Phase 3 (Soak baseline) delay in seconds
+end_delay=120
+
 # SNO or Mixed SNOs and MNOs
 clusters_per_app=100
+
+# Prometheus analysis per phase (uncomment to enable)
+# Use with longer idle and soak baselines to produce capacity guideline measurements
+prometheus_analysis_arg="--no-prometheus-analysis"
+# prometheus_analysis_arg=""
 
 # WAN Emulation can only be run with SNOs
 wan_em="(None)"
@@ -41,7 +52,7 @@ hub_ocp=$(oc version -o json | jq -r '.openshiftVersion')
 # grep will cause error code 141 since it prints only the first match
 cluster_ocp=$(cat /root/hv-vm/*/*/*.yml | grep "clusterImageSetNameRef:" -m 1 | awk '{print $NF}' | sed 's/openshift-//' || if [[ $? -eq 141 ]]; then true; else exit $?; fi)
 
-time ./acm-deploy-load/acm-deploy-load.py --acm-version "${acm_ver}" --aap-version "${aap_csv}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" -m "${method}" --clusters-per-app ${clusters_per_app} ${argocd_arg} -w -i 60 -t ${clusters_per_app}cpa-${batch}b-${interval_period}i-${iteration} interval -b ${batch} -i ${interval_period} 2>&1 | tee ${log_file}
+time ./acm-deploy-load/acm-deploy-load.py --acm-version "${acm_ver}" --aap-version "${aap_csv}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" -m "${method}" --clusters-per-app ${clusters_per_app} ${argocd_arg} --start-delay ${start_delay} --end-delay ${end_delay} ${prometheus_analysis_arg} -w -i 60 -t ${clusters_per_app}cpa-${batch}b-${interval_period}i-${iteration} interval -b ${batch} -i ${interval_period} 2>&1 | tee ${log_file}
 
 results_dir=$(grep "Results data captured in:" $log_file | awk '{print $NF}')
 
@@ -79,6 +90,7 @@ time ./acm-deploy-load/analyze-ansiblejobs.py ${results_dir} 2>&1 | tee -a ${log
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
+# Complete Prometheus analysis for entire workload period
 start_time=$(grep "Start Time:" ${results_dir}/report.txt | awk '{print $4}')
 end_time=$(grep "End Time:" ${results_dir}/report.txt | awk '{print $4}')
 echo "time ./acm-deploy-load/analyze-prometheus.py -p deploy-pa -s ${start_time} -e ${end_time} ${results_dir}" | tee -a ${log_file}
