@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 **acm-deploy-load** is a load testing and analysis framework for Red Hat Advanced Cluster Management (ACM) on OpenShift Container Platform (OCP). It automates large-scale cluster deployments (SNO, Compact, Standard) using Assisted Installer (AI) and Image-Based Installer (IBI), collects timing metrics, and generates reports and visualizations for capacity planning.
@@ -15,100 +13,75 @@ source .venv/bin/activate
 
 Dependencies: Python 3, `oc` CLI with hub cluster access, Chrome (for static plot export).
 
-## Running the Main Workloads
+## Main Workloads
 
-### acm-deploy-load.py — Cluster Deployment Loader
+| Tool | Purpose | Orchestration Script |
+|---|---|---|
+| `acm-deploy-load/acm-deploy-load.py` | Deploy SNO/Compact/MNO clusters via AI or IBI (7 methods) | `scripts/interval-ztp-install-all.sh` |
+| `acm-deploy-load/acm-telco-core-load.py` | Deploy Telco Core MNO clusters via GitOps + policy churn | `scripts/acm-telco-core-load.sh` |
+| `acm-deploy-load/acm-mc-load.py` | Policy churn workload against existing managed clusters | `scripts/mc-load-24hr.sh` |
 
-Deploys SNO, Compact, or Standard (MNO) clusters via Assisted Installer (AI,
-agent-based) or Image-Based Installer (IBI), using either direct manifest apply
-or ArgoCD/ZTP GitOps. Supports 7 deployment methods:
+Deployment methods: `ai-manifest`, `ai-clusterinstance`, `ai-clusterinstance-gitops`, `ai-siteconfig-gitops`, `ibi-manifest`, `ibi-clusterinstance`, `ibi-clusterinstance-gitops`
 
-```bash
-./acm-deploy-load/acm-deploy-load.py -m <method> interval -b <batch> -i <interval>
-# methods: ai-manifest, ai-clusterinstance, ai-clusterinstance-gitops,
-#          ai-siteconfig-gitops, ibi-manifest, ibi-clusterinstance, ibi-clusterinstance-gitops
-```
-
-### acm-telco-core-load.py — Telco Core MNO Workload
-
-Deploys Telco Core MNO clusters via GitOps in configurable batches, then triggers
-a policy configmap churn workload across the managed clusters once deployed.
-
-```bash
-./acm-deploy-load/acm-telco-core-load.py
-```
-
-### acm-mc-load.py — Managed Cluster Load Workload
-
-Targets existing managed clusters (no deployment) and drives the same policy churn
-workload as acm-telco-core-load.py: a configmap is updated on a regular interval,
-changing values that policies enforce, causing managed clusters to cycle between
-compliant and noncompliant states.
-
-```bash
-./acm-deploy-load/acm-mc-load.py
-```
-
-### End-to-end orchestration
-
-```bash
-# Orchestrates acm-deploy-load.py followed by post-test data collection and analysis scripts
-./scripts/interval-ztp-install-all.sh
-
-# Orchestrates acm-telco-core-load.py followed by post-test data collection
-./scripts/acm-telco-core-load.sh
-```
-
-## Analysis and Graphing
-
-```bash
-# Prometheus/Thanos metrics analysis (largest script, 1451 lines)
-./acm-deploy-load/analyze-prometheus.py
-
-# Other analyzers follow the pattern analyze-<resource>.py:
-./acm-deploy-load/analyze-upgrade.py
-./acm-deploy-load/analyze-clustergroupupgrades.py
-./acm-deploy-load/analyze-imagebasedupgrades.py
-
-# Graphing (outputs PNG via plotly/matplotlib)
-./acm-deploy-load/graph-acm-deploy.py
-./acm-deploy-load/graph-upgrade.py
-```
-
-## Ansible Playbooks for ZTP/ACM/MCE Deployment and configuration
-
-```bash
-# Deploy ACM hub, MCE, ZTP, AAP
-ansible-playbook ansible/rhacm-ztp-setup.yml
-ansible-playbook ansible/rhacm-deploy.yml
-ansible-playbook ansible/mce-deploy.yml
-ansible-playbook ansible/aap-deploy.yml
-```
-
-Variables live in `ansible/vars/`; inventory in `ansible/inventory/`.
+Ansible playbooks for hub setup: `ansible/rhacm-ztp-setup.yml`, `rhacm-deploy.yml`, `mce-deploy.yml`, `aap-deploy.yml`. Variables in `ansible/vars/`; inventory in `ansible/inventory/`.
 
 ## Code Architecture
 
+When adding or removing files in `acm-deploy-load/`, `acm-deploy-load/utils/`,
+`scripts/`, or `.claude/skills/`, update this tree to match. When adding or
+removing Ansible roles, update the role count.
+
 ```
-acm-deploy-load/          # All Python scripts
-├── acm-deploy-load.py    # Deploys SNO/Compact/MNO clusters via AI or IBI (manifest or GitOps)
-├── acm-telco-core-load.py  # Deploys Telco Core MNO clusters via GitOps in batches + policy churn workload
-├── acm-mc-load.py        # Policy churn workload against existing managed clusters (no deployment)
-├── mc-workload.py        # Load existing Managed cluster with objects
-├── analyze-*.py          # Post-run analysis tools (Prometheus, upgrades, CGU, IBI, etc.)
-├── graph-*.py            # Visualization scripts (plotly/matplotlib → PNG)
-├── acm-health.py / ocp-health.py
+acm-deploy-load/                        # All Python scripts
+├── acm-deploy-load.py                   # Deploy SNO/Compact/MNO clusters via AI or IBI
+├── acm-telco-core-load.py               # Deploy Telco Core MNO clusters via GitOps + policy churn
+├── acm-mc-load.py                       # Policy churn workload against existing managed clusters
+├── mc-workload.py                       # Load existing managed cluster with objects
+├── analyze-prometheus.py                # Prometheus/Thanos metrics analysis, generates stats files
+├── analyze-acm-deploy-time.py           # Generates deploy-time-* file (durations, peak concurrency)
+├── analyze-imageclusterinstalls.py      # ICI per-cluster install timing stats (IBI)
+├── analyze-agentclusterinstalls.py      # ACI per-cluster install timing stats (AI)
+├── analyze-clusterinstances.py          # ClusterInstance provisioning timing stats
+├── analyze-clustergroupupgrades.py      # CGU per-cluster policy timing stats
+├── analyze-imagebasedgroupupgrades.py   # IBGU analysis
+├── analyze-imagebasedupgrades.py        # IBU analysis
+├── analyze-ansiblejobs.py               # AnsibleJob analysis
+├── analyze-clusterversion.py            # ClusterVersion analysis
+├── analyze-upgrade.py                   # Upgrade analysis
+├── analyze-single-cluster-time.py       # Single cluster timing breakdown
+├── graph-acm-deploy.py                  # Deployment visualization (plotly → PNG)
+├── graph-clusterversion.py              # ClusterVersion visualization
+├── graph-upgrade.py                     # Upgrade visualization
+├── report-per-cluster.py                # Per-cluster combined report/graph
+├── benchmark-search.py                  # ACM search API benchmark
+├── hub-policy-generator.py              # Generate hub policy manifests
+├── etcd-defrag.py                       # etcd defragmentation utility
+├── acm-health.py                        # ACM hub health check
+├── ocp-health.py                        # OCP cluster health check
 └── utils/
-    ├── command.py        # subprocess wrapper around `oc` with retry logic and dry-run support
-    ├── common_ocp.py     # OCP utilities: namespace lists, Prometheus token retrieval, Thanos routing
-    ├── output.py         # Report/CSV generation, percentile stats formatting
-    ├── ztp_monitor.py    # Background thread sampling cluster install state every N seconds
-    └── talm.py           # Detects TALM minor version
+    ├── analysis.py                      # launch_prometheus_analysis() helper
+    ├── command.py                       # subprocess wrapper around `oc` with retry and dry-run
+    ├── common_ocp.py                    # OCP utilities: namespace lists, Prometheus token, Thanos routing
+    ├── output.py                        # Report card generation (report.txt), CSV/stats formatting
+    ├── ztp_monitor.py                   # Background thread sampling cluster install state every N seconds
+    └── talm.py                          # Detects TALM minor version
+scripts/
+├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa
+├── acm-telco-core-load.sh               # Orchestrates acm-telco-core-load.py + acm-telco-load-hub analysis
+├── dry-run-ztp-install.sh               # Dry-run orchestration variant
+├── mc-load-24hr.sh                      # 24-hour managed cluster load test
+├── post-acm-load-data-collection.sh     # Post-test data collection (pods, events, CRs)
+├── post-ztp-install-data-collection.sh  # Post-ZTP install data collection
+├── post-ztp-upgrade-data-collection.sh  # Post-ZTP upgrade data collection
+└── post-ztp-gen-day1-csv.sh             # Generate day-1 per-cluster CSV
 ansible/
-├── roles/                # 38+ roles (ACM, MCE, IBI, IBU, AAP, ZTP, etc.)
-└── vars/                 # Sample variable files for all cluster types
-scripts/                  # Shell wrappers for end-to-end test workflows
-results/                  # Timestamped test output directories (excluded from git)
+├── roles/                               # 38 roles (ACM, MCE, IBI, IBU, AAP, ZTP, telco-core, etc.)
+└── vars/                                # Sample variable files for all cluster types
+results/                                 # Timestamped test output directories (excluded from git)
+.claude/skills/
+├── acm-load-analysis/                   # Skill: test result analysis and comparison
+├── prometheus-sizing-report/            # Skill: hub cluster sizing reports
+└── shared-references/                   # Shared reference files used by multiple skills
 ```
 
 ## Key Concepts
@@ -122,3 +95,28 @@ results/                  # Timestamped test output directories (excluded from g
 ## OCP Resources Monitored
 
 `AgentClusterInstall`, `ImageClusterInstall`, `ClusterInstance`, `ClusterGroupUpgrade`, `ImageClusterGroupUpgrade`, `ClusterVersion`, `Policy`/`PolicyTemplate`, `AnsibleJob`, `MultiClusterHub`, `MultiClusterEngine`, `MultiClusterObservability`
+
+## Skill Maintenance
+
+Claude Code skills under `.claude/skills/` document conventions derived from the
+scripts and tools listed below. When modifying any of these source files, check
+whether the corresponding skill references need updating.
+
+| Source File | What Skills Reference From It |
+|---|---|
+| `acm-deploy-load/analyze-prometheus.py` | `-p` prefix flag, `y_unit` conversions, component namespace detection, stats file layout (`{component}/stats/{metric}.stats`), pandas describe output format |
+| `acm-deploy-load/acm-deploy-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-cluster-deployment`, `phase3-soak-baseline`), result directory naming |
+| `acm-deploy-load/acm-telco-core-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-batch-{N}`, `phase3-soak-baseline`), result directory naming, batch phase structure |
+| `acm-deploy-load/utils/output.py` | `report.txt` format and report card title (`acm-deploy-load Report Card`, `acm-telco-core-load Report Card`) |
+| `acm-deploy-load/analyze-acm-deploy-time.py` | `deploy-time-*` file format (durations, peak concurrency) |
+| `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (plaintext percentiles) |
+| `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (plaintext percentiles) |
+| `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (plaintext percentiles, two stat blocks) |
+| `acm-deploy-load/analyze-clustergroupupgrades.py` | CGU `.stats` file format (header + plaintext percentiles) |
+| `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |
+| `scripts/acm-telco-core-load.sh` | Full-test Prometheus analysis prefix (`acm-telco-load-hub`) |
+
+**Skills that depend on the above:**
+- `.claude/skills/acm-load-analysis/` — result directory layout, metrics/units, comparison methodology
+- `.claude/skills/prometheus-sizing-report/` — Prometheus queries, stats format
+- `.claude/skills/shared-references/` — stats file format, unit conversions (shared by both skills above)

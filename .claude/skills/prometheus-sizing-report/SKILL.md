@@ -5,10 +5,13 @@ description: >
   load or scale tests on Kubernetes/OpenShift clusters. Use this skill whenever the user has
   performance test results (stats files, CSV time-series, or a live Prometheus endpoint) and
   wants to produce hardware sizing guidance, resource consumption analysis, or capacity
-  planning reports. Triggers on: sizing reports, hardware recommendations from test data,
-  Prometheus data analysis for capacity planning, resource consumption reports, load test
-  result analysis, scale test analysis, cluster sizing, node sizing. Works with both
-  Single Node (SNO) and multi-node clusters. Supports PDF, Markdown, and plain text output.
+  planning reports. Works with both Single Node (SNO) and multi-node clusters. Supports
+  PDF, Markdown, and plain text output.
+when_to_use: >
+  sizing reports, hardware recommendations from test data, Prometheus data analysis
+  for capacity planning, resource consumption reports, load test result analysis,
+  scale test analysis, cluster sizing, node sizing
+argument-hint: "[result-dir] [format: pdf|md|txt]"
 ---
 
 # Prometheus Sizing Report
@@ -18,10 +21,14 @@ Kubernetes/OpenShift clusters.
 
 ## When to use
 
-- User has Prometheus/Thanos test data and wants hardware sizing recommendations
-- User has stats files (from analyze-prometheus.py or similar) and wants a sizing report
-- User asks for capacity planning based on observed resource usage
-- User wants to convert load test results into hardware requirements
+- Hardware sizing: user has test data and needs to determine CPU, memory, disk, and
+  network requirements at specific utilization targets (60%, 75%, 90%)
+- Capacity planning: user wants to project resource needs at larger scale based on
+  observed per-unit growth rates from a stepped/batched test
+- Sizing report generation: user needs a formatted document (PDF, Markdown, or
+  plain text) with sizing tables suitable for sharing with field teams or customers
+- Live cluster analysis: user has a Prometheus/Thanos endpoint and wants to query
+  current resource usage for sizing purposes
 
 ## Workflow
 
@@ -86,26 +93,11 @@ The skill supports two data input methods:
 Stats files from analyze-prometheus.py (or compatible tools) contain pre-computed
 statistics. Read `references/stats-format.md` for the exact file format.
 
-**Resolving unit uncertainty — consult analyze-prometheus.py directly:**
-If any metric's unit is unclear, read the script at
-`acm-deploy-load/analyze-prometheus.py` (in the project root). It is the
-authoritative source for both the Prometheus query and the unit conversion applied.
-Two things to look up for any stats file:
-
-1. **The `y_unit` string** passed to `query_thanos()` for that metric (e.g.,
-   `"DISK_USAGE"`, `"MEMORY"`, `"CORES"`). Search for the output filename
-   (e.g., `"pvc-usage"`, `"db-size"`) to find the call.
-
-2. **The conversion block** in `query_thanos()` that handles that `y_unit` value.
-   Each branch shows the exact divisor:
-   - `MEMORY`     → `bytes / (1024^3)`  → GiB (binary)
-   - `DISK_USAGE` → `bytes / (1000^3)`  → GB  (decimal) — applies to disk-util,
-                                           etcd DB size, AND PVC usage
-   - `NET`        → `bytes / (1024^2)`  → MiB/s
-   - `DISK_TPUT_MB` → `bytes / (1000^2)` → MB/s
-
-Do not rely on the stats filename or intuition alone to infer units. Always verify
-against the script when in doubt.
+**Resolving unit uncertainty:** If any metric's unit is unclear, see
+`.claude/skills/shared-references/stats-file-format.md` for the full unit
+conversion reference and `Unit:` header detection logic. When still uncertain,
+read `acm-deploy-load/analyze-prometheus.py` and find the `y_unit` parameter
+for that metric's `query_thanos()` call — it is the authoritative source.
 
 **Directory structure per analysis run:**
 ```
@@ -124,7 +116,7 @@ against the script when in doubt.
 - `node/stats/mem-node.stats` — Memory usage in GiB (use Max for sizing)
 - `node/stats/disk-iops-*-node.stats`, `disk-tput-*-node.stats` — Disk I/O (IOPS and throughput in MB/s)
 - `node/stats/disk-util-*-node.stats` — Disk partition **used space in GB** (bytes/1000^3); NOT a percentage
-- `node/stats/net-rcv-node.stats`, `net-xmt-node.stats` — Network in MiB/s
+- `node/stats/net-rcv-node.stats`, `net-xmt-node.stats` — Network in Mbps (if `Unit:` header present) or MiB/s (old, no header)
 - `etcd/stats/db-size.stats` — etcd database size in **GB** (decimal, bytes/1000^3)
 
 **Key files for component breakdown:**
@@ -152,7 +144,7 @@ is a separate series (node name, pod name, or aggregate label). Key rows:
 **Units (already converted in stats files):**
 - CPU: cores
 - Memory: GiB (bytes / 1024^3)
-- Network: MiB/s (bytes / 1024^2)
+- Network: Mbps (if `Unit:` header present) or MiB/s (old, no header)
 - Disk usage: GB (bytes / 1000^3)
 - Disk throughput: MB/s (bytes / 1000^2)
 - IOPS: operations/second
@@ -171,7 +163,7 @@ If the user has a live Prometheus/Thanos endpoint, query it directly. Read
 Prometheus queries return raw values in base units (bytes, seconds). Convert:
 - CPU: cores (from irate of cpu_seconds_total)
 - Memory: bytes → GiB (divide by 1024^3)
-- Network: bytes/s → MiB/s (divide by 1024^2)
+- Network: bytes/s → Mbps (× 8 / 1,000,000)
 - Disk: bytes → GB (divide by 1000^3)
 
 ### Step 4: Analyze and Size
@@ -191,7 +183,7 @@ For each test phase, extract:
 2. Per-component CPU P95 and Memory Max (for component breakdown)
 3. Disk usage max (root, etcd, container storage partitions)
 4. Network throughput P95
-5. etcd DB size (P95 or Max)
+5. etcd DB size Max
 6. Resource counts (pods, namespaces, configmaps)
 
 #### Growth rate analysis (for stepped/batched tests)
@@ -279,6 +271,13 @@ Use fixed-width formatted tables. Keep line width under 120 characters.
 
 ## Important considerations
 
+- **Never fabricate data.** Every value in a report must come from an actual file
+  that was read or a Prometheus query that was executed. If a stats file is missing,
+  unreadable, or does not contain the expected row, omit that metric and note it as
+  unavailable — never fill in a plausible value. If information needed for the
+  report (e.g., hardware specs, cluster topology, workload parameters) cannot be
+  determined from the test artifacts, ask the user rather than guessing.
+
 - **Never assume components.** The user defines what software stack they're running.
   Don't hardcode ACM, MCE, GitOps, or any specific operator set. Ask what components
   are installed and which namespace groupings matter.
@@ -295,7 +294,8 @@ Use fixed-width formatted tables. Keep line width under 120 characters.
   baseline since many deployments spend most of their time in steady state.
 
 - **Be explicit about units.** CPU in cores, memory in GiB (binary), disk in GB
-  (decimal), network in MiB/s. State units in every table header.
+  (decimal), network in Mbps or MiB/s (check stats file `Unit:` header — see
+  the NET y_unit note above). State units in every table header.
 
 - **For multi-node clusters, report per-node.** Sizing recommendations are per-machine.
   Show how total cluster resources map to per-node requirements.

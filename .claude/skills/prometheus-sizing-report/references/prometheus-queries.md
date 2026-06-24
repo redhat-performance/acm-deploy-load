@@ -79,7 +79,7 @@ sum by (instance) (
 )
 ```
 
-### Network — Per node (bytes/s, convert to MiB/s)
+### Network — Per node (bytes/s, convert to Mbps)
 
 Receive (1-minute rate, excludes loopback):
 ```promql
@@ -133,7 +133,7 @@ terminated (Succeeded/Failed). Use `kube_pod_status_phase` for non-terminated co
 
 ## etcd Queries
 
-### Database size (bytes, convert to GiB)
+### Database size (bytes, convert to GB)
 
 ```promql
 etcd_mvcc_db_total_size_in_bytes{cluster=''}
@@ -221,7 +221,7 @@ apiserver_storage_objects{resource='services'}
 
 Note: These counts include ALL objects (including terminated pods, completed jobs).
 
-### PVC usage (bytes, convert to GiB)
+### PVC usage (bytes, convert to GB)
 
 ```promql
 sum by (namespace) (
@@ -278,12 +278,6 @@ openshift-route-controller-manager|openshift-sdn|openshift-service-ca
 
 ## Unit Conversion Reference
 
-| Prometheus Unit | Sizing Unit | Conversion |
-|----------------|-------------|------------|
-| CPU irate (cores) | cores | direct (no conversion) |
-| bytes (memory) | GiB | divide by 1024^3 (1,073,741,824) |
-| bytes/s (network) | MiB/s | divide by 1024^2 (1,048,576) |
-| bytes (disk usage) | GB | divide by 1000^3 (1,000,000,000) |
-| bytes/s (disk tput) | MB/s | divide by 1000^2 (1,000,000) |
-| seconds (latency) | seconds | direct |
-| count (objects) | count | direct |
+See `.claude/skills/shared-references/stats-file-format.md` for the full
+conversion table. Key conversions: memory bytes → GiB (/ 1024^3),
+network bytes/s → Mbps (× 8 / 1,000,000), disk bytes → GB (/ 1000^3).
