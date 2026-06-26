@@ -1446,6 +1446,7 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
 
           # Write graph and stats file
           with open("{}/{}.stats".format(stats_dir, fname), "a") as stats_file:
+            stats_file.write("Unit: {}\n".format(y_title))
             with pd.option_context("display.max_columns", None, "display.width", 240):
               stats_file.write(str(df.describe(percentiles=[.25, .5, .75, .95, .99])))
           df.to_csv("{}/{}.csv".format(csv_dir, fname))
