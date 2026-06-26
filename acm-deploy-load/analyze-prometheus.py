@@ -1350,7 +1350,7 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
   elif y_unit == "MEM":
     y_title = "Memory (GiB)"
   elif y_unit == "NET":
-    y_title = "Network (MiB/s)"
+    y_title = "Network (Mbps)"
   elif y_unit == "DISK_USAGE":
     y_title = "Disk Usage (GB)"
   elif y_unit == "DISK_TPUT_MB":
@@ -1403,13 +1403,9 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
             bytes_to_gib = 1024 * 1024 * 1024
             metric_values = [float(x[1]) / bytes_to_gib for x in metric["values"]]
           elif y_unit == "NET":
-            # Current network metrics are in MiB/s which is uncommon for network throughput metrics
-            # Consider converting to Mbps (megabits per second or Gigabits per second) for better readability
-            # To convert 100 MiB/s to Gbps:
-            # * Convert MiB to bits: 100 MiB/s * (1024 * 1024 * 8) = 838,860,800 bits/s
-            # * Convert bits to Gbps: 838,860,800 bits/s / 1,000,000,000 = 0.8388608 Gbps
-            bytes_to_mib = 1024 * 1024
-            metric_values = [float(x[1]) / bytes_to_mib for x in metric["values"]]
+            # Prometheus irate() returns bytes/s; convert to megabits per second (Mbps)
+            bytes_to_mbps = 1_000_000 / 8
+            metric_values = [float(x[1]) / bytes_to_mbps for x in metric["values"]]
           elif y_unit == "DISK_USAGE":
             bytes_to_gb = 1000 * 1000 * 1000
             metric_values = [float(x[1]) / bytes_to_gb for x in metric["values"]]
