@@ -26,7 +26,7 @@ gogs_username: testadmin
 gogs_password: testadmin
 
 # The ztp-site-generator container image tag
-ztp_site_generator_image_tag: "{{ 'v4.21.0-1' if ztp_repo_type == 'telco-reference' else 'v4.20.0-1' }}"
+ztp_site_generator_image_tag: "{{ '4.21' if ztp_repo_type == 'telco-reference' else '4.20' }}"
 
 # RHACM Policy Generator Tag
 rhacm_policy_generator_image_tag: v2.13.4-2
