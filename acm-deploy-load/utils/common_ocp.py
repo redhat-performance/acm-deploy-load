@@ -23,25 +23,39 @@ import sys
 logger = logging.getLogger("acm-deploy-load")
 
 
-def detect_aap_install(kubeconfig=None, dry_run=False):
-  logger.info("Detecting AAP install by checking count of aap objects in ansible-automation-platform namespace")
-  if kubeconfig is None:
-    oc_cmd = ["oc", "get", "aap", "-n", "ansible-automation-platform", "-o", "json"]
-  else:
-    oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "aap", "-n", "ansible-automation-platform", "-o", "json"]
-  rc, output = command(oc_cmd, dry_run, no_log=True)
-  if rc != 0:
-    logger.warning("AAP not detected (oc get aap rc: {}), assuming not installed".format(rc))
-    return False
-  if not dry_run:
-    aap_data = json.loads(output)
-    if len(aap_data["items"]) > 0:
-      return True
-    else:
-      return False
-  else:
-    # Pretend AAP install detected for dry-run
+def detect_aap_instance(kubeconfig, dry_run=False):
+  logger.info("Checking for AnsibleAutomationPlatform instance")
+  if dry_run:
+    logger.info("Dry-run: assuming AAP instance exists")
     return True
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "ansibleautomationplatform",
+      "-n", "ansible-automation-platform", "-o", "jsonpath={.items[0].metadata.name}"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0 or not output.strip():
+    logger.info("No AnsibleAutomationPlatform instance found")
+    return False
+  logger.info("AnsibleAutomationPlatform instance found: {}".format(output.strip()))
+  return True
+
+
+def get_aap_version(kubeconfig, dry_run=False):
+  logger.info("Getting AnsibleAutomationPlatform version")
+  if dry_run:
+    logger.info("Dry-run: assuming AAP installed")
+    return "aap-operator (dry-run)"
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "ansible-automation-platform", "-o", "json"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0:
+    logger.warning("AnsibleAutomationPlatform CSV lookup failed (rc: {}), assuming not installed".format(rc))
+    return ""
+  csv_data = json.loads(output)
+  for item in csv_data.get("items", []):
+    name = item.get("metadata", {}).get("name", "")
+    if name.startswith("aap-operator"):
+      logger.info("AnsibleAutomationPlatform version: {}".format(name))
+      return name
+  logger.warning("AnsibleAutomationPlatform CSV not found, assuming not installed")
+  return ""
 
 
 def get_base_ocp_namespaces(ocp_version):
@@ -108,6 +122,36 @@ def get_base_ocp_namespaces(ocp_version):
     # return []
 
 
+def get_mce_version(kubeconfig, dry_run=False):
+  logger.info("Getting MultiClusterEngine version")
+  if dry_run:
+    return "mce (dry-run)"
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "multiclusterengine", "multiclusterengine",
+      "-o", "jsonpath={.status.currentVersion}"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0:
+    logger.warning("MultiClusterEngine not found (rc: {})".format(rc))
+    return ""
+  version = output.strip()
+  logger.info("MultiClusterEngine version: {}".format(version))
+  return version
+
+
+def get_mch_version(kubeconfig, dry_run=False):
+  logger.info("Getting MultiClusterHub version")
+  if dry_run:
+    return "mch (dry-run)"
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "multiclusterhub", "multiclusterhub",
+      "-n", "open-cluster-management", "-o", "jsonpath={.status.currentVersion}"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0:
+    logger.warning("MultiClusterHub not found (rc: {}), ACM may not be installed".format(rc))
+    return ""
+  version = output.strip()
+  logger.info("MultiClusterHub version: {}".format(version))
+  return version
+
+
 def get_ocp_namespace_list(kubeconfig):
   logger.info("Getting OCP namespace list")
   oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "namespace", "-o", "json"]
@@ -123,30 +167,32 @@ def get_ocp_namespace_list(kubeconfig):
 def get_ocp_version(kubeconfig):
   logger.info("Getting OCP version")
   version = {}
-  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "version", "-o", "json"]
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "clusterversion", "version", "-o", "json"]
   rc, output = command(oc_cmd, False, no_log=True)
   if rc != 0:
-    logger.error("oc version rc: {}".format(rc))
+    logger.error("oc get clusterversion version rc: {}".format(rc))
     sys.exit(1)
-  version_data = json.loads(output)
-  if "openshiftVersion" in version_data:
-    version_key = "openshiftVersion"
-  elif "releaseClientVersion" in version_data:
-    logger.info("openshiftVersion not found in oc version, falling back to releaseClientVersion")
-    # If this fallback occurs, it means that the initial cluster install likely ended in partial state
-    version_key = "releaseClientVersion"
-  else:
-    logger.warning("Unable to determine ocp version via oc version: {}".format(version_data))
-    version["major"] = 0
-    version["minor"] = 0
-    version["patch"] = "0"
-    return version
+  cv_data = json.loads(output)
 
-  logger.debug("Version is {}".format(version_data[version_key]))
-  version["major"] = int(version_data[version_key].split(".")[0])
-  version["minor"] = int(version_data[version_key].split(".")[1])
+  # Prefer the first Completed entry in history; fall back to desired
+  version_string = ""
+  history = cv_data.get("status", {}).get("history", [])
+  for entry in history:
+    if entry.get("state", "") == "Completed":
+      version_string = entry.get("version", "")
+      break
+  if not version_string:
+    version_string = cv_data.get("status", {}).get("desired", {}).get("version", "")
+
+  if not version_string:
+    logger.error("Unable to determine OCP version from ClusterVersion status")
+    sys.exit(1)
+
+  logger.info("OCP version: {}".format(version_string))
+  version["major"] = int(version_string.split(".")[0])
+  version["minor"] = int(version_string.split(".")[1])
   # Sometimes patch version includes string data (Ex 4.14.0-rc.0)
-  version["patch"] = ".".join(version_data[version_key].split(".")[2:])
+  version["patch"] = ".".join(version_string.split(".")[2:])
   return version
 
 

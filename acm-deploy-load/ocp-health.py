@@ -274,7 +274,7 @@ def main():
   details = []
 
   version = get_ocp_version(cliargs.kubeconfig)
-  logger.info("oc version reports cluster is {}.{}.{}".format(version["major"], version["minor"], version["patch"]))
+  logger.info("OCP version is {}.{}.{}".format(version["major"], version["minor"], version["patch"]))
 
   logger.info("Checking cluster")
 

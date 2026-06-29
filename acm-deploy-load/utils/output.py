@@ -48,7 +48,7 @@ def assemble_stats(the_list, seconds=True):
 
 def generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
     wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time, wait_playbook_start_time,
-    wait_playbook_end_time, soak_start_time, available_clusters, monitor_data, cliargs, total_intervals, report_dir):
+    wait_playbook_end_time, soak_start_time, available_clusters, monitor_data, cliargs, versions, total_intervals, report_dir):
   # Timestamps define three workload phases:
   #   Phase 1 (Idle Baseline):      start_time -> deploy_start_time
   #   Phase 2 (Cluster Deployment): deploy_start_time -> soak_start_time
@@ -100,12 +100,15 @@ def generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_
     log_write(report, "acm-deploy-load Report Card")
     phase_break(True, report)
     log_write(report, "Versions")
-    log_write(report, " * ACM: {}".format(cliargs.acm_version))
-    if cliargs.aap_version != "null" and cliargs.aap_version != "":
-      log_write(report, " * AAP: {}".format(cliargs.aap_version))
-    log_write(report, " * Test: {}".format(cliargs.test_version))
-    log_write(report, " * Hub OCP: {}".format(cliargs.hub_version))
-    log_write(report, " * Deployed OCP: {}".format(cliargs.deploy_version))
+    if versions["acm_version"]:
+      log_write(report, " * ACM: {}".format(versions["acm_version"]))
+    if versions["mce_version"]:
+      log_write(report, " * MCE: {}".format(versions["mce_version"]))
+    if versions["aap_version"]:
+      log_write(report, " * AAP: {}".format(versions["aap_version"]))
+    log_write(report, " * Test: {}".format(versions["test_version"]))
+    log_write(report, " * Hub OCP: {}".format(versions["hub_version"]))
+    log_write(report, " * Deployed OCP: {}".format(versions["deploy_version"]))
     log_write(report, "Deployed Cluster Results")
     log_write(report, " * Available Clusters: {}".format(available_clusters))
     log_write(report, " * Deployed (Applied/Committed) Clusters: {}".format(monitor_data["cluster_applied_committed"]))
@@ -182,8 +185,8 @@ def generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_
     log_write(report, " * Phase 3 / Soak Baseline (End delay): {}s :: {}".format(
         cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
     log_write(report, " * Monitor interval: {}s".format(cliargs.monitor_interval))
-    if cliargs.wan_emulation:
-      log_write(report, " * Wan Emulation: {}".format(cliargs.wan_emulation))
+    if versions["wan_emulation"]:
+      log_write(report, " * Wan Emulation: {}".format(versions["wan_emulation"]))
     log_write(report, "Workload Phases")
     log_write(report, " * Start Time: {} {}".format(
         datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), int(start_time * 1000)))
@@ -213,7 +216,7 @@ def generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_
 
 def generate_telco_core_load_report(workload_start_time, end_time, start_delay_complete_ts,
     end_delay_start_ts, cluster_deployed_timestamps, total_clusters_deployed,
-    total_policy_cm_updates, available_clusters, deploy_batch_count, cliargs, report_dir):
+    total_policy_cm_updates, available_clusters, deploy_batch_count, cliargs, versions, report_dir):
 
   total_elapsed_time = round(end_time - workload_start_time)
   total_idle_baseline_time = round(start_delay_complete_ts - workload_start_time)
@@ -224,6 +227,17 @@ def generate_telco_core_load_report(workload_start_time, end_time, start_delay_c
     phase_break(True, report)
     log_write(report, "acm-telco-core-load Report Card")
     phase_break(True, report)
+    log_write(report, "Versions")
+    if versions["acm_version"]:
+      log_write(report, " * ACM: {}".format(versions["acm_version"]))
+    if versions["mce_version"]:
+      log_write(report, " * MCE: {}".format(versions["mce_version"]))
+    if versions["test_version"]:
+      log_write(report, " * Test: {}".format(versions["test_version"]))
+    if versions["hub_version"]:
+      log_write(report, " * Hub OCP: {}".format(versions["hub_version"]))
+    if versions["deploy_version"]:
+      log_write(report, " * Deployed OCP: {}".format(versions["deploy_version"]))
     log_write(report, "Workload Parameters")
     if cliargs.no_deploy == False and cliargs.no_policy == False:
       phase2_label = "Cluster Deployment + Policy Updates"

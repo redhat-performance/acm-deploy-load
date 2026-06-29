@@ -15,26 +15,16 @@ wan_em="(None)"
 
 ts="$(date -u +%Y%m%d-%H%M%S)"
 log_file="dr-${ts}.log"
-# acm_ver=$(cat /root/rhacm-deploy/deploy/snapshot.ver)
-# test_ver="ZTP Scale Run ${iteration}"
-# hub_ocp=$(oc version -o json | jq -r '.openshiftVersion')
-# grep will cause error code 141 since it prints only the first match
-# cluster_ocp=$(cat /root/hv-vm/*/siteconfigs/*-siteconfig.yml | grep "clusterImageSetNameRef:" -m 1 | awk '{print $NF}' | sed 's/openshift-//' || if [[ $? -eq 141 ]]; then true; else exit $?; fi)
-
-# Dry run "overrides"
-acm_ver="ACM Version Dry Run"
 test_ver="ZTP Scale Run ${iteration}"
-hub_ocp="Hub Dry Run"
-cluster_ocp="Deploy Dry Run"
 interval_period=1
 
-time ./acm-deploy-load/acm-deploy-load.py --dry-run --start-delay 1 --end-delay 1 --acm-version "${acm_ver}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" --clusters-per-app ${clusters_per_app} -w --ztp-client-templates -i 10 -t dry-run interval -b ${batch} -i ${interval_period} ztp 2>&1 | tee ${log_file}
+time ./acm-deploy-load/acm-deploy-load.py --dry-run --start-delay 1 --end-delay 1 --test-version "${test_ver}" --wan-emulation "${wan_em}" --clusters-per-app ${clusters_per_app} -w --ztp-client-templates -i 10 -t dry-run interval -b ${batch} -i ${interval_period} 2>&1 | tee ${log_file}
 
 results_dir=$(grep "Results data captured in:" $log_file | awk '{print $NF}')
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
-time ./acm-deploy-load/graph-acm-deploy.py --acm-version "${acm_ver}" --test-version "${test_ver}" --hub-version "${hub_ocp}" --deploy-version "${cluster_ocp}" --wan-emulation "${wan_em}" ${results_dir} 2>&1 | tee -a ${log_file}
+time ./acm-deploy-load/graph-acm-deploy.py ${results_dir} 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 

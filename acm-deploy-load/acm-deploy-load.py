@@ -22,12 +22,13 @@ from datetime import datetime, timedelta, timezone
 import glob
 from jinja2 import Template
 from utils.analysis import launch_prometheus_analysis
-from utils.common_ocp import detect_aap_install, validate_kubeconfig
+from utils.common_ocp import detect_aap_instance, get_aap_version, get_mce_version, get_mch_version, get_ocp_version, validate_kubeconfig
 from utils.command import command
 from utils.output import generate_deploy_load_report
 from utils.output import phase_break
 from utils.ztp_monitor import ZTPMonitor
 from utils.talm import detect_talm_minor
+import json
 import logging
 import math
 import os
@@ -283,11 +284,7 @@ def main():
   # Report options
   parser.add_argument("-t", "--results-dir-suffix", type=str, default="int-0",
                       help="Suffix to be appended to results directory name")
-  parser.add_argument("--acm-version", type=str, default="", help="Sets ACM version for report")
-  parser.add_argument("--aap-version", type=str, default="", help="Sets AAP version for report")
   parser.add_argument("--test-version", type=str, default="ZTP Scale Run 1", help="Sets test version for graph title")
-  parser.add_argument("--hub-version", type=str, default="", help="Sets OCP Hub version for report")
-  parser.add_argument("--deploy-version", type=str, default="", help="Sets OCP deployed version for report")
   parser.add_argument("--wan-emulation", type=str, default="", help="Sets WAN emulation for graph title")
 
   # Debug and dry-run options
@@ -311,14 +308,6 @@ def main():
   parser.set_defaults(rate="interval", batch=100, interval=7200, start=0, end=0, skip_wait_install=False)
   cliargs = parser.parse_args()
 
-  # # From laptop for debugging, should be commented out before commit
-  # logger.info("Replacing directories for testing purposes#############################################################")
-  # cliargs.cluster_manifests = "/home/akrzos/akrh/project-things/20240820-ibi-install-on-lta/hv-vm/"
-  # cliargs.argocd_directory = "/home/akrzos/akrh/project-things/20240820-ibi-install-on-lta/argocd/"
-  # cliargs.dry_run = True
-  # cliargs.start_delay = 1
-  # cliargs.end_delay = 1
-
   if cliargs.debug:
     logger.setLevel(logging.DEBUG)
 
@@ -333,16 +322,28 @@ def main():
   # Validate kubeconfig
   validate_kubeconfig(cliargs.kubeconfig)
 
+  # Auto-detect versions
+  ocp_version = get_ocp_version(cliargs.kubeconfig)
+  versions = {
+    "hub_version": "{}.{}.{}".format(ocp_version["major"], ocp_version["minor"], ocp_version["patch"]),
+    "acm_version": get_mch_version(cliargs.kubeconfig, cliargs.dry_run),
+    "mce_version": get_mce_version(cliargs.kubeconfig, cliargs.dry_run),
+    "aap_version": get_aap_version(cliargs.kubeconfig, cliargs.dry_run),
+    "deploy_version": "",
+    "test_version": cliargs.test_version,
+    "wan_emulation": cliargs.wan_emulation,
+  }
+  if versions["aap_version"] and detect_aap_instance(cliargs.kubeconfig, cliargs.dry_run):
+    logger.info("AAP instance detected, waiting for playbook completion")
+    cliargs.wait_playbook = True
+  else:
+    logger.info("AAP instance not detected")
+  logger.info("Detected versions - ACM: {}, MCE: {}, Hub OCP: {}, AAP: {}".format(
+      versions["acm_version"], versions["mce_version"], versions["hub_version"], versions["aap_version"]))
+
   # Detect TALM version
   talm_minor = int(detect_talm_minor(cliargs.talm_version, cliargs.dry_run))
   logger.info("Using TALM cgu monitoring based on TALM minor version: {}".format(talm_minor))
-
-  # Detect AAP install
-  if detect_aap_install(cliargs.kubeconfig, cliargs.dry_run):
-    logger.info("AAP install detected, waiting for playbook completion")
-    cliargs.wait_playbook = True
-  else:
-    logger.info("AAP install not detected")
 
   # Validate parameters
   if (cliargs.start < 0):
@@ -424,6 +425,14 @@ def main():
     sys.exit(1)
   logger.info("Total {} available clusters for deployment".format(available_clusters))
 
+  # Detect deployed OCP version from clusterImageSetNameRef in first cluster manifest
+  with open(cluster_list[0]) as f:
+    for line in f:
+      if "clusterImageSetNameRef:" in line:
+        versions["deploy_version"] = line.split()[-1].replace("openshift-", "")
+        break
+  logger.info("Detected deployed OCP version: {}".format(versions["deploy_version"]))
+
   if "gitops" in cliargs.method:
     max_ztp_clusters = available_ztp_apps * cliargs.clusters_per_app
     logger.info("Discovered {} ztp cluster apps with capacity for {} * {} = {} Clusters".format(
@@ -486,6 +495,10 @@ def main():
   # Create the results directory to store data into
   logger.debug("Creating report directory: {}".format(report_dir))
   os.mkdir(report_dir)
+
+  # Write versions to results directory
+  with open("{}/versions.json".format(report_dir), "w") as vf:
+    json.dump(versions, vf, indent=2)
 
   #############################################################################
   # Manifest application / gitops "phase"
@@ -750,7 +763,7 @@ def main():
   generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
       wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time,
       wait_playbook_start_time, wait_playbook_end_time, soak_start_time,
-      available_clusters, monitor_data, cliargs, total_intervals, report_dir)
+      available_clusters, monitor_data, cliargs, versions, total_intervals, report_dir)
 
 if __name__ == "__main__":
   sys.exit(main())

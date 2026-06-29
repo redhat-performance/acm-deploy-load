@@ -20,11 +20,12 @@
 import argparse
 from datetime import datetime, timedelta, timezone
 import glob
+import json
 from math import ceil
 from jinja2 import Template
 from utils.analysis import launch_prometheus_analysis
 from utils.command import command
-from utils.common_ocp import validate_kubeconfig
+from utils.common_ocp import get_mce_version, get_mch_version, get_ocp_version, validate_kubeconfig
 from utils.output import generate_telco_core_load_report
 from utils.output import log_write
 from utils.output import phase_break
@@ -153,13 +154,16 @@ def main():
   parser.add_argument("-e", "--end-delay", type=int, default=120,
                       help="Phase 3 / Soak baseline delay after deploys complete (seconds)")
 
+  # Report options
   parser.add_argument("-t", "--results-dir-suffix", type=str, default="test-00",
                       help="Suffix to be appended to results directory name")
-
-  parser.add_argument("--no-prometheus-analysis", action="store_true", default=False,
-                      help="Do not run analyze-prometheus.py in background post each phase+batch")
+  parser.add_argument("--test-version", type=str, default="Telco Core Load", help="Sets test version for report")
 
   parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
+
+  # Prometheus analysis options
+  parser.add_argument("--no-prometheus-analysis", action="store_true", default=False,
+                      help="Do not run analyze-prometheus.py in background post each phase+batch")
 
   cliargs = parser.parse_args()
 
@@ -171,6 +175,18 @@ def main():
                  "Deploy only (--no-policy), or Policy only (--no-deploy).")
 
   validate_kubeconfig(cliargs.kubeconfig)
+
+  # Auto-detect versions
+  ocp_version = get_ocp_version(cliargs.kubeconfig)
+  versions = {
+    "hub_version": "{}.{}.{}".format(ocp_version["major"], ocp_version["minor"], ocp_version["patch"]),
+    "acm_version": get_mch_version(cliargs.kubeconfig),
+    "mce_version": get_mce_version(cliargs.kubeconfig),
+    "deploy_version": "",
+    "test_version": cliargs.test_version,
+  }
+  logger.info("Detected versions - ACM: {}, MCE: {}, Hub OCP: {}".format(
+      versions["acm_version"], versions["mce_version"], versions["hub_version"]))
 
   phase_break()
   logger.info("ACM Telco Core Load")
@@ -184,7 +200,6 @@ def main():
   report_dir_name = "{}-telco-core-load-{}".format(datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y%m%d-%H%M%S"), cliargs.results_dir_suffix)
   report_dir = os.path.join(base_dir_results, report_dir_name)
   policy_dir = os.path.join(report_dir, "policy-cm")
-  logger.info("Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
 
   clusterinstance_files = []
   deploy_batch_count = 0
@@ -201,6 +216,14 @@ def main():
       logger.error("Zero clusters discovered.")
       sys.exit(1)
     deploy_batch_count = ceil(len(clusterinstance_files) / cliargs.batch)
+
+    # Detect deployed OCP version from clusterImageSetNameRef in first cluster manifest
+    with open(clusterinstance_files[0]) as f:
+      for line in f:
+        if "clusterImageSetNameRef:" in line:
+          versions["deploy_version"] = line.split()[-1].replace("openshift-", "")
+          break
+    logger.info("Detected deployed OCP version: {}".format(versions["deploy_version"]))
   phase_break()
 
   logger.info("Workload Parameters")
@@ -256,6 +279,7 @@ def main():
     if not cliargs.no_prometheus_analysis:
       logger.info(" * Run analyze-prometheus.py in background at phase boundaries")
     logger.info(" * Expected run time: {}s :: {}".format(expected_run_time, str(timedelta(seconds=expected_run_time))))
+  logger.info(" * Results data captured in: {}".format("/".join(report_dir.split("/")[-2:])))
 
   phase_break()
   # Detect a policy configmap
@@ -279,6 +303,10 @@ def main():
   logger.debug("Creating report directory: {}".format(report_dir))
   os.mkdir(report_dir)
   os.mkdir(policy_dir)
+
+  # Write versions to results directory
+  with open("{}/versions.json".format(report_dir), "w") as vf:
+    json.dump(versions, vf, indent=2)
 
   #############################################################################
   # Phase 1: Idle Baseline
@@ -438,7 +466,7 @@ def main():
   generate_telco_core_load_report(workload_start_time, end_time, start_delay_complete_ts,
       end_delay_start_ts, cluster_deployed_timestamps, total_clusters_deployed,
       total_policy_cm_updates, len(clusterinstance_files), deploy_batch_count,
-      cliargs, report_dir)
+      cliargs, versions, report_dir)
 
   total_elapsed_time = round(end_time - workload_start_time)
   logger.info("Took {}s :: {}".format(total_elapsed_time, str(timedelta(seconds=total_elapsed_time))))

@@ -18,6 +18,7 @@
 
 import argparse
 from datetime import datetime, timezone
+import json
 import logging
 import pandas as pd
 import pathlib
@@ -44,12 +45,13 @@ def main():
       description="Produce graphs from acm-deploy-load monitor data",
       prog="graph-acm-deploy.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-  # Graph Title Data
-  parser.add_argument("--acm-version", type=str, default="", help="Sets ACM version for graph title")
-  parser.add_argument("--test-version", type=str, default="ZTP Scale Run 1", help="Sets test version for graph title")
-  parser.add_argument("--hub-version", type=str, default="", help="Sets OCP Hub version for graph title")
-  parser.add_argument("--deploy-version", type=str, default="", help="Sets OCP deployed version for graph title")
-  parser.add_argument("--wan-emulation", type=str, default="", help="Sets WAN emulation for graph title")
+  # Graph Title Data (auto-populated from versions.json in results directory, CLI args override)
+  parser.add_argument("--acm-version", type=str, default="", help="Override ACM version for graph title")
+  parser.add_argument("--mce-version", type=str, default="", help="Override MCE version for graph title")
+  parser.add_argument("--test-version", type=str, default="", help="Override test version for graph title")
+  parser.add_argument("--hub-version", type=str, default="", help="Override OCP Hub version for graph title")
+  parser.add_argument("--deploy-version", type=str, default="", help="Override OCP deployed version for graph title")
+  parser.add_argument("--wan-emulation", type=str, default="", help="Override WAN emulation for graph title")
 
   # Name of csv file found in results directory
   parser.add_argument("--monitor-data-file-name", type=str, default="monitor_data.csv",
@@ -63,6 +65,18 @@ def main():
   parser.add_argument("results_directory", type=str, help="The location of a acm-deploy-load results")
 
   cliargs = parser.parse_args()
+
+  # Load versions from results directory, CLI args override
+  versions_file = "{}/versions.json".format(cliargs.results_directory)
+  if pathlib.Path(versions_file).is_file():
+    with open(versions_file) as vf:
+      versions_data = json.load(vf)
+    for key in ["acm_version", "mce_version", "test_version", "hub_version", "deploy_version", "wan_emulation"]:
+      if key in versions_data and not getattr(cliargs, key):
+        setattr(cliargs, key, versions_data[key])
+
+  # Use ACM version for titles; fall back to MCE version for MCE-only installs
+  display_version = cliargs.acm_version or cliargs.mce_version
 
   logger.info("ACM Deploy Graph")
   # logger.info("CLI Args: {}".format(cliargs))
@@ -80,22 +94,22 @@ def main():
   policy_compliant = df["policy_compliant"].values[-1]
   playbook_completed = df["playbook_completed"].values[-1]
 
-  title_cluster_node = "ACM {} {} ({}/{} clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(cliargs.acm_version,
+  title_cluster_node = "ACM {} {} ({}/{} clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(display_version,
       cliargs.test_version, cluster_completed, cluster_inited, cliargs.hub_version, cliargs.deploy_version,
       cliargs.wan_emulation)
-  title_cluster = "ACM {} {} ({}/{} clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(cliargs.acm_version,
+  title_cluster = "ACM {} {} ({}/{} clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(display_version,
       cliargs.test_version, managed, cluster_inited, cliargs.hub_version, cliargs.deploy_version, cliargs.wan_emulation)
-  title_policy = "ACM {} {} ({}/{} du compliant)<br>OCP {}, Deployed Clusters {}, W/E {}".format(cliargs.acm_version,
+  title_policy = "ACM {} {} ({}/{} du compliant)<br>OCP {}, Deployed Clusters {}, W/E {}".format(display_version,
       cliargs.test_version, policy_compliant, policy_inited, cliargs.hub_version, cliargs.deploy_version,
       cliargs.wan_emulation)
-  title_playbook = "ACM {} {} ({}/{} playbook completed)<br>OCP {}, Deployed Clusters {}, W/E {}".format(cliargs.acm_version,
+  title_playbook = "ACM {} {} ({}/{} playbook completed)<br>OCP {}, Deployed Clusters {}, W/E {}".format(display_version,
       cliargs.test_version, playbook_completed, policy_compliant, cliargs.hub_version, cliargs.deploy_version,
       cliargs.wan_emulation)
-  title_share = "ACM {} {} ({}/{} compliant clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(cliargs.acm_version,
+  title_share = "ACM {} {} ({}/{} compliant clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(display_version,
       cliargs.test_version, policy_compliant, cluster_inited, cliargs.hub_version, cliargs.deploy_version,
       cliargs.wan_emulation)
   title_share_playbook = "ACM {} {} ({}/{} playbook completed clusters)<br>OCP {}, Deployed Clusters {}, W/E {}".format(
-      cliargs.acm_version, cliargs.test_version, playbook_completed, cluster_inited, cliargs.hub_version,
+      display_version, cliargs.test_version, playbook_completed, cluster_inited, cliargs.hub_version,
       cliargs.deploy_version, cliargs.wan_emulation)
 
   y_cluster_node = ["cluster_applied", "cluster_init", "node_booted", "node_discovered", "cluster_installing",

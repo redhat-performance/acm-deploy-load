@@ -1570,7 +1570,7 @@ def main():
   # Finished with start/end time
 
   version = get_ocp_version(cliargs.kubeconfig)
-  logger.info("oc version reports cluster is {}.{}.{}".format(version["major"], version["minor"], version["patch"]))
+  logger.info("OCP version is {}.{}.{}".format(version["major"], version["minor"], version["patch"]))
 
   route = get_thanos_querier_route(cliargs.kubeconfig)
   if route == "":
