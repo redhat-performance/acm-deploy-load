@@ -114,12 +114,11 @@ def get_base_ocp_namespaces(ocp_version):
     "openshift-service-ca",
     "openshift-service-ca-operator",
   ]
-  # 4.20 and 4.21 have the same base namespaces
-  if ocp_version["major"] == 4 and ocp_version["minor"] in [20, 21]:
+  # 4.20, 4.21, and 4.22 have the same base namespaces
+  if ocp_version["major"] == 4 and ocp_version["minor"] in [20, 21, 22]:
     return ocp_4_20_base_namespaces
   else:
     return ocp_4_20_base_namespaces
-    # return []
 
 
 def get_mce_version(kubeconfig, dry_run=False):
