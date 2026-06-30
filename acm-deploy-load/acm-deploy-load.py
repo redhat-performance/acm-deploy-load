@@ -239,12 +239,11 @@ def main():
       description="Tool to load ACM with Cluster deployments via manifests or GitOps ZTP",
       prog="acm-deploy-load.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-  parser.add_argument("-m", "--method", choices=install_methods, default="ibi-clusterinstance-gitops",
-                      help="The method of cluster install, ai - Assisted-Installer, ibi - Image-Based-Installer")
-
   # "Global" args
   parser.add_argument("-k", "--kubeconfig", type=str, default="/root/mno/kubeconfig",
                       help="Changes which kubeconfig to connect to the hub cluster")
+  parser.add_argument("-m", "--method", choices=install_methods, default="ibi-clusterinstance-gitops",
+                      help="The method of cluster install, ai - Assisted-Installer, ibi - Image-Based-Installer")
   parser.add_argument("-cm", "--cluster-manifests", type=str, default="/root/hv-vm/",
                       help="The location of the cluster manifests, siteconfigs and resource files")
   parser.add_argument("-a", "--argocd-directory", type=str,
@@ -342,7 +341,7 @@ def main():
       versions["acm_version"], versions["mce_version"], versions["hub_version"], versions["aap_version"]))
 
   # Detect TALM version
-  talm_minor = int(detect_talm_minor(cliargs.talm_version, cliargs.dry_run))
+  talm_minor = int(detect_talm_minor(cliargs.kubeconfig, cliargs.talm_version, cliargs.dry_run))
   logger.info("Using TALM cgu monitoring based on TALM minor version: {}".format(talm_minor))
 
   # Validate parameters

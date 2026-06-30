@@ -41,6 +41,8 @@ def main():
       description="Analyze ClusterGroupUpgrades data",
       prog="analyze-clustergroupupgrades.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
   parser.add_argument("results_directory", type=str, help="The location to place analyzed data")
+  parser.add_argument("-k", "--kubeconfig", type=str, default="/root/mno/kubeconfig",
+                      help="Changes which kubeconfig to connect to the hub cluster")
   parser.add_argument("-n", "--namespace", type=str, default="ztp-install", help="Namespace of the CGUs to analyze")
   parser.add_argument("-p", "--display-precache", action="store_true", default=False, help="Display each CGU precache duration")
   parser.add_argument("-b", "--display-backup", action="store_true", default=False, help="Display each CGU backup duration")
@@ -54,10 +56,10 @@ def main():
   cgu_stats_file = "{}/clustergroupupgrades-{}-{}.stats".format(cliargs.results_directory, cliargs.namespace, ts)
 
   # Detect TALM version
-  talm_minor = int(detect_talm_minor(cliargs.talm_version, False))
+  talm_minor = int(detect_talm_minor(cliargs.kubeconfig, cliargs.talm_version))
   logger.info("Using TALM cgu analysis based on TALM minor version: {}".format(talm_minor))
 
-  oc_cmd = ["oc", "get", "clustergroupupgrades", "-n", cliargs.namespace, "-o", "json"]
+  oc_cmd = ["oc", "--kubeconfig", cliargs.kubeconfig, "get", "clustergroupupgrades", "-n", cliargs.namespace, "-o", "json"]
   rc, output = command(oc_cmd, False, retries=3, no_log=True)
   if rc != 0:
     logger.error("analyze-clustergroupupgrades, oc get clustergroupupgrades -n {} rc: {}".format(cliargs.namespace, rc))

@@ -21,12 +21,9 @@ from utils.command import command
 logger = logging.getLogger("acm-deploy-load")
 
 
-def detect_talm_csv(kubeconfig=None):
+def detect_talm_csv(kubeconfig):
   logger.info("Checking for TALM ClusterServiceVersion in openshift-operators")
-  if kubeconfig is None:
-    oc_cmd = ["oc", "get", "csv", "-n", "openshift-operators", "-o", "json"]
-  else:
-    oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "openshift-operators", "-o", "json"]
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "openshift-operators", "-o", "json"]
   rc, output = command(oc_cmd, False, retries=3, no_log=True)
   if rc == 0:
     for item in json.loads(output).get("items", []):
@@ -38,11 +35,11 @@ def detect_talm_csv(kubeconfig=None):
   return False
 
 
-def detect_talm_minor(default_talm_version, dry_run):
+def detect_talm_minor(kubeconfig, default_talm_version="4.14", dry_run=False):
   talm_version = default_talm_version
   logger.info("Detecting TALM version by image tag")
   # Try repo install (openshift-cluster-group-upgrades) — image tag carries version
-  oc_cmd = ["oc", "get", "deploy", "-n", "openshift-cluster-group-upgrades", "cluster-group-upgrades-controller-manager-v2", "-o", "json"]
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "deploy", "-n", "openshift-cluster-group-upgrades", "cluster-group-upgrades-controller-manager-v2", "-o", "json"]
   rc, output = command(oc_cmd, dry_run, retries=3, no_log=True)
   if rc != 0:
     logger.warning("talm, oc get deploy -n openshift-cluster-group-upgrades rc: {}".format(rc))
@@ -63,7 +60,7 @@ def detect_talm_minor(default_talm_version, dry_run):
   # OLM/subscription install places TALM in openshift-operators with a SHA digest
   # instead of a version tag; fall back to the ClusterServiceVersion name
   logger.info("Detecting TALM version from ClusterServiceVersion (OLM install)")
-  oc_cmd = ["oc", "get", "csv", "-n", "openshift-operators", "-o", "json"]
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "openshift-operators", "-o", "json"]
   rc, output = command(oc_cmd, dry_run, retries=3, no_log=True)
   if rc == 0 and not dry_run:
     for item in json.loads(output).get("items", []):
