@@ -141,36 +141,42 @@ def main():
       break
     completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
 
+  playbook_done = playbook_completed > 0
+
   # Find when test is considered playbook completed by first time we reach max playbook completed
-  for row in reversed(data):
-    if (int(row[INDEX_PLAYBOOK_COMPLETED])) < playbook_completed:
-      break
-    playbook_completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
+  if playbook_done:
+    for row in reversed(data):
+      if (int(row[INDEX_PLAYBOOK_COMPLETED])) < playbook_completed:
+        break
+      playbook_completed_ts = datetime.strptime(row[INDEX_DATE], "%Y-%m-%dT%H:%M:%SZ")
 
   cluster_install_duration = int((cluster_installed_ts - start_ts).total_seconds())
   deployed_complete_duration = int((deployment_completed_ts - start_ts).total_seconds())
   completed_duration = int((completed_ts - start_ts).total_seconds())
-  playbook_duration = int((playbook_completed_ts - start_ts).total_seconds())
-  full_duration = int((last_ts - start_ts).total_seconds())
+  playbook_duration = int((playbook_completed_ts - start_ts).total_seconds()) if playbook_done else None
 
   with open(deploy_time_file, "w") as time_file:
-    log_write(time_file, "Start TS: {}".format(start_ts))
-    log_write(time_file, "Cluster Install TS: {}".format(cluster_installed_ts))
-    log_write(time_file, "Deployment Complete TS: {}".format(deployment_completed_ts))
-    log_write(time_file, "Completed TS: {}".format(completed_ts))
-    log_write(time_file, "Playbook Completed TS: {}".format(playbook_completed_ts))
-    log_write(time_file, "Last TS: {}".format(last_ts))
+    log_write(time_file, "First Cluster Applied TS (Phase 2 Start): {}".format(start_ts))
+    log_write(time_file, "All Clusters Installed TS: {}".format(cluster_installed_ts))
+    log_write(time_file, "All DU Profiles Compliant TS: {}".format(deployment_completed_ts))
+    log_write(time_file, "All Clusters Finished TS (DU Compliant+Timeout): {}".format(completed_ts))
+    log_write(time_file, "All Playbooks Completed TS: {}".format(playbook_completed_ts if playbook_done else "N/A"))
     log_write(time_file, "################################################################")
-    log_write(time_file, "Cluster Install Duration (Cluster Install Completed): {}s :: {}".format(cluster_install_duration, str(timedelta(seconds=cluster_install_duration))))
-    log_write(time_file, "Deployment Complete Duration (DU Compliant): {}s :: {}".format(deployed_complete_duration, str(timedelta(seconds=deployed_complete_duration))))
-    log_write(time_file, "Completed Duration (DU Timeout+Compliant): {}s :: {}".format(completed_duration, str(timedelta(seconds=completed_duration))))
-    log_write(time_file, "Playbook Duration (Playbook Completed): {}s :: {}".format(playbook_duration, str(timedelta(seconds=playbook_duration))))
-    log_write(time_file, "Full Duration: {}s :: {}".format(full_duration, str(timedelta(seconds=full_duration))))
+    log_write(time_file, "Install Duration (first applied -> all installed): {}s :: {}".format(cluster_install_duration, str(timedelta(seconds=cluster_install_duration))))
+    log_write(time_file, "DU Compliant Duration (first applied -> all DU compliant): {}s :: {}".format(deployed_complete_duration, str(timedelta(seconds=deployed_complete_duration))))
+    log_write(time_file, "Completion Duration (first applied -> all finished): {}s :: {}".format(completed_duration, str(timedelta(seconds=completed_duration))))
+    if playbook_done:
+      log_write(time_file, "Playbook Duration (first applied -> all playbooks done): {}s :: {}".format(playbook_duration, str(timedelta(seconds=playbook_duration))))
+    else:
+      log_write(time_file, "Playbook Duration (first applied -> all playbooks done): N/A")
     log_write(time_file, "################################################################")
     deployed_installed_time_diff = deployed_complete_duration - cluster_install_duration
-    playbook_deployed_time_diff = playbook_duration - deployed_complete_duration
-    log_write(time_file, "Deployment Complete - Cluster Install Completed: {}s :: {}".format(deployed_installed_time_diff, str(timedelta(seconds=deployed_installed_time_diff))))
-    log_write(time_file, "Playbook Complete - Deployment Complete: {}s :: {}".format(playbook_deployed_time_diff, str(timedelta(seconds=playbook_deployed_time_diff))))
+    log_write(time_file, "DU Compliant - All Installed: {}s :: {}".format(deployed_installed_time_diff, str(timedelta(seconds=deployed_installed_time_diff))))
+    if playbook_done:
+      playbook_deployed_time_diff = playbook_duration - deployed_complete_duration
+      log_write(time_file, "Playbook Completed - DU Compliant: {}s :: {}".format(playbook_deployed_time_diff, str(timedelta(seconds=playbook_deployed_time_diff))))
+    else:
+      log_write(time_file, "Playbook Completed - DU Compliant: N/A")
     log_write(time_file, "################################################################")
     log_write(time_file, "Peak Cluster Installing: {}".format(peak_cluster_installing))
     log_write(time_file, "Peak DU Applying: {}".format(peak_du_applying))
