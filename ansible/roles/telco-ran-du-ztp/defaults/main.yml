@@ -74,12 +74,22 @@ ibu_source_crs_apiversion: v1
 # Only implemented for SNOs, organizes the CRs into 13-18 policies instead of the default of 5 policies
 manyPolicies: false
 
-# When enabled, creates extra annotations in common PGT which use hub side templating
+# When enabled, creates extra annotations in common policy manifests which use hub side templating
 extraHubCommonTemplates: false
-# When enabled, creates extra annotations in group PGT which use hub side templating
+# When enabled, creates extra annotations in group policy manifests which use hub side templating
 extraHubGroupTemplates: false
-# When enabled, creates extra annotations from site specific ConfigMaps on hub in group PGT
+# When enabled, creates extra annotations from site specific ConfigMaps on hub in group policy manifests
 extraHubSiteTemplates: false
 
-# When enabled use ACM PolicyGenerator instead of RAN PolicyGenTemplate to generate ACM policies
-acm_policygenerator: false
+# PolicyGenerator (PG) is the default; set to false for deprecated PolicyGenTemplate (PGT)
+acm_policygenerator: true
+
+# Derived variables — isolate all PG/PGT switching here for clean PGT removal later
+# PG consolidates versions: 4.18-4.19 → 4.18, 4.20+ → 4.20
+_pg_du_profile_version: "{{ '4.20' if du_profile_version is version('4.20', '>=') else '4.18' }}"
+# Directory prefix: pg-du-{version} or pgt-du-{version}
+_policy_dir_prefix: "{{ 'pg' if acm_policygenerator else 'pgt' }}"
+# File prefix: PG uses upstream acm- prefix, PGT has none
+_policy_file_prefix: "{{ 'acm-' if acm_policygenerator else '' }}"
+# Template version: PG uses consolidated version, PGT uses du_profile_version
+_policy_template_version: "{{ _pg_du_profile_version if acm_policygenerator else du_profile_version }}"

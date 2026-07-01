@@ -15,9 +15,9 @@ policyDefaults:
       matchExpressions:
       - key: group-du-standard
         operator: Exists
-      - key: du-profile
-        operator: In
-        values: ["latest"]
+      # - key: du-profile
+      #   operator: In
+      #   values: ["latest"]
       - key: ztp-done
         operator: DoesNotExist
   remediationAction: inform

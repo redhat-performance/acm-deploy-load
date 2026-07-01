@@ -3,25 +3,25 @@ kind: Kustomization
 generators:
 # This is common to all RAN deployments
 {% if setup_ztp_common_policy %}
-- common-ranGen.yaml
+- {{ _policy_file_prefix }}common-ranGen.yaml
 {%   if du_profile_version is version('4.15', '>=') %}
 # This is common for MNO (Multi-Node OpenShift) RAN deployments (3-node and standard clusters) du >= 4.15
-- common-mno-ranGen.yaml
+- {{ _policy_file_prefix }}common-mno-ranGen.yaml
 {%   endif %}
 {% else %}
-# - common-ranGen.yaml
+# - {{ _policy_file_prefix }}common-ranGen.yaml
 # This is common for MNO (Multi-Node OpenShift) RAN deployments (3-node and standard clusters) du >= 4.15
-# - common-mno-ranGen.yaml
+# - {{ _policy_file_prefix }}common-mno-ranGen.yaml
 {% endif %}
 
 # This group policy is for all single-node deployments:
 {% if setup_ztp_sno_policy %}
-- group-du-sno-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-sno-ranGen.yaml
 # This group validator policy is for all single-node deployments:
 {%   if setup_ztp_enable_performanceprofile %}
-- group-du-sno-validator-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-sno-validator-ranGen.yaml
 {%   else %}
-# - group-du-sno-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-sno-validator-ranGen.yaml
 {%   endif %}
 # This site policy is for all clusters with the label scalelab
 {%   if setup_ztp_sno_site_policy %}
@@ -30,41 +30,41 @@ generators:
 # - sno-site.yaml
 {%   endif %}
 {% else %}
-# - group-du-sno-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-sno-ranGen.yaml
 # This group validator policy is for all single-node deployments:
-# - group-du-sno-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-sno-validator-ranGen.yaml
 # This site policy is for all clusters with the label scalelab
 # - sno-site.yaml
 {% endif %}
 
 # This group policy is for all compressed 3-node cluster deployments:
 {% if setup_ztp_compact_policy %}
-- group-du-3node-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-3node-ranGen.yaml
 # This group validator policy is for all compressed 3-node cluster deployments:
 {%   if setup_ztp_enable_performanceprofile %}
-- group-du-3node-validator-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-3node-validator-ranGen.yaml
 {%   else %}
-# - group-du-3node-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-3node-validator-ranGen.yaml
 {%   endif %}
 {% else %}
-# - group-du-3node-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-3node-ranGen.yaml
 # This group validator policy is for all compressed 3-node cluster deployments:
-# - group-du-3node-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-3node-validator-ranGen.yaml
 {% endif %}
 
 # This group policy is for all standard cluster deployments:
 {% if setup_ztp_standard_policy %}
-- group-du-standard-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-standard-ranGen.yaml
 # This group validator policy is for all standard cluster deployments:
 {%   if setup_ztp_enable_performanceprofile %}
-- group-du-standard-validator-ranGen.yaml
+- {{ _policy_file_prefix }}group-du-standard-validator-ranGen.yaml
 {%   else %}
-# - group-du-standard-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-standard-validator-ranGen.yaml
 {%   endif %}
 {% else %}
-# - group-du-standard-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-standard-ranGen.yaml
 # This group validator policy is for all standard cluster deployments:
-# - group-du-standard-validator-ranGen.yaml
+# - {{ _policy_file_prefix }}group-du-standard-validator-ranGen.yaml
 {% endif %}
 
 # Commented out by default for now

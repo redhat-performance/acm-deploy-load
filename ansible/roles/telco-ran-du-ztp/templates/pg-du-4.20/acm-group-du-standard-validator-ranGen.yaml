@@ -1,9 +1,9 @@
 apiVersion: policy.open-cluster-management.io/v1
 kind: PolicyGenerator
 metadata:
-  name: group-du-sno-validator-latest
+  name: group-du-standard-validator-latest
 placementBindingDefaults:
-  name: group-du-sno-placement-binding
+  name: group-du-standard-placement-binding
 policyDefaults:
   # categories: []
   #controls:
@@ -13,11 +13,11 @@ policyDefaults:
   placement:
     labelSelector:
       matchExpressions:
-      - key: group-du-sno
+      - key: group-du-standard
         operator: Exists
-      - key: du-profile
-        operator: In
-        values: ["latest"]
+      # - key: du-profile
+      #   operator: In
+      #   values: ["latest"]
       - key: ztp-done
         operator: DoesNotExist
   remediationAction: inform
@@ -34,9 +34,9 @@ policyDefaults:
     compliant: 5s
     noncompliant: 10s
 policies:
-- name: group-du-sno-validator-latest-du-policy
+- name: group-du-standard-validator-latest-du-policy
   policyAnnotations:
     ran.openshift.io/soak-seconds: "30"
     ran.openshift.io/ztp-deploy-wave: "10000"
   manifests:
-    - path: source-crs/validatorCRs/informDuValidatorMaster.yaml
+    - path: source-crs/validatorCRs/informDuValidatorWorker.yaml

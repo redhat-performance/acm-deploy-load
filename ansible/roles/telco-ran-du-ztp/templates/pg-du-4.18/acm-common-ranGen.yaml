@@ -1,0 +1,157 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: common-latest
+placementBindingDefaults:
+  name: common-placement-binding
+policyDefaults:
+  # categories: []
+  #controls:
+  #  - PR.DS-1 Data-at-rest
+  namespace: ztp-common
+  # Use an existing placement rule so that placement bindings can be consolidated
+  placement:
+    labelSelector:
+      common: "true"
+      # du-profile: "latest"
+  remediationAction: inform
+  severity: low
+  # standards: []
+  namespaceSelector:
+    exclude:
+      - kube-*
+    include:
+      - '*'
+  evaluationInterval:
+    compliant: 10m
+    noncompliant: 10s
+policies:
+- name: common-latest-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "1"
+  manifests:
+    - path: source-crs/ReduceMonitoringFootprint.yaml
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+    - path: source-crs/DefaultCatsrc.yaml
+      patches:
+      - metadata:
+          name: {{ common_catalogsource_name }}
+{% include 'pg-common/common-hub-annotations-10.j2' %}
+        spec:
+          displayName: disconnected-redhat-operators
+          image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_operator_index_name }}:{{ operator_index_tag }}
+{% if du_profile_version is version('4.19', '>=') %}
+    - path: source-crs/DisconnectedIDMS.yaml
+      patches:
+      - spec:
+          imageDigestMirrors:
+{% else %}
+    - path: source-crs/DisconnectedICSP.yaml
+      patches:
+      - spec:
+          repositoryDigestMirrors:
+{% endif %}
+          - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+            source: registry.redhat.io
+          - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+            source: brew.registry.redhat.io
+          - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+            source: registry-proxy.engineering.redhat.com
+          - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4
+            source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+          - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4
+            source: quay.io/openshift-release-dev/ocp-release
+{% endif %}
+- name: common-latest-subscriptions-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "2"
+  manifests:
+    # Logging operator
+    - path: source-crs/ClusterLogNS.yaml
+    - path: source-crs/ClusterLogOperGroup.yaml
+    - path: source-crs/ClusterLogSubscription.yaml
+      patches:
+{% include 'pg-common/common-hub-annotations.j2' %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/ClusterLogOperatorStatus.yaml
+    - path: source-crs/ClusterLogServiceAccount.yaml
+    - path: source-crs/ClusterLogServiceAccountAuditBinding.yaml
+    - path: source-crs/ClusterLogServiceAccountInfrastructureBinding.yaml
+    # Ptp operator
+    - path: source-crs/PtpSubscriptionNS.yaml
+    - path: source-crs/PtpSubscription.yaml
+      patches:
+{% include 'pg-common/common-hub-annotations.j2' %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/PtpSubscriptionOperGroup.yaml
+    - path: source-crs/PtpOperatorStatus.yaml
+    # SRIOV operator
+    - path: source-crs/SriovSubscriptionNS.yaml
+    - path: source-crs/SriovSubscriptionOperGroup.yaml
+    - path: source-crs/SriovSubscription.yaml
+      patches:
+{% include 'pg-common/common-hub-annotations.j2' %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/SriovOperatorStatus.yaml
+    # Storage operator
+    - path: source-crs/StorageNS.yaml
+    - path: source-crs/StorageOperGroup.yaml
+    - path: source-crs/StorageSubscription.yaml
+      patches:
+{% include 'pg-common/common-hub-annotations.j2' %}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/StorageOperatorStatus.yaml
+    #
+    # LCA operator is used for orchestrating Image Based Upgrade for SNO
+{% if include_lca_operator %}
+    - path: source-crs/LcaSubscriptionNS.yaml
+    - path: source-crs/LcaSubscriptionOperGroup.yaml
+    - path: source-crs/LcaSubscription.yaml
+      patches:
+      - spec:
+          channel: {{ lifecycle_agent_channel }}
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/LcaOperatorStatus.yaml
+{% else %}
+    # - path: source-crs/LcaSubscriptionNS.yaml
+    # - path: source-crs/LcaSubscriptionOperGroup.yaml
+    # - path: source-crs/LcaSubscription.yaml
+    # - path: source-crs/LcaOperatorStatus.yaml
+{% endif %}
+    #
+    # OADP operator is used for backing up and restoring application during Image Based Upgrade
+{% if include_oadp_operator %}
+    - path: source-crs/OadpSubscriptionNS.yaml
+    - path: source-crs/OadpSubscriptionOperGroup.yaml
+    - path: source-crs/OadpSubscription.yaml
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+      patches:
+      - spec:
+          source: {{ common_catalogsource_name }}
+{% endif %}
+    - path: source-crs/OadpOperatorStatus.yaml
+{% else %}
+    # - path: source-crs/OadpSubscriptionNS.yaml
+    # - path: source-crs/OadpSubscriptionOperGroup.yaml
+    # - path: source-crs/OadpSubscription.yaml
+    # - path: source-crs/OadpOperatorStatus.yaml
+{% endif %}

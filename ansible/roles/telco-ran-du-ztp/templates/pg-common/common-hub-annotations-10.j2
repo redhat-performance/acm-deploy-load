@@ -1,0 +1,7 @@
+{% if extraHubCommonTemplates %}
+          annotations:
+          {%- raw %}
+            scale-test-label-1: '{{hub fromConfigMap "" "common-template-map" "key1" hub}}'
+            scale-test-label-2: '{{hub fromConfigMap "" "common-template-map" "key2" hub}}'
+          {%- endraw +%}
+{% endif %}
