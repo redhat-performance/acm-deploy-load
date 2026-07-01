@@ -181,12 +181,36 @@ def aap_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def adp_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "adp")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # ADP openshift-adp Namespace CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-adp'})"
+  query_thanos(route, q, "openshift-adp", token, end_ts, duration, sub_report_dir, "cpu-adp", "OpenShift ADP CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-adp'})"
+  query_thanos(route, q, "openshift-adp", token, end_ts, duration, sub_report_dir, "mem-adp", "OpenShift ADP Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='openshift-adp'}[5m]))"
+  query_thanos(route, q, "openshift-adp", token, end_ts, duration, sub_report_dir, "net-rcv-adp", "OpenShift ADP Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='openshift-adp'}[5m]))"
+  query_thanos(route, q, "openshift-adp", token, end_ts, duration, sub_report_dir, "net-xmt-adp", "OpenShift ADP Network Transmit Throughput", "NET", w, h, q_names)
+
+  # ADP pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='openshift-adp'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-adp-pods", "OpenShift ADP Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='openshift-adp'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-adp-pods", "OpenShift ADP Pod Memory Usage", "MEM", w, h, q_names)
+  return q_names
+
+
 # ACM - open-cluster-management-agent and open-cluster-management-agent-addon namespaces only
 def acm_agent_queries(report_dir, route, token, end_ts, duration, w, h):
   sub_report_dir = os.path.join(report_dir, "acm-agent")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
   acm_agent_namespaces = [
+    "open-cluster-management-addon-observability",
     "open-cluster-management-agent",
     "open-cluster-management-agent-addon"
   ]
@@ -211,6 +235,12 @@ def acm_agent_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-agent-addon-pods", "ACM Agent Addon Pods CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management-agent-addon'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-agent-addon-pods", "ACM Agent Addon Pods Memory Usage", "MEM", w, h, q_names)
+
+  # ACM open-cluster-management-addon-observability pods
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management-addon-observability'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-addon-obs-pods", "ACM Addon Observability Pods CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management-addon-observability'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acm-addon-obs-pods", "ACM Addon Observability Pods Memory Usage", "MEM", w, h, q_names)
   return q_names
 
 
@@ -1659,6 +1689,9 @@ def main():
   if "openshift-storage" in namespaces:
     logger.info("openshift-storage namespace found, querying for odf metrics")
     report_data["odf"] = odf_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "openshift-adp" in namespaces:
+    logger.info("openshift-adp namespace found, querying for adp metrics")
+    report_data["adp"] = adp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
   # Minio is a "workload" running on hub clusters to provide object storage for the cluster
   if "minio" in namespaces:
