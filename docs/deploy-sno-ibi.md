@@ -182,7 +182,9 @@ The `--forks 10` flag parallelizes manifest generation across hypervisor VMs.
 
 ### Step 2: Setup ZTP
 
-Configure the ZTP repository, ArgoCD applications, and policy templates. The ZTP setup clones the ZTP repository, copies your generated manifests into it, and pushes everything to the bastion's git server (Gogs Service).
+Configure the ZTP repository, ArgoCD applications, and DU profile policy templates. The ZTP setup clones the upstream ZTP repository, copies your generated manifests into it, templates the DU profile policies, and pushes everything to the bastion's Gogs git server for ArgoCD to consume.
+
+The DU profile policies are generated using **PolicyGenerator (PG)** by default (`acm_policygenerator: true`). The older PolicyGenTemplate (PGT) approach is deprecated but still available by setting `acm_policygenerator: false`. See the [ZTP DU Profile Setup](ztp-du-profile-setup.md) guide for a full explanation of PG vs PGT, policy splitting, hub side templating, and all associated variables.
 
 Set ZTP-specific variables in `ansible/vars/all.yml`:
 
@@ -193,6 +195,7 @@ Set ZTP-specific variables in `ansible/vars/all.yml`:
 | `setup_ztp_sno_policy` | Create SNO cluster policy | `true` |
 | `setup_ztp_compact_policy` | Create Compact cluster policy | `false` |
 | `setup_ztp_standard_policy` | Create Standard cluster policy | `false` |
+| `acm_policygenerator` | Use ACM PolicyGenerator (`true`, default) | `true` |
 | `ztp_repo_type` | ZTP repo type (`telco-reference` for 4.20+) | `telco-reference` |
 | `ztp_site_generator_image_tag` | ZTP site generator image tag | `v4.21.0-2` |
 | `du_profile_version` | DU profile version | `4.21` |
@@ -202,6 +205,8 @@ Set ZTP-specific variables in `ansible/vars/all.yml`:
 ```console
 (.venv) [root@<bastion> acm-deploy-load]# ansible-playbook -i ansible/inventory/<cloudname>.local ansible/rhacm-ztp-setup.yml
 ```
+
+After the playbook completes, the DU profile policies and cluster siteconfigs are committed to the Gogs repository. You can browse the repository at `http://<gogs_host>:<gogs_port>/testadmin/<repo-name>` to verify the policy templates were generated correctly.
 
 ### Step 3: Deploy ACM Hub
 
