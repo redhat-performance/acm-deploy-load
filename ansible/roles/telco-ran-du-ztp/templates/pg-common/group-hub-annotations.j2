@@ -1,19 +1,16 @@
-    - path: source-crs/DisableSnoNetworkDiag.yaml
-{%- if extraHubGroupTemplates or extraHubSiteTemplates +%}
-      patches:
+{% if extraHubGroupTemplates or extraHubSiteTemplates %}
       - metadata:
           annotations:
-{%- if extraHubGroupTemplates %}
-          {% raw %}
+{% if extraHubGroupTemplates %}
+          {%- raw %}
             scale-test-label-1: '{{hub fromConfigMap "" "group-template-map" "key1" hub}}'
             scale-test-label-2: '{{hub fromConfigMap "" "group-template-map" "key2" hub}}'
-          {%- endraw %}
+          {%- endraw +%}
 {% endif %}
 {% if extraHubSiteTemplates %}
-          {% raw %}
+          {%- raw %}
             site-test-label-1: '{{hub fromConfigMap "" (printf "site-%s" .ManagedClusterName) "sitekey1" hub}}'
             site-test-label-2: '{{hub fromConfigMap "" (printf "site-%s" .ManagedClusterName) "sitekey2" hub}}'
-          {%- endraw %}
+          {%- endraw +%}
 {% endif %}
-{% endif +%}
-
+{% endif %}
