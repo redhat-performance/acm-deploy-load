@@ -35,16 +35,25 @@ policies:
       patches:
       - data:
           cloud: {{ lookup('template', './s3-creds.j2') | b64encode }}
-    - path: source-crs/data-protection/DataProtectionApplication.yaml
+    - path: source-crs/data-protection/OadpDataProtectionApplication.yaml
       patches:
       - spec:
           backupLocations:
             - velero:
+                provider: aws
+                default: true
+                credential:
+                  key: cloud
+                  name: cloud-credentials
                 config:
+                  profile: "default"
                   region: minio
                   s3Url: {{ oadp_s3Url }}
+                  insecureSkipTLSVerify: "true"
+                  s3ForcePathStyle: "true"
                 objectStorage:
                   bucket: '{% raw %}{{hub (printf "%s" .ManagedClusterName) hub}}{% endraw %}-ibu'
+                  prefix: velero
     - path: source-crs/data-protection/OadpBackupStorageLocationStatus.yaml
     - path: source-crs/data-protection/OadpCm.yaml
 {% endif %}
