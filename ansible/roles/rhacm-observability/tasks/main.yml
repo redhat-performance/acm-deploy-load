@@ -61,3 +61,14 @@
 - name: Apply RHACM Observability
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/rhacm-observability.yaml
+
+- name: Template out Observability Route Policy
+  template:
+    src: observability-route-policy.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/observability-route-policy.yaml"
+  when: setup_observability_route_policy
+
+- name: Apply Observability Route Policy
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/observability-route-policy.yaml
+  when: setup_observability_route_policy
