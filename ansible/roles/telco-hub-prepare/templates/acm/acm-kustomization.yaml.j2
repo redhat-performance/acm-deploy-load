@@ -40,12 +40,14 @@ patches:
       name: obs-thanos-secret
     path: obs-thanos-secret-policy-patch.yaml
 
+{% if rhacm_disconnected_registry is defined and rhacm_disconnected_registry is not none and rhacm_disconnected_registry | length > 1 %}
   - target:
       group: ""
       version: v1
       kind: ConfigMap
       name: mirror-registry-config
     path: acmMirrorRegistryCM-patch.yaml
+{% endif %}
 
 {% if setup_acm_mch_fix | bool %}
   - target:

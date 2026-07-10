@@ -11,7 +11,7 @@ patches:
       kind: Application
       name: hub-config
     path: init-argocd-app.yaml
-{% if rhacm_disconnected_registry is defined and rhacm_disconnected_registry | length > 1 %}
+{% if rhacm_disconnected_registry is defined and rhacm_disconnected_registry is not none and rhacm_disconnected_registry | length > 1 %}
   - target:
       group: policy.open-cluster-management.io
       version: v1

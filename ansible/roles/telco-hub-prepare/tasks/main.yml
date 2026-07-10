@@ -90,7 +90,7 @@
     enabled: "{{ setup_argocd_tls_cert | bool }}"
   - src: gitops/addPluginsPolicy-images-patch.yaml.j2
     dest: telco-hub/configuration/custom-overlays-config/gitops/addPluginsPolicy-images-patch.yaml
-    enabled: "{{ rhacm_disconnected_registry is defined and rhacm_disconnected_registry | length > 1 }}"
+    enabled: "{{ rhacm_disconnected_registry is defined and rhacm_disconnected_registry is not none and rhacm_disconnected_registry | length > 1 }}"
   when: item.enabled | default(true)
 
 - name: Get disconnected registry certificate
@@ -126,6 +126,7 @@
     dest: telco-hub/configuration/custom-overlays-config/acm/obs-thanos-secret-policy-patch.yaml
   - src: acm/acmMirrorRegistryCM-patch.yaml.j2
     dest: telco-hub/configuration/custom-overlays-config/acm/acmMirrorRegistryCM-patch.yaml
+    enabled: "{{ rhacm_disconnected_registry is defined and rhacm_disconnected_registry is not none and rhacm_disconnected_registry | length > 1 }}"
   - src: acm/acmMCH-patch.yaml.j2
     dest: telco-hub/configuration/custom-overlays-config/acm/acmMCH-patch.yaml
     enabled: "{{ setup_acm_mch_fix | bool }}"

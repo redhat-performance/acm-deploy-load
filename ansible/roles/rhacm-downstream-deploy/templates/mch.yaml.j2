@@ -4,7 +4,7 @@ kind: MultiClusterHub
 metadata:
   name: {{ mch_name }}
   namespace: open-cluster-management
-{% if rhacm_disconnected_registry or rhacm_disconnected_registry|length > 1 %}
+{% if rhacm_disconnected_registry is defined and rhacm_disconnected_registry is not none and rhacm_disconnected_registry|length > 1 %}
 spec: {}
 {% else %}
 spec:
