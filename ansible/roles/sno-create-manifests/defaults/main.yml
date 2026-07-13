@@ -62,6 +62,7 @@ ai_clusterinstance_node_templates_ns: open-cluster-management
 ai_clusterinstance_node_templates: ai-node-templates-v1
 
 # Defaults for IBI clusterinstance templates
+# Default is ibi-cluster-templates-v1, can be overridden to ibi-cluster-templates-v1-custom for observability annotations
 ibi_clusterinstance_cluster_templates_ns: open-cluster-management
 ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1
 ibi_clusterinstance_node_templates_ns: open-cluster-management

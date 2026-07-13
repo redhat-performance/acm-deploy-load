@@ -25,7 +25,7 @@ observability_thanos_s3_bucket_secret_key: minio123
 
 # Apply the observabilityRoutePolicy on the hub to set acm-hub-cluster-id and
 # acm-alertmanager-route annotations on ManagedCluster resources
-setup_observability_route_policy: true
+setup_observability_route_policy: false
 
 # ODF settings (used when observability_storage_method == "odf")
 observability_odf_obc_name: acm-observability-thanos

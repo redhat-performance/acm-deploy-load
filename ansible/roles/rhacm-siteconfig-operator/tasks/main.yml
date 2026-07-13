@@ -7,10 +7,34 @@
     path: "{{ install_directory }}/rhacm-siteconfig-operator"
     state: directory
 
-- name: Copy SiteConfig Operator ai-cluster template with search collector enabled
-  ansible.builtin.copy:
-    src: ai-cluster-templates-v1-search.yaml
+- name: Get alertmanager route for siteconfig obs annotations
+  when: siteconfig_include_obs_annotations and setup_rhacm_observability
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get route alertmanager -n open-cluster-management-observability -o jsonpath='{.spec.host}'
+  register: obs_alertmanager_route
+
+- name: Get hub cluster ID for siteconfig obs annotations
+  when: siteconfig_include_obs_annotations and setup_rhacm_observability
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get managedcluster local-cluster -o jsonpath='{.metadata.labels.clusterID}'
+  register: obs_hub_cluster_id_raw
+
+- name: Set siteconfig obs annotation facts
+  when: siteconfig_include_obs_annotations and setup_rhacm_observability
+  set_fact:
+    siteconfig_obs_alertmanager_route: "{{ obs_alertmanager_route.stdout }}"
+    siteconfig_obs_hub_cluster_id: "{{ obs_hub_cluster_id_raw.stdout | replace('-', '') | truncate(19, True, '') }}"
+
+- name: Template SiteConfig Operator ai-cluster template with search collector enabled
+  template:
+    src: ai-cluster-templates-v1-search.yaml.j2
     dest: "{{ install_directory }}/rhacm-siteconfig-operator/ai-cluster-templates-v1-search.yaml"
+
+- name: Template SiteConfig Operator ibi-cluster template with obs annotations
+  when: siteconfig_include_obs_annotations and setup_rhacm_observability
+  template:
+    src: ibi-cluster-templates-v1-custom.yaml.j2
+    dest: "{{ install_directory }}/rhacm-siteconfig-operator/ibi-cluster-templates-v1-custom.yaml"
 
 - name: Enable SiteConfig Operator
   shell: |
@@ -36,6 +60,11 @@
 - name: Apply SiteConfig Operator ai-cluster template with search collector enabled
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-siteconfig-operator/ai-cluster-templates-v1-search.yaml
+
+- name: Apply SiteConfig Operator ibi-cluster template with obs annotations
+  when: siteconfig_include_obs_annotations and setup_rhacm_observability
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-siteconfig-operator/ibi-cluster-templates-v1-custom.yaml
 
 - name: Patch SiteConfig Operator maxConcurrentReconciles to {{ siteconfig_max_concurrent_reconciles }}
   when: tune_sco_threads

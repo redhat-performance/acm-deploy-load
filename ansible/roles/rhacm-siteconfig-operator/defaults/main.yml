@@ -2,4 +2,8 @@
 # rhacm-siteconfig-operator default vars
 
 tune_sco_threads: false
-siteconfig_max_concurrent_reconciles: 10  
+siteconfig_max_concurrent_reconciles: 10
+
+# Include observability annotations (acm-alertmanager-route, acm-hub-cluster-id) in siteconfig cluster templates
+# Requires observability to be deployed first so the alertmanager route exists
+siteconfig_include_obs_annotations: true

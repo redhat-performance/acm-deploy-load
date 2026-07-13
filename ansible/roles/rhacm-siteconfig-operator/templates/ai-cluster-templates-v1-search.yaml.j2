@@ -1,3 +1,4 @@
+{% raw -%}
 apiVersion: v1
 immutable: true
 kind: ConfigMap
@@ -113,6 +114,11 @@ data:
       name: "{{ .Spec.ClusterName }}"
       annotations:
         siteconfig.open-cluster-management.io/sync-wave: "2"
+{% endraw %}
+{% if siteconfig_include_obs_annotations and siteconfig_obs_alertmanager_route is defined %}
+        acm-alertmanager-route: '{{ siteconfig_obs_alertmanager_route }}'
+        acm-hub-cluster-id: '{{ siteconfig_obs_hub_cluster_id }}'
+{% endif %}
       labels:
         cloud: auto-detect
         vendor: auto-detect
