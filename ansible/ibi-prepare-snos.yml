@@ -28,7 +28,7 @@
     when: ibi_hv_copy_disk_file | default(true)
 
 - name: Replace all SNO disk files with prepared IBI disk file
-  hosts: hv_vm
+  hosts: hv
   gather_facts: false
   vars:
     hv_ibi_disk_dir: /mnt/disk2/libvirt/ibi-disk
@@ -36,7 +36,26 @@
   vars_files:
   - vars/all.yml
   tasks:
-  - name: Replace each SNO's disk file with the prepared disk file
-    shell: |
-      cp {{ hv_ibi_disk_dir }}/prepared-{{ seed_image_version }}.qcow2 {{ hostvars[inventory_hostname]['disk_location'] }}/{{ inventory_hostname }}.qcow2
+  - name: Build list of VMs on this hypervisor
+    set_fact:
+      _my_vms: >-
+        {% set comma = joiner(",") -%}
+        [{% for vm in groups['hv_vm'] | default([]) -%}
+        {% if hostvars[vm]['ansible_host'] == inventory_hostname -%}
+        {{ comma() }}"{{ vm }}"
+        {%- endif -%}
+        {%- endfor %}]
     when: ibi_replace_sno_disk_file | default(true)
+
+  - name: Batch replace SNO disk files with prepared disk file
+    shell: |
+      {% for vm in _my_vms %}
+      cp {{ hv_ibi_disk_dir }}/prepared-{{ seed_image_version }}.qcow2 {{ hostvars[vm]['disk_location'] }}/{{ vm }}.qcow2 &
+      {% if loop.index is divisibleby 10 %}
+      wait
+      {% endif %}
+      {% endfor %}
+      wait
+    when:
+    - ibi_replace_sno_disk_file | default(true)
+    - _my_vms | length > 0
