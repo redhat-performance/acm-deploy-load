@@ -1,6 +1,7 @@
-# Fix for RDS: upstream telco-reference is missing "cluster-api-provider-azure-preview"
-# component in the MCE spec. The MCE operator adds it automatically, but ArgoCD
-# re-applies the spec without it, causing the MCE to flap between Running and Pending.
+{% set acm_version = acm_operator_channel | regex_replace('^release-', '') %}
+# Fix for RDS: upstream telco-reference is missing components that the operators add
+# automatically. Without these, ArgoCD re-applies the spec without them, causing
+# the operators to flap between Running and Pending.
 # See: https://github.com/openshift-kni/telco-reference/blob/main/telco-hub/configuration/reference-crs/required/acm/acmMCE.yaml
 ---
 - op: add
@@ -9,3 +10,20 @@
     configOverrides: {}
     enabled: false
     name: cluster-api-provider-azure-preview
+{% if acm_version is version('2.17', '>=') %}
+
+# ACM 2.17 moved cluster-permission from MCH to MCE and added maestro-preview.
+- op: add
+  path: /spec/overrides/components/-
+  value:
+    configOverrides: {}
+    enabled: true
+    name: cluster-permission
+
+- op: add
+  path: /spec/overrides/components/-
+  value:
+    configOverrides: {}
+    enabled: false
+    name: maestro-preview
+{% endif %}

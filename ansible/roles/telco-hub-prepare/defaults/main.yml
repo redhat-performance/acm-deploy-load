@@ -79,7 +79,9 @@ asc_image_storage_class: "ocs-storagecluster-cephfs"
 asc_remove_mirror_registry_ref: false
 # Set true to disable container image policy checks in assisted-service
 setup_asc_disable_image_policy: false
-# Set true to replace the upstream MCH manifest (fixes fine-grained-rbac-preview and cnv-mtv-integrations-preview component names)
+# Set true to patch the upstream MCH/MCE manifests for the installed ACM version
+# (component renames, spec field removals, and component additions are version-aware
+# based on acm_operator_channel)
 setup_acm_mch_fix: true
 # Extra mirror-registry entries for the ACM mirror-registry-config ConfigMap
 # Each entry needs: location (upstream registry path) and mirror (local mirror path)

@@ -6,6 +6,10 @@
     repoURL: "http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/{{ gogs_username }}/{{ telco_hub_gogs_repo_name }}.git"
     targetRevision: "{{ telco_hub_repo_branch }}"
 - op: add
+  path: "/spec/syncPolicy/syncOptions"
+  value:
+    - ServerSideApply=true
+- op: add
   path: "/spec/syncPolicy/retry"
   value:
     limit: 30

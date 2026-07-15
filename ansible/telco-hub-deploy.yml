@@ -27,3 +27,11 @@
   - role: rhacm-ztp-patches
     vars:
       setup_ztp_argocd_patches: false
+  # Apply custom siteconfig cluster templates with observability annotations
+  # (acm-alertmanager-route, acm-hub-cluster-id). This runs post-deploy rather
+  # than as a Kustomize overlay because the annotation values are looked up from
+  # the live cluster (alertmanager route and local-cluster ID), which only exist
+  # after ArgoCD finishes deploying MCO and MCH.
+  - role: rhacm-siteconfig-operator
+    vars:
+      setup_rhacm_observability: true

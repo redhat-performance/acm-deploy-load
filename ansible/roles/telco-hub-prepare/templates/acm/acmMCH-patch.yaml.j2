@@ -1,14 +1,53 @@
-# Fix for RDS: upstream telco-reference has "fine-grained-rbac-preview" and "cnv-mtv-integrations-preview"
-# but the components have been renamed to "fine-grained-rbac" and "cnv-mtv-integrations".
+{% set acm_version = acm_operator_channel | regex_replace('^release-', '') %}
+# Fix for RDS: upstream telco-reference source-crs need adjustments for the installed ACM version.
 # See: https://github.com/openshift-kni/telco-reference/blob/main/telco-hub/configuration/reference-crs/required/acm/acmMCH.yaml
 ---
+{% if acm_version is version('2.17', '>=') %}
+# ACM 2.17 removed enableClusterBackup and separateCertificateManagement from the MCH spec,
+# and moved the cluster-permission component to MCE.
+- op: remove
+  path: /spec/enableClusterBackup
+
+- op: remove
+  path: /spec/separateCertificateManagement
+
+# Remove cluster-permission (index 2); remaining components shift down by one.
+- op: test
+  path: /spec/overrides/components/2/name
+  value: cluster-permission
+- op: remove
+  path: /spec/overrides/components/2
+
+# Rename -preview components at their shifted indices (were 13/14, now 12/13).
+- op: test
+  path: /spec/overrides/components/12/name
+  value: fine-grained-rbac-preview
+- op: replace
+  path: /spec/overrides/components/12/name
+  value: fine-grained-rbac
+
+- op: test
+  path: /spec/overrides/components/13/name
+  value: cnv-mtv-integrations-preview
+- op: replace
+  path: /spec/overrides/components/13/name
+  value: cnv-mtv-integrations
+{% else %}
+# ACM 2.16: rename -preview components at their original indices.
+- op: test
+  path: /spec/overrides/components/13/name
+  value: fine-grained-rbac-preview
 - op: replace
   path: /spec/overrides/components/13/name
   value: fine-grained-rbac
 
+- op: test
+  path: /spec/overrides/components/14/name
+  value: cnv-mtv-integrations-preview
 - op: replace
   path: /spec/overrides/components/14/name
   value: cnv-mtv-integrations
+{% endif %}
 
 - op: replace
   path: /metadata/annotations/installer.open-cluster-management.io~1mce-subscription-spec
