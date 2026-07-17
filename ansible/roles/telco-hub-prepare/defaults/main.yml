@@ -60,6 +60,11 @@ odf_osd_memory: "5Gi"
 odf_mds_cpu: "3"
 odf_mds_memory: "8Gi"
 
+# Search — database storage (shared with rhacm-deploy role)
+setup_rhacm_search_pv: false
+rhacm_search_storage_class: "ocs-storagecluster-cephfs"
+rhacm_search_storagesize: "100Gi"
+
 # ACM Overlay Options (Advanced Cluster Management for Kubernetes)
 # ACM operator subscription
 acm_operator_source: redhat-operators-disconnected

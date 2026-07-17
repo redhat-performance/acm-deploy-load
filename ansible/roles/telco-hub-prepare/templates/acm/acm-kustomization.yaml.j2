@@ -49,6 +49,15 @@ patches:
     path: acmMirrorRegistryCM-patch.yaml
 {% endif %}
 
+{% if setup_rhacm_search_pv | bool %}
+  - target:
+      group: search.open-cluster-management.io
+      version: v1alpha1
+      kind: Search
+      name: search-v2-operator
+    path: search-storage-patch.yaml
+{% endif %}
+
 {% if setup_acm_mch_fix | bool %}
   - target:
       group: operator.open-cluster-management.io

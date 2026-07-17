@@ -3,9 +3,9 @@
 
 mch_name: multiclusterhub
 
-rhacm_search_storageclass: localstorage2-sc
+rhacm_search_storage_class: localstorage-sc
 # Irrelevent when the PV provided will be larger anyway, applies to OBS PVs too
-rhacm_search_storagesize: 20Gi
+rhacm_search_storagesize: 100Gi
 
 # Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning for managed clusters
 apply_addondeploymentconfig_cpc_tune: false

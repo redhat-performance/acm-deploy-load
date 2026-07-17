@@ -1,0 +1,8 @@
+---
+- op: add
+  path: /spec/dbStorage/storageClassName
+  value: "{{ rhacm_search_storage_class }}"
+
+- op: replace
+  path: /spec/dbStorage/size
+  value: "{{ rhacm_search_storagesize }}"

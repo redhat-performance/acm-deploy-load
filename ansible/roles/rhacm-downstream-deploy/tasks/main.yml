@@ -111,7 +111,7 @@
 - name: Configure RHACM search with a PV
   when: setup_rhacm_search_pv
   shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storageclassname }}"}]'
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storage_class }}"}]'
 
 - name: Create search API Route
   when: setup_rhacm_search_api_route
