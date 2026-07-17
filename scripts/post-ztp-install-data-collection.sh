@@ -31,9 +31,8 @@ oc get etcd cluster -o yaml > ${output_dir}/etcd.yaml
 oc get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/cluster-config-v1
 
 oc get csv -A > ${output_dir}/csv
-# Takes too much space:
-# oc get csv -A -o yaml > ${output_dir}/csv.yaml
-# oc describe csv -A > ${output_dir}/csv.describe
+oc get subscriptions.operators.coreos.com -A > ${output_dir}/subscriptions.operators.coreos.com
+oc get installplan -A > ${output_dir}/installplan
 
 oc get no > ${output_dir}/nodes
 oc get no -o yaml > ${output_dir}/nodes.yaml
@@ -42,20 +41,23 @@ oc get ns > ${output_dir}/namespaces
 oc get ns -o yaml > ${output_dir}/namespaces.yaml
 oc get pods -A -o wide > ${output_dir}/pods
 oc get pods -A -o yaml > ${output_dir}/pods.yaml
-oc describe pods -A > ${output_dir}/pods.describe
 oc get ev -A > ${output_dir}/events
-oc get ev -A -o yaml > ${output_dir}/events.yaml
+
+echo "$(date -u) :: Collecting storage data (PVs, PVCs, StorageClasses)"
+
+oc get sc > ${output_dir}/storageclasses
+oc get sc -o yaml > ${output_dir}/storageclasses.yaml
+oc get pv > ${output_dir}/pv
+oc get pvc -A > ${output_dir}/pvc
 
 echo "$(date -u) :: Collecting clusterinstance data"
 
 oc get clusterinstance -A > ${output_dir}/clusterinstance.get_default
 oc get clusterinstance -A -o yaml > ${output_dir}/clusterinstance.yaml
-oc describe clusterinstance -A > ${output_dir}/clusterinstance.describe
 
 echo "$(date -u) :: Collecting agentclusterinstall data"
 
 oc get agentclusterinstall -A --no-headers -o custom-columns=NAME:'.metadata.name',COMPLETED:'.status.conditions[?(@.type=="Completed")].reason' > ${output_dir}/aci.status
-oc describe agentclusterinstall -A > ${output_dir}/aci.describe
 oc get agentclusterinstall -A -o yaml > ${output_dir}/aci.yaml
 
 cat ${output_dir}/aci.status | grep -v local-agent-cluster | grep -v local-cluster | awk '{print $2}' | sort | uniq -c > ${output_dir}/aci.status_count
@@ -66,7 +68,6 @@ cat ${output_dir}/aci.status | grep "InstallationInProgress" | awk '{print $1}' 
 echo "$(date -u) :: Collecting imageclusterinstall data"
 
 oc get imageclusterinstall -A --no-headers -o custom-columns=NAME:'.metadata.name',COMPLETED:'.status.conditions[?(@.type=="Completed")].reason' > ${output_dir}/ici.status
-oc describe imageclusterinstall -A > ${output_dir}/ici.describe
 oc get imageclusterinstall -A -o yaml > ${output_dir}/ici.yaml
 
 cat ${output_dir}/ici.status | awk '{print $2}' | sort | uniq -c > ${output_dir}/ici.status_count
@@ -145,12 +146,33 @@ oc get policy -A -o yaml > ${output_dir}/policy.yaml
 echo "$(date -u) :: Collecting clustergroupupgrades data"
 
 oc get clustergroupupgrades -n ztp-install --no-headers -o custom-columns=NAME:'.metadata.name',READY:'.status.conditions[?(@.type=="Succeeded")].reason' > ${output_dir}/cgu.status
-oc describe clustergroupupgrades -n ztp-install > ${output_dir}/cgu.describe
 oc get clustergroupupgrades -n ztp-install -o yaml > ${output_dir}/cgu.yaml
+
+oc get cgu -n ztp-install -o json | jq '.items[] | "\(.spec.managedPolicies | length) \(.metadata.name)"' -r > ${output_dir}/cgu.managedPolicies.count
+cat ${output_dir}/cgu.managedPolicies.count | awk '{print $1}' | sort | uniq -c > ${output_dir}/cgu.managedPolicies.totals
 
 cat ${output_dir}/cgu.status | awk '{print $2}' | sort | uniq -c > ${output_dir}/cgu.status_count
 cat ${output_dir}/cgu.status | grep "TimedOut"  | awk '{print $1}' > ${output_dir}/cgu.TimedOut
 
+# Only collect ODF data if ODF is installed
+odf_installed=$(oc get storagecluster -n openshift-storage --no-headers 2>/dev/null | wc -l)
+if [[ $odf_installed -gt 0 ]]; then
+  echo "$(date -u) :: Collecting ODF data"
+
+  oc get storagecluster -n openshift-storage > ${output_dir}/odf.storagecluster
+  oc get storagecluster -n openshift-storage -o yaml > ${output_dir}/odf.storagecluster.yaml
+
+  oc get cephcluster -n openshift-storage > ${output_dir}/odf.cephcluster
+  oc get cephcluster -n openshift-storage -o yaml > ${output_dir}/odf.cephcluster.yaml
+
+  oc get cephblockpool -n openshift-storage -o yaml > ${output_dir}/odf.cephblockpool.yaml
+  oc get cephfilesystem -n openshift-storage -o yaml > ${output_dir}/odf.cephfilesystem.yaml
+  oc get cephobjectstore -n openshift-storage -o yaml > ${output_dir}/odf.cephobjectstore.yaml
+
+  oc get noobaa -n openshift-storage > ${output_dir}/odf.noobaa
+  oc get noobaa -n openshift-storage -o yaml > ${output_dir}/odf.noobaa.yaml
+  oc get backingstore -n openshift-storage > ${output_dir}/odf.backingstore
+fi
 
 # Only collect AAP data if automation hub exists
 ztp_day2_ns_exists=$(oc get aap -A --no-headers | wc -l)

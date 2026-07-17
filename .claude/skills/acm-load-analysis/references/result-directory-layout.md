@@ -95,14 +95,15 @@ under the component directory.
 
 ```
 install-data/
-├── clusterinstance.describe, .yaml
-├── imageclusterinstalls.describe (IBI methods)
-├── agentclusterinstalls.describe (AI methods)
-├── clustergroupupgrades.describe, .yaml, .status
-├── nodes, pods, namespaces, events.yaml
-├── cgu-failures/               # Failure details if any
-├── vm{NNNNN}-clusterinstance.yml  # Per-cluster configs
-└── policy, policy.yaml
+├── clusterinstance.yaml, aci.yaml, ici.yaml
+├── cgu.status, .yaml
+├── nodes, pods, namespaces, events
+├── storageclasses, .yaml          # StorageClasses, PVs, PVCs
+├── pv, pvc
+├── odf.*                          # ODF data (only if ODF installed)
+├── policy, policy.yaml
+├── cgu-failures/                  # Per-cluster failure details
+└── vm{NNNNN}-clusterinstance.yml  # Per-cluster configs
 ```
 
 ## acm-telco-core-load Results
