@@ -146,6 +146,11 @@ oc get policy -A -o yaml > ${output_dir}/policy.yaml
 # Also takes too much space
 # oc describe policy -A > ${output_dir}/policy.describe
 
+grep NonCompliant ${output_dir}/policy | grep -v -E '^(local-cluster|open-cluster-management-global-set|ztp-common|ztp-group) ' | awk '{print $1, $2}' > ${output_dir}/policy.noncompliant
+cat ${output_dir}/policy.noncompliant | awk '{print $1}' | sort | uniq -c | sort -rn > ${output_dir}/policy.noncompliant.per_cluster
+cat ${output_dir}/policy.noncompliant | awk '{print $1}' | sort -u | wc -l > ${output_dir}/policy.noncompliant.cluster_count
+cat ${output_dir}/policy.noncompliant | awk '{print $2}' | sort | uniq -c | sort -rn > ${output_dir}/policy.noncompliant.per_policy
+
 echo "$(date -u) :: Collecting clustergroupupgrades data"
 
 oc get clustergroupupgrades -n ztp-install --no-headers -o custom-columns=NAME:'.metadata.name',READY:'.status.conditions[?(@.type=="Succeeded")].reason' > ${output_dir}/cgu.status
