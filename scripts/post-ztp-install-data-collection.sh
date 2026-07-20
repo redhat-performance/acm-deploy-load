@@ -122,7 +122,7 @@ cat ${output_dir}/managedcluster.available | grep "Unknown" > ${output_dir}/mc.U
 oc get observabilityaddon -A -o json | jq -r '.items[] | "\(.metadata.namespace) Available: \(.status.conditions[] | select(.type=="Available" and .status=="True").status), lastTransitionTime: \(.status.conditions[] | select(.type=="Available" and .status=="True").lastTransitionTime), message: \(.status.conditions[] | select(.type=="Available" and .status=="True").message)"' > ${output_dir}/obs.available.clusters
 oc get observabilityaddon -A -o json | jq -r '.items[] | "\(.metadata.namespace) Degraded: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").status), lastTransitionTime: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").lastTransitionTime), message: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").message)"' > ${output_dir}/obs.degraded.clusters
 
-echo "$(date -u) :: Collecting mch/mce/mco data"
+echo "$(date -u) :: Collecting mch/mce/mco/search data"
 
 oc get mch -A > ${output_dir}/mch
 oc get mch -A -o yaml > ${output_dir}/mch.yaml
@@ -135,6 +135,9 @@ oc describe mce > ${output_dir}/mce.describe
 oc get mco > ${output_dir}/mco
 oc get mco -o yaml > ${output_dir}/mco.yaml
 oc describe mco > ${output_dir}/mco.describe
+
+oc get search -n open-cluster-management > ${output_dir}/search
+oc get search -n open-cluster-management -o yaml > ${output_dir}/search.yaml
 
 echo "$(date -u) :: Collecting policy data"
 

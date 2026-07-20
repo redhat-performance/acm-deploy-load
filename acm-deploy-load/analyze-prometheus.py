@@ -483,6 +483,10 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management',pod=~'search.*'}[5m]))"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-search", "ACM Search pods Network Transmit Throughput", "NET", w, h, q_names)
 
+  # ACM Volume Space used
+  q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='open-cluster-management'})"
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-acm", "ACM Volume Usage", "DISK_USAGE", w, h, q_names)
+
   # ACM siteconfig-controller-manager CPU/Memory
   q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management',pod=~'siteconfig-controller-manager.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acm-ocm-siteconfig-controller-manager", "ACM siteconfig-controller-manager CPU Cores Usage", "CPU", w, h, q_names)
