@@ -7,10 +7,14 @@ rhacm_search_storage_class: localstorage-sc
 # Irrelevent when the PV provided will be larger anyway, applies to OBS PVs too
 rhacm_search_storagesize: 100Gi
 
-# Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning for managed clusters
-apply_addondeploymentconfig_cpc_tune: false
+# Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning (Shared by hub and managed cluster scenarios)
+apply_addondeploymentconfig_cpc_tune: true
 
-# Memory Requests/Limits tuning for Config Policy Controller applied via AddOnDeploymentConfig and ManagedClusterAddOn (Per managed cluster)
+# Apply ManagedClusterAddOn patch to local-cluster to tune the hub's own Config Policy Controller memory limits
+# Needed when the hub evaluates large policies (e.g. obs-route-policy that iterates over all managed clusters)
+apply_managedclusteraddon_cpc_tune_local_cluster: true
+
+# Memory Requests/Limits tuning for Config Policy Controller applied via AddOnDeploymentConfig and ManagedClusterAddOn
 # Original 128Mi/512Mi
 rhacm_config_policy_controller_memory_request: 256Mi
 rhacm_config_policy_controller_memory_limit: 4Gi

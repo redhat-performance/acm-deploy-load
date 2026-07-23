@@ -52,7 +52,12 @@
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management
 
-- name: Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning for managed clusters
+- name: Apply AddOnDeploymentConfig that has Config Policy Controller memory tuning
   when: apply_addondeploymentconfig_cpc_tune
   shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/addondeploymentconfig-cpc-tune.yaml
+
+- name: Patch local-cluster ManagedClusterAddOn to apply Config Policy Controller memory tuning on the hub
+  when: apply_addondeploymentconfig_cpc_tune and apply_managedclusteraddon_cpc_tune_local_cluster
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch managedclusteraddon config-policy-controller -n local-cluster --type merge -p '{"spec":{"configs":[{"group":"addon.open-cluster-management.io","resource":"addondeploymentconfigs","namespace":"open-cluster-management","name":"config-policy-controller-tune"}]}}'
