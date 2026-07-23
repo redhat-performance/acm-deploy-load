@@ -483,6 +483,16 @@ def acm_queries(report_dir, route, token, end_ts, duration, w, h):
   q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management',pod=~'search.*'}[5m]))"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-acm-search", "ACM Search pods Network Transmit Throughput", "NET", w, h, q_names)
 
+  # ACM Search Total CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='open-cluster-management',pod=~'search.*'})"
+  query_thanos(route, q, "ACM - Search", token, end_ts, duration, sub_report_dir, "cpu-acm-search-total", "ACM Search CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='open-cluster-management',pod=~'search.*'})"
+  query_thanos(route, q, "ACM - Search", token, end_ts, duration, sub_report_dir, "mem-acm-search-total", "ACM Search Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='open-cluster-management',pod=~'search.*'}[5m]))"
+  query_thanos(route, q, "ACM - Search", token, end_ts, duration, sub_report_dir, "net-rcv-acm-search-total", "ACM Search Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='open-cluster-management',pod=~'search.*'}[5m]))"
+  query_thanos(route, q, "ACM - Search", token, end_ts, duration, sub_report_dir, "net-xmt-acm-search-total", "ACM Search Network Transmit Throughput", "NET", w, h, q_names)
+
   # ACM Volume Space used
   q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='open-cluster-management'})"
   query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-acm", "ACM Volume Usage", "DISK_USAGE", w, h, q_names)
