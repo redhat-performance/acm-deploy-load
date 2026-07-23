@@ -84,10 +84,10 @@ echo "$(date -u) :: Collecting installed clusters data"
 cat ${output_dir}/aci.status | grep InstallationCompleted | grep -v local-agent-cluster | grep -v local-cluster | head -n 2 | awk '{print $1}' | xargs -I % sh -c "oc --kubeconfig /root/hv-vm/kc/%/kubeconfig get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/%.cluster-config-v1"
 cat ${output_dir}/ici.status | grep ClusterInstallationSucceeded | head -n 2 | awk '{print $1}' | xargs -I % sh -c "oc --kubeconfig /root/hv-vm/kc/%/kubeconfig get cm -n kube-system cluster-config-v1 -o yaml > ${output_dir}/%.cluster-config-v1"
 # Copy two SiteConfigs/ClusterInstances
-ls  /root/hv-vm/*/ai-siteconfig/*-siteconfig.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/"
-ls  /root/hv-vm/*/ai-siteconfig/*-resources.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/"
-ls  /root/hv-vm/*/ai-clusterinstance/*-clusterinstance.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/"
-ls  /root/hv-vm/*/ibi-clusterinstance/*-clusterinstance.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/"
+ls  /root/hv-vm/*/ai-siteconfig/*-siteconfig.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/ai-\$(basename %)"
+ls  /root/hv-vm/*/ai-siteconfig/*-resources.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/ai-\$(basename %)"
+ls  /root/hv-vm/*/ai-clusterinstance/*-clusterinstance.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/ai-\$(basename %)"
+ls  /root/hv-vm/*/ibi-clusterinstance/*-clusterinstance.yml | head -n 2 | xargs -I % sh -c "cp % ${output_dir}/ibi-\$(basename %)"
 # Ping 2 deployed clusters
 cat ${output_dir}/aci.status | grep InstallationCompleted | grep -v local-agent-cluster | grep -v local-cluster | head -n 2 | awk '{print $1}' | xargs -I % sh -c "ping6 -c 2 % > ${output_dir}/%.ping"
 cat ${output_dir}/ici.status | grep ClusterInstallationSucceeded | head -n 2 | awk '{print $1}' | xargs -I % sh -c "ping6 -c 2 % > ${output_dir}/%.ping"
@@ -121,6 +121,11 @@ cat ${output_dir}/managedcluster.available | grep "Unknown" > ${output_dir}/mc.U
 
 oc get observabilityaddon -A -o json | jq -r '.items[] | "\(.metadata.namespace) Available: \(.status.conditions[] | select(.type=="Available" and .status=="True").status), lastTransitionTime: \(.status.conditions[] | select(.type=="Available" and .status=="True").lastTransitionTime), message: \(.status.conditions[] | select(.type=="Available" and .status=="True").message)"' > ${output_dir}/obs.available.clusters
 oc get observabilityaddon -A -o json | jq -r '.items[] | "\(.metadata.namespace) Degraded: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").status), lastTransitionTime: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").lastTransitionTime), message: \(.status.conditions[] | select(.type=="Degraded" and .status=="True").message)"' > ${output_dir}/obs.degraded.clusters
+
+echo "$(date -u) :: Collecting klusterletaddonconfig data"
+
+cat ${output_dir}/aci.status | grep InstallationCompleted | grep -v local-agent-cluster | grep -v local-cluster | head -n 2 | awk '{print $1}' | xargs -I % sh -c "oc get klusterletaddonconfig % -n % -o yaml > ${output_dir}/%.klusterletaddonconfig.yaml"
+cat ${output_dir}/ici.status | grep ClusterInstallationSucceeded | head -n 2 | awk '{print $1}' | xargs -I % sh -c "oc get klusterletaddonconfig % -n % -o yaml > ${output_dir}/%.klusterletaddonconfig.yaml"
 
 echo "$(date -u) :: Collecting hiveconfig/mch/mce/mco/search data"
 
