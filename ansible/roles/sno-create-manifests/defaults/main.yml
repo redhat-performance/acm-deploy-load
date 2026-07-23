@@ -56,14 +56,17 @@ ai_siteconfig_cpuset: "0-3"
 ai_clusterinstance_varlibcontainers_partitioned: true
 
 # Defaults for AI clusterinstance templates
+# Original template is ai-cluster-templates-v1
+# Custom templates available: ai-cluster-templates-v1-obs, ai-cluster-templates-v1-search, ai-cluster-templates-v1-search-obs
 ai_clusterinstance_cluster_templates_ns: open-cluster-management
-ai_clusterinstance_cluster_templates: ai-cluster-templates-v1
+ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search-obs
 ai_clusterinstance_node_templates_ns: open-cluster-management
 ai_clusterinstance_node_templates: ai-node-templates-v1
 
 # Defaults for IBI clusterinstance templates
-# Default is ibi-cluster-templates-v1, can be overridden to ibi-cluster-templates-v1-custom for observability annotations
+# Original template is ibi-cluster-templates-v1
+# Custom templates available: ibi-cluster-templates-v1-obs, ibi-cluster-templates-v1-search, ibi-cluster-templates-v1-search-obs
 ibi_clusterinstance_cluster_templates_ns: open-cluster-management
-ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1
+ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-search-obs
 ibi_clusterinstance_node_templates_ns: open-cluster-management
 ibi_clusterinstance_node_templates: ibi-node-templates-v1

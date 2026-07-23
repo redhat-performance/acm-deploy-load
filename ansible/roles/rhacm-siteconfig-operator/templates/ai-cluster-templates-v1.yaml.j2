@@ -1,9 +1,9 @@
-{% raw -%}
 apiVersion: v1
 immutable: true
 kind: ConfigMap
 metadata:
-  name: ai-cluster-templates-v1-search
+  name: {{ item.name }}
+{%- raw %}
   namespace: open-cluster-management
 data:
   AgentClusterInstall: |-
@@ -106,7 +106,8 @@ data:
       policyController:
         enabled: true
       searchCollector:
-        enabled: true
+        enabled: {% endraw %}{{ item.search }}
+{%- raw %}
   ManagedCluster: |-
     apiVersion: cluster.open-cluster-management.io/v1
     kind: ManagedCluster
@@ -115,7 +116,7 @@ data:
       annotations:
         siteconfig.open-cluster-management.io/sync-wave: "2"
 {% endraw %}
-{% if siteconfig_include_obs_annotations and siteconfig_obs_alertmanager_route is defined %}
+{% if item.obs and siteconfig_obs_alertmanager_route is defined %}
         acm-alertmanager-route: '{{ siteconfig_obs_alertmanager_route }}'
         acm-hub-cluster-id: '{{ siteconfig_obs_hub_cluster_id }}'
 {% endif %}
