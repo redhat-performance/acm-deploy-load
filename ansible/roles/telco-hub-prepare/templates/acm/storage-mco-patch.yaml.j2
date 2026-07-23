@@ -2,3 +2,18 @@
 - op: replace
   path: /spec/storageConfig/storageClass
   value: "{{ mco_storage_class }}"
+- op: replace
+  path: /spec/storageConfig/alertmanagerStorageSize
+  value: "{{ mco_alertmanager_storage_size }}"
+- op: replace
+  path: /spec/storageConfig/compactStorageSize
+  value: "{{ mco_compact_storage_size }}"
+- op: replace
+  path: /spec/storageConfig/receiveStorageSize
+  value: "{{ mco_receive_storage_size }}"
+- op: replace
+  path: /spec/storageConfig/ruleStorageSize
+  value: "{{ mco_rule_storage_size }}"
+- op: replace
+  path: /spec/storageConfig/storeStorageSize
+  value: "{{ mco_store_storage_size }}"
