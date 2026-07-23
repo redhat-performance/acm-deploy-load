@@ -71,6 +71,12 @@ acm_operator_source: redhat-operators-disconnected
 acm_operator_channel: release-2.16
 # MCO — MultiClusterObservability storage class (filesystem type)
 mco_storage_class: "ocs-storagecluster-cephfs"
+# MCO — MultiClusterObservability PV sizes
+mco_alertmanager_storage_size: "20Gi"
+mco_compact_storage_size: "100Gi"
+mco_receive_storage_size: "100Gi"
+mco_rule_storage_size: "20Gi"
+mco_store_storage_size: "100Gi"
 # MCO — Observability OBC storage class (object type)
 mco_obc_storage_class: "openshift-storage.noobaa.io"
 # AgentServiceConfig storage classes
