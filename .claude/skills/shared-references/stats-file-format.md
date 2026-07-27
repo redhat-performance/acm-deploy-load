@@ -96,7 +96,7 @@ def read_stats_simple(filepath):
 | GB | bytes | / 1000^3 (1,000,000,000) | decimal |
 | MB/s | bytes/s | / 1000^2 (1,000,000) | decimal |
 | IOPS | operations/s | direct | — |
-| seconds | seconds | direct | — |
+| seconds | ms | × 1000 | etcd latency metrics |
 | count | count | direct | — |
 
 Memory uses **binary** prefixes (GiB).

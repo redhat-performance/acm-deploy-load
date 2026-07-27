@@ -79,10 +79,23 @@ Stats files under `etcd/stats/` — one column per etcd member (node hostname).
 |---|---|---|---|---|
 | DB Size | `etcd/stats/db-size.stats` | GB | Max | < 8.59 GB |
 | DB Size In Use | `etcd/stats/db-size-in-use.stats` | GB | Max | — |
-| Backend Commit Duration | `etcd/stats/backend-commit-duration.stats` | seconds | P99 | < 0.025s |
-| WAL Fsync Duration | `etcd/stats/fsync-duration.stats` | seconds | P99 | < 0.010s |
-| Peer Round-Trip Time | `etcd/stats/peer-round-trip-time.stats` | seconds | P99 | — |
-| Leader Elections | `etcd/stats/leader-elections-day.stats` | count | Max | 0 |
+| Backend Commit Duration | `etcd/stats/backend-commit-duration.stats` | ms (file has seconds, × 1000) | P99 | < 25ms |
+| WAL Fsync Duration | `etcd/stats/fsync-duration.stats` | ms (file has seconds, × 1000) | P99 | < 10ms |
+| Peer Round-Trip Time | `etcd/stats/peer-round-trip-time.stats` | ms (file has seconds, × 1000) | P99 | < 50ms |
+| Leader Elections | `etcd/stats/leader-changes.stats` | count | Max - Min | 0 |
+
+**Leader elections during test:** The `leader-changes.stats` file contains the
+cumulative counter `etcd_server_leader_changes_seen_total` — it records the total
+number of leader elections since etcd started, not just during the test. To
+determine whether elections occurred **during** the observation period, compute
+`max - min` for each member. If the delta is 0, the counter never incremented
+and no elections occurred. Report the max delta across members (worst-case
+member). A flat counter (min == max) means zero elections regardless of the
+counter's absolute value.
+
+Do NOT use `total-leader-elections.stats` (`changes(...[1d])`) — its 1-day
+lookback window can include pre-test activity and produce misleading non-zero
+values.
 
 **etcd DB size is in GB (decimal), NOT GiB.** The etcd quota of 8 GiB binary
 equals 8.59 GB decimal. Compare Max against 8.59 GB.

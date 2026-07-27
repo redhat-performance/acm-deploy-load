@@ -4,7 +4,7 @@ description: >
   Analyze test results from acm-deploy-load.py or acm-telco-core-load.py. Produces
   resource consumption reports from a single result or side-by-side comparisons of
   two results. Covers timing, hub cluster CPU/memory/network/disk/etcd, component
-  breakdowns, pod health, and operational flags.
+  breakdowns, and pod health.
 when_to_use: >
   analyze test results, compare test runs, resource consumption report,
   hub cluster analysis, test result comparison, ODF vs No-ODF comparison,
@@ -98,6 +98,7 @@ stats file locations, units, and which statistic to extract.
   to Mbps (× 8.388608). Use Gbps when value exceeds 1000 Mbps.
 - Disk usage: GB (bytes / 1000^3) — decimal, NOT binary
 - Disk throughput: MB/s (bytes / 1000^2) — decimal
+- etcd latency: ms (seconds × 1000) — stats files store seconds, convert to ms for reporting
 - etcd DB size: GB (bytes / 1000^3) — decimal
 - PVC usage: GB (bytes / 1000^3) — decimal
 
@@ -124,6 +125,12 @@ From `deploy-time-*`:
 - Cluster Install Duration, DU Profile Duration, Full Duration
 - Peak Cluster Installing, Peak DU Applying, Peak Concurrency
 
+In a **comparison** (Step 5), the deployment milestones table shows only Install
+Duration and DU Compliant Duration — omit peak metrics (Peak Cluster Installing,
+Peak DU Applying, Peak Concurrency) and derived gaps (DU - Install Gap), as
+these reflect run-specific scheduling patterns and are not meaningful for
+comparison.
+
 From workload stats files (these are plaintext, NOT pandas format — read
 `references/result-directory-layout.md` for format):
 - ICI per-cluster: p50, p95, p99, max (seconds)
@@ -140,8 +147,13 @@ From the Prometheus analysis directory (phase directories, or full-test analysis
 **Cluster-level** (single aggregate column) — present first:
 - CPU P95 (cores), App CPU P95 (cores)
 - Memory Max (GiB), App Memory Max (GiB)
-- Network Receive P95, Transmit P95 (Mbps or Gbps)
 - Non-terminated Pods Max (count)
+
+Do NOT include cluster-level network (cluster/stats/net-rcv-cluster,
+net-xmt-cluster). Cluster-level network sums all container I/O including
+intra-node pod-to-pod traffic that never leaves the host — it does not
+reflect NIC utilization or translate to hardware requirements. Report
+network at the per-node level only.
 
 **Per-node** (one column per node in stats files) — present after cluster-level:
 - CPU P95 (cores)
@@ -156,18 +168,21 @@ From the Prometheus analysis directory (phase directories, or full-test analysis
 For each detected component directory in the Prometheus analysis:
 - CPU P95 (cores)
 - Memory Max (GiB)
-- Network Receive P95 (Mbps)
-- Network Transmit P95 (Mbps)
 
-Present as a table sorted by Memory Max descending.
+Present as a table sorted by Memory Max descending. Do NOT include
+component-level network — it measures container I/O (including intra-node
+pod-to-pod traffic) and routinely exceeds physical NIC capacity. Report
+network at the per-node level only.
 
 #### 4e. etcd Health
 - DB Size Max (GB) — flag if approaching 8.59 GB (the 8 GiB binary quota)
 - DB Size In Use Max (GB)
-- Backend Commit Duration P99 (seconds) — flag if > 0.025s
-- WAL Fsync Duration P99 (seconds) — flag if > 0.010s
-- Peer Round-Trip Time P99 (seconds)
-- Leader Elections Max (count) — flag if > 0
+- Backend Commit Duration P99 (ms) — flag if > 25ms
+- WAL Fsync Duration P99 (ms) — flag if > 10ms
+- Peer Round-Trip Time P99 (ms) — flag if > 50ms
+- Leader Elections (count, during test) — flag if > 0. Compute as `max - min`
+  per member from `leader-changes.stats`; if delta is 0 the counter was flat
+  and no elections occurred. See `references/metrics-and-units.md` for details.
 
 #### 4f. Storage
 - PVC Usage Max per namespace (GB)
@@ -179,12 +194,6 @@ Check `install-data/` for:
 - Pods in CrashLoopBackOff or Error state
 - Containers with OOMKilled restart reason
 - Report any found with pod name, namespace, and restart count
-
-#### 4h. Operational Flags
-- etcd DB size approaching quota (> 6 GB of 8.59 GB limit)
-- Non-terminated pod count approaching max-pods limit (250 default)
-- Node memory usage exceeding 80% of installed RAM
-- Cluster install or DU profile failures (> 0%)
 
 ### Step 5: Analyze — Two-Result Comparison
 
@@ -216,6 +225,40 @@ When phase directories are absent from one or both results:
 - If neither has phase directories, compare full-test analysis directories only
 - If only one has phases, compare full-test analysis directories from both
 
+**Standard phase section structure — every phase comparison section uses
+this layout in this order:**
+
+1. Cluster-level resources table (CPU P95, Memory Max, Pods Max)
+2. Per-node CPU P95 table
+3. Per-node Memory Max table
+4. Per-node Network P95 table
+5. etcd table — single table with columns `Metric | A | B | Delta`:
+   DB Size Max (GB), DB Size In Use Max (GB), Backend Commit P99 (ms),
+   WAL Fsync P99 (ms), Peer Round-Trip P99 (ms), Leader Elections
+   (count, during test). Values are worst-case member (max across etcd
+   members). Use exact values from the stats file, not approximations.
+   For leader elections, compute `max - min` per member from
+   `leader-changes.stats` — report the max delta across members.
+6. Asymmetric component footprint (e.g., ODF) if applicable
+
+All phases must use the same table structure and column headers. Do not
+vary the format, omit tables, or split a table into multiple tables
+between phases.
+
+**Statistic selection applies to ALL sections — phases included:**
+
+Phase comparisons use the same statistics as full-test: P95 for CPU,
+P95 for Network, Max for Memory, P99 for etcd latency, Max for etcd DB
+size. These rules (from Step 3) apply to every table in the report
+without exception — including component footprint sections (ODF, LSO,
+etc.), asymmetric component sections, etcd sections at every scope
+(phase and full-test), and cross-phase trend tables.
+
+If a required statistic is not available in your current context (e.g.,
+you have Mean and Max but not P95), read the stats file directly and
+extract the correct row. Never substitute Mean for P95 or Max — this
+understates peaks and makes comparisons misleading.
+
 **Significance thresholds (resource metrics — CPU, memory, network, disk):**
 - < 5%: within run-to-run variance, not significant
 - 5-10%: minor difference, note but don't emphasize
@@ -230,6 +273,71 @@ When phase directories are absent from one or both results:
 **Causation rule:** Report observations, not theories. State what differs and by
 how much. Do not assert why unless the test design explicitly isolates that variable.
 
+### Step 5b: Comparison Graphs (comparisons only)
+
+When comparing two results that both have full-test Prometheus analysis
+directories (`deploy-pa-*` or `acm-telco-load-hub-*`), generate overlay
+time-series graphs using `graph-acm-compare.py`.
+
+**Usage:**
+```
+python acm-deploy-load/graph-acm-compare.py \
+  <result-dir-a> <result-dir-b> \
+  --label-a "No-ODF" --label-b "ODF" \
+  -o results/comparison-{suffixA}-vs-{suffixB} \
+  -p comparison
+```
+
+The script auto-discovers the `deploy-pa-*` or `acm-telco-load-hub-*`
+directory within each result directory. It parses `report.txt` for phase
+boundaries and draws shaded regions with labels (Idle, Deploy, Soak) on
+each graph. It handles x-axis alignment (elapsed minutes from each
+result's start), aggregation (max across nodes for network, max across
+etcd members for DB size), and styling.
+
+**Graphs produced (12 total):**
+
+| File Suffix | Title | Aggregation | Y Unit | Reference Line |
+|---|---|---|---|---|
+| `cpu-cluster` | Cluster CPU | Direct | Cores | — |
+| `cpu-node` | Node CPU (Peak Node) | Max across nodes | Cores | — |
+| `mem-cluster` | Cluster Memory | Direct | GiB | — |
+| `mem-node` | Node Memory (Peak Node) | Max across nodes | GiB | — |
+| `net-rcv-node` | Network Receive (Peak Node) | Max across nodes | Mbps | — |
+| `net-xmt-node` | Network Transmit (Peak Node) | Max across nodes | Mbps | — |
+| `backend-commit-etcd` | etcd Backend Commit Duration | Max across members | ms (CSV seconds × 1000) | 25ms |
+| `db-size-etcd` | etcd DB Size | Max across members | GB | 8.59 GB (8 GiB quota) |
+| `disk-iops-write-etcd` | Disk Write IOPS — etcd Partition | Max across nodes | IOPS | — |
+| `disk-tput-write-etcd` | Disk Write Throughput — etcd Partition | Max across nodes | MB/s | — |
+| `fsync-etcd` | etcd WAL Fsync Duration | Max across members | ms (CSV seconds × 1000) | 10ms |
+| `peer-rtt-etcd` | etcd Peer Round-Trip Time | Max across members | ms (CSV seconds × 1000) | 50ms |
+
+Peak-node graphs use max across nodes (worst-case NIC/CPU/memory
+utilization), not sum — the sum would exceed any single interface's
+capacity and misrepresent hardware requirements. Memory graphs use
+base-2 tick intervals (32, 64, 128 GiB, etc.).
+
+**Report placement:** Distribute graphs under the subsection they
+illustrate — do NOT group them in a single "Resource Consumption Over
+Time" block. Place each graph immediately after its associated table:
+
+| Graphs | Placed after |
+|---|---|
+| cpu-cluster, mem-cluster | Cluster-Level Resources (Full Test) table |
+| cpu-node | Per-Node CPU P95 table |
+| mem-node | Per-Node Memory Max table |
+| net-rcv-node, net-xmt-node | Per-Node Network P95 table |
+| disk-iops-write-etcd, disk-tput-write-etcd | Per-Node Disk I/O tables |
+| backend-commit-etcd, fsync-etcd, peer-rtt-etcd, db-size-etcd | Full-Test etcd Comparison (Section N+1) |
+
+In markdown: `![title](filename.png)`. In plain text: `Graph: filename.png`
+or `Graphs: file1.png, file2.png`.
+
+**Output directory:** Comparison reports and their graphs go in a
+subdirectory: `results/comparison-{suffixA}-vs-{suffixB}/`. This keeps
+the report files (.md, .txt) and graph PNGs together instead of
+scattering them across the flat `results/` directory.
+
 ### Step 6: Generate Report
 
 Output as structured markdown. Every table must include units in column headers.
@@ -238,8 +346,12 @@ Output as structured markdown. Every table must include units in column headers.
 markdown (`.md`) and a plain text (`.txt`) version:
 - **Single result**: `results/analysis-{result-suffix}.md` and `.txt`
   (e.g., `results/analysis-odf-ibi-extended-12.md`)
-- **Comparison**: `results/comparison-{suffixA}-vs-{suffixB}.md` and `.txt`
-  (e.g., `results/comparison-noodf-ibi-extended-10-vs-odf-ibi-extended-11.md`)
+- **Comparison**: Create a subdirectory
+  `results/comparison-{suffixA}-vs-{suffixB}/` and write the report and
+  graph PNGs into it:
+  - `results/comparison-{suffixA}-vs-{suffixB}/comparison-{suffixA}-vs-{suffixB}.md`
+  - `results/comparison-{suffixA}-vs-{suffixB}/comparison-{suffixA}-vs-{suffixB}.txt`
+  - Graph PNGs from `graph-acm-compare.py` (see Step 5b)
 
 The markdown version uses standard markdown tables. The plain text version uses
 aligned columns with ASCII separators (`---`, `~~~`, `===`) for terminal and
@@ -248,6 +360,61 @@ email readability.
 Derive the suffix from the result directory name — use the portion after the
 timestamp-method prefix (the human-readable label at the end). Display the report
 content in the conversation and save both files.
+
+#### Comparison Report Format
+
+Comparison reports follow a standardized structure defined in
+`references/comparison-methodology.md` (section "Comparison Report Structure").
+The key rules are:
+
+**Preamble:** Every comparison report starts with a title and Result A/B
+identification listing full directory names:
+```markdown
+# ACM Deploy Load Comparison: {Label A} vs {Label B}
+
+- **Result A ({Label A}):** `{full-directory-name-A}`
+- **Result B ({Label B}):** `{full-directory-name-B}`
+```
+
+**Section numbering:** All sections use numbered headings (`## 1.`, `## 2.`,
+etc.). Sections 1-2 are always Test Environment and Timing. Phase sections
+start at 3 and increment. Full-test and subsequent sections number
+consecutively after the last phase. If no phases, full-test starts at 3.
+
+**Test Environment table (Section 1):** Uses a standardized row set in this
+order: ACM Version, MCE Version, Hub OCP Version, Deployed OCP Version,
+Test Label, Deployment Method, Clusters Deployed, Clusters Installed
+(count + %), Managed Clusters (count + %), DU Profile Compliant (count + %),
+Clusters per ArgoCD App, Batch Size / Interval (combined row), WAN Emulation
+(parenthesized latency/loss grouping), Hub Nodes (count + short names), Total
+Duration (seconds + H:MM:SS), then Phase rows (seconds + H:MM:SS). See
+`references/comparison-methodology.md` for the full specification.
+
+**Phase headings:** `## N. Phase X — Descriptive Name` followed by a 1-line
+description of what the phase captures.
+
+**Node names:** Use the shortest unambiguous form. If all nodes share the same
+domain suffix (e.g., `-000-r650`), strip it (use `d16-h10` not
+`d16-h10-000-r650`). Apply consistently across all tables.
+
+**Cluster-level resource tables** always include 5 rows: CPU P95 (cores),
+App CPU P95 (cores), Memory Max (GiB), App Memory Max (GiB), Non-term Pods Max.
+
+**Phase etcd tables** always include all 6 rows in a 4-column layout
+(Metric | A | B | Delta): DB Size Max (GB), DB Size In Use Max (GB),
+Backend Commit P99 (ms), WAL Fsync P99 (ms), Peer RTT P99 (ms),
+Leader Elections (during test).
+
+**Phase network tables** use compact 4-column format (no deltas):
+`Node | A Rcv | B Rcv | A Xmt | B Xmt`. Full-test network uses 8-column
+with absolute and percentage deltas.
+
+**Key Differences section** includes cross-phase trend tables (when phases
+exist): one for metric deltas across phases, one for asymmetric component
+footprint growth across phases.
+
+See `references/comparison-methodology.md` for the complete section template,
+table format standards, and examples.
 
 ## Important considerations
 
@@ -299,3 +466,9 @@ content in the conversation and save both files.
 - **Workload timing stats format.** The ICI, CGU, CI, and ACI `.stats` files at the
   result top level use a plaintext format (not pandas describe output). Read
   `references/result-directory-layout.md` for the exact format.
+
+- **No statistic fallbacks.** If the required statistic for a metric (P95 for
+  CPU/Network, Max for Memory, P99 for etcd latency) is not in your working
+  context, read the stats file to extract it. Never fall back to a different
+  statistic. A table cell showing "unavailable" is better than a cell showing
+  the wrong statistic.

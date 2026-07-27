@@ -50,6 +50,7 @@ acm-deploy-load/                        # All Python scripts
 ├── analyze-upgrade.py                   # Upgrade analysis
 ├── analyze-single-cluster-time.py       # Single cluster timing breakdown
 ├── graph-acm-deploy.py                  # Deployment visualization (plotly → PNG)
+├── graph-acm-compare.py                 # Comparison overlay graphs (plotly → PNG)
 ├── graph-clusterversion.py              # ClusterVersion visualization
 ├── graph-upgrade.py                     # Upgrade visualization
 ├── report-per-cluster.py                # Per-cluster combined report/graph
