@@ -131,7 +131,7 @@ spec:
   clusterName: {{ inventory_hostname }}
   clusterNetwork:
   - cidr: {{ "fd01::/48" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "10.128.0.0/14" }}
-    hostPrefix: {{ sno_cluster_network_host_prefix }}
+    hostPrefix: {{ sno_cluster_network_host_prefix | default(64 if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else 24) }}
   clusterType: SNO
   extraManifestsRefs:
   - name: {{ inventory_hostname }}-marketplace-namespace
