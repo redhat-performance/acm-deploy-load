@@ -16,7 +16,7 @@ metadata:
   namespace: {{ inventory_hostname }}
 type: kubernetes.io/dockerconfigjson
 data:
-  .dockerconfigjson: {{ pull_secret | b64encode  }}
+  .dockerconfigjson: {{ (pull_secret | to_json if pull_secret is mapping else pull_secret) | b64encode  }}
 {% if ai_resource_site_data %}
 ---
 apiVersion: v1

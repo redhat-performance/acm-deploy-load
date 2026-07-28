@@ -13,7 +13,7 @@ metadata:
   namespace: {{ inventory_hostname }}
 type: kubernetes.io/dockerconfigjson
 data:
-  .dockerconfigjson: "{{ disconnected_pull_secret | b64encode }}"
+  .dockerconfigjson: "{{ (disconnected_pull_secret | to_json if disconnected_pull_secret is mapping else disconnected_pull_secret) | b64encode }}"
 ---
 apiVersion: metal3.io/v1alpha1
 kind: BareMetalHost
