@@ -61,9 +61,10 @@ odf_mds_cpu: "3"
 odf_mds_memory: "8Gi"
 
 # Search — database storage (shared with rhacm-deploy role)
-setup_rhacm_search_pv: false
+setup_rhacm_search_pv: true
 rhacm_search_storage_class: "ocs-storagecluster-cephfs"
 rhacm_search_storagesize: "100Gi"
+setup_rhacm_search_api_route: true
 
 # ACM Overlay Options (Advanced Cluster Management for Kubernetes)
 # ACM operator subscription

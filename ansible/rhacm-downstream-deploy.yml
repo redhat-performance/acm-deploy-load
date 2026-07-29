@@ -33,6 +33,7 @@
   - vars/all.yml
   roles:
   - rhacm-downstream-deploy
+  - rhacm-search-configure
   - role: rhacm-observability
     when: setup_rhacm_observability
   - role: talm-deploy

@@ -1,0 +1,8 @@
+---
+# rhacm-search-configure default vars
+
+setup_rhacm_search_pv: true
+setup_rhacm_search_api_route: true
+
+rhacm_search_storage_class: localstorage-sc
+rhacm_search_storagesize: 100Gi

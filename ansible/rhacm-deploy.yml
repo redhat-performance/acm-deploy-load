@@ -18,6 +18,7 @@
   - vars/all.yml
   roles:
   - rhacm-deploy
+  - rhacm-search-configure
   - role: rhacm-observability
     when: setup_rhacm_observability
   - role: talm-deploy

@@ -1,0 +1,19 @@
+---
+# rhacm-search-configure tasks - Configure RHACM search PV and API route
+
+- name: Configure RHACM search with a PV
+  when: setup_rhacm_search_pv
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "replace", "path": "/spec/dbStorage/size", "value": "{{ rhacm_search_storagesize }}"}, {"op": "replace", "path": "/spec/dbStorage/storageClassName", "value": "{{ rhacm_search_storage_class }}"}]'
+
+- name: Check if search API Route exists
+  when: setup_rhacm_search_api_route
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get route search-api -n open-cluster-management
+  register: search_api_route
+  failed_when: false
+
+- name: Create search API Route
+  when: setup_rhacm_search_api_route and search_api_route.rc != 0
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc create route passthrough search-api --service=search-search-api -n open-cluster-management

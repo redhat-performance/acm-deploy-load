@@ -47,7 +47,7 @@ rhacm_icsp_enable_tag_mirror: false
 # When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
 rhacm_quay_pullsecret: ''
 
-setup_rhacm_search_pv: false
+setup_rhacm_search_pv: true
 setup_rhacm_search_api_route: true
 setup_rhacm_observability: false
 

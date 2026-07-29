@@ -20,6 +20,9 @@
   roles:
   - telco-hub-prepare
   - telco-hub-deploy
+  - role: rhacm-search-configure
+    vars:
+      setup_rhacm_search_pv: false
   - mce-add-clusterimagesets
   # ArgoCD deployment patching is disabled because the telco-hub RDS overlay
   # already configures ArgoCD via the hub-config Application and ztp-installation.
