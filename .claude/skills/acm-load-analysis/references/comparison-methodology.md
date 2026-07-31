@@ -176,8 +176,8 @@ The Section 1 table uses these rows in this order:
 ```
 
 Rules:
-- **Test Label**: derived from the result directory name (the human-readable
-  suffix after the timestamp-method prefix)
+- **Test Label**: provided by the user (defaults suggested from the directory
+  name suffix — the human-readable portion after the timestamp-method prefix)
 - **Success rows** (Installed, Managed, DU Profile): always show count and
   percentage — count conveys scale, percentage conveys success rate
 - **Batch Size / Interval**: combined in one row
@@ -305,7 +305,7 @@ x-axis alignment (elapsed minutes), aggregation, and styling.
 - etcd (db-size): **max** across member columns (worst-case member). The script
   adds a dashed reference line at 8.59 GB (quota).
 
-**Standard graph set (12 graphs):**
+**Resource graphs (12, from deploy-pa CSVs):**
 
 | File Suffix | CSV | Method | Y Unit | Reference Line |
 |---|---|---|---|---|
@@ -322,8 +322,30 @@ x-axis alignment (elapsed minutes), aggregation, and styling.
 | `fsync-etcd` | `etcd/csv/fsync-duration.csv` | Member max | ms (CSV seconds × 1000) | 10ms |
 | `peer-rtt-etcd` | `etcd/csv/peer-roundtrip-time.csv` | Member max | ms (CSV seconds × 1000) | 50ms |
 
+**Cluster deploy graphs (4, from monitor_data.csv):**
+
+| File Suffix | Data Source | Y Unit |
+|---|---|---|
+| `deploy-installed` | `cluster_applied` + `cluster_install_completed` | # Clusters |
+| `deploy-managed` | `cluster_applied` + `managed` | # Clusters |
+| `deploy-compliant` | `cluster_applied` + `policy_compliant` | # Clusters |
+| `deploy-all` | `cluster_applied` + all 3 milestones | # Clusters |
+
+Each individual deploy graph shows `cluster_applied` alongside one milestone
+metric. The combined `deploy-all` graph overlays all milestones with a right-side
+legend. Result A uses solid blue lines (dark navy Applied, lighter blues for
+milestones). Result B uses densely dotted lines graduating from dark red (Applied)
+to dark orange (milestones). Applied lines are the darkest and boldest (width 2)
+to emphasize the workload submission rate. Deploy graphs dynamically trim the
+x-axis: idle is trimmed to 30 minutes before the earliest deploy start (only if
+idle exceeds 30 min), soak is trimmed to 60 minutes after the latest soak start
+(only if soak exceeds 60 min), and the deploy phase is never trimmed — the union
+of both results' deploy windows is always fully visible. These are auto-generated
+when `monitor_data.csv` exists in both results. Place deploy graphs in Section 2
+after Deployment Milestones.
+
 **Naming:** `comparison-{metric}.png` where metric is the file suffix from the
-table above (e.g., `comparison-cpu-cluster.png`, `comparison-fsync-etcd.png`).
+tables above (e.g., `comparison-cpu-cluster.png`, `comparison-deploy-installed.png`).
 
 etcd latency thresholds: WAL fsync P99 < 10ms (Red Hat OCP docs, etcd.io FAQ),
 backend commit P99 < 25ms (etcd.io FAQ, Prometheus `EtcdHighBackendCommitLatency`

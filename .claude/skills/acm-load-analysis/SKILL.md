@@ -44,6 +44,12 @@ For each result directory, read `report.txt` to identify:
 - **Phase structure**: phase durations, start/end timestamps
 - **Workload parameters**: batch size, interval, WAN emulation, clusters per app
 
+**For comparisons:** After reading both `report.txt` files, ask the user what
+labels they want for Result A and Result B. Suggest defaults derived from the
+directory name suffix (the human-readable portion after the timestamp-method
+prefix). Use the user-provided labels throughout the report, graphs, and output
+filenames.
+
 ### Step 2: Inventory Available Data
 
 List the result directory to find what data is present:
@@ -295,7 +301,9 @@ each graph. It handles x-axis alignment (elapsed minutes from each
 result's start), aggregation (max across nodes for network, max across
 etcd members for DB size), and styling.
 
-**Graphs produced (12 total):**
+**Graphs produced (up to 16 total):**
+
+**Resource graphs (12, from deploy-pa CSVs):**
 
 | File Suffix | Title | Aggregation | Y Unit | Reference Line |
 |---|---|---|---|---|
@@ -312,6 +320,27 @@ etcd members for DB size), and styling.
 | `fsync-etcd` | etcd WAL Fsync Duration | Max across members | ms (CSV seconds × 1000) | 10ms |
 | `peer-rtt-etcd` | etcd Peer Round-Trip Time | Max across members | ms (CSV seconds × 1000) | 50ms |
 
+**Cluster deploy graphs (4, from monitor_data.csv):**
+
+| File Suffix | Title | Data Source | Y Unit |
+|---|---|---|---|
+| `deploy-installed` | Cluster Deploy — Installed | `cluster_applied` + `cluster_install_completed` | # Clusters |
+| `deploy-managed` | Cluster Deploy — Managed | `cluster_applied` + `managed` | # Clusters |
+| `deploy-compliant` | Cluster Deploy — Compliant | `cluster_applied` + `policy_compliant` | # Clusters |
+| `deploy-all` | Cluster Deploy — All Milestones | `cluster_applied` + all 3 milestones | # Clusters |
+
+Each individual deploy graph shows `cluster_applied` alongside one milestone
+metric. The combined `deploy-all` graph overlays all milestones with a right-side
+legend. Result A uses solid blue lines (dark navy Applied, lighter blues for
+milestones). Result B uses densely dotted lines graduating from dark red (Applied)
+to dark orange (milestones). Applied lines are the darkest and boldest (width 2)
+to emphasize the workload submission rate. Deploy graphs dynamically trim the
+x-axis: idle is trimmed to 30 minutes before the earliest deploy start (only if
+idle exceeds 30 min), soak is trimmed to 60 minutes after the latest soak start
+(only if soak exceeds 60 min), and the deploy phase is never trimmed — the union
+of both results' deploy windows is always fully visible. These graphs are
+auto-generated when `monitor_data.csv` exists in both results.
+
 Peak-node graphs use max across nodes (worst-case NIC/CPU/memory
 utilization), not sum — the sum would exceed any single interface's
 capacity and misrepresent hardware requirements. Memory graphs use
@@ -323,6 +352,7 @@ Time" block. Place each graph immediately after its associated table:
 
 | Graphs | Placed after |
 |---|---|
+| deploy-installed, deploy-managed, deploy-compliant, deploy-all | Timing Comparison (Section 2), after Deployment Milestones |
 | cpu-cluster, mem-cluster | Cluster-Level Resources (Full Test) table |
 | cpu-node | Per-Node CPU P95 table |
 | mem-node | Per-Node Memory Max table |

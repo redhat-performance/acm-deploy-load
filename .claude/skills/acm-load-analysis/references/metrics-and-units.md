@@ -81,7 +81,7 @@ Stats files under `etcd/stats/` — one column per etcd member (node hostname).
 | DB Size In Use | `etcd/stats/db-size-in-use.stats` | GB | Max | — |
 | Backend Commit Duration | `etcd/stats/backend-commit-duration.stats` | ms (file has seconds, × 1000) | P99 | < 25ms |
 | WAL Fsync Duration | `etcd/stats/fsync-duration.stats` | ms (file has seconds, × 1000) | P99 | < 10ms |
-| Peer Round-Trip Time | `etcd/stats/peer-round-trip-time.stats` | ms (file has seconds, × 1000) | P99 | < 50ms |
+| Peer Round-Trip Time | `etcd/stats/peer-roundtrip-time.stats` | ms (file has seconds, × 1000) | P99 | < 50ms |
 | Leader Elections | `etcd/stats/leader-changes.stats` | count | Max - Min | 0 |
 
 **Leader elections during test:** The `leader-changes.stats` file contains the

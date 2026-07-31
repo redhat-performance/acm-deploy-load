@@ -127,7 +127,37 @@ GRAPH_DEFS = {
     },
 }
 
-COLORS = {"a": "#2563eb", "b": "#ea580c"}
+DEPLOY_DEFS = {
+    "deploy-installed": {
+        "milestone_col": "cluster_install_completed",
+        "milestone_label": "Installed",
+        "title": "Cluster Deploy — Installed",
+    },
+    "deploy-managed": {
+        "milestone_col": "managed",
+        "milestone_label": "Managed",
+        "title": "Cluster Deploy — Managed",
+    },
+    "deploy-compliant": {
+        "milestone_col": "policy_compliant",
+        "milestone_label": "Compliant",
+        "title": "Cluster Deploy — Compliant",
+    },
+    "deploy-all": {
+        "milestone_cols": [
+            ("cluster_install_completed", "Installed"),
+            ("managed", "Managed"),
+            ("policy_compliant", "Compliant"),
+        ],
+        "title": "Cluster Deploy — All Milestones",
+    },
+}
+
+COLORS = {"a": "#2563eb", "b": "#c2410c"}
+DEPLOY_COLORS = {
+    "a_applied": "#1e3a5f", "a_milestone": "#60a5fa",
+    "b_applied": "#7f1d1d", "b_milestone": "#c2410c",
+}
 
 PHASE_COLORS = ["#dbeafe", "#fef9c3", "#dcfce7"]
 PHASE_LABELS = {
@@ -249,6 +279,155 @@ def get_series(df, agg):
         return df[data_cols].sum(axis=1)
     else:
         raise ValueError("Unknown aggregation: {}".format(agg))
+
+
+def read_monitor_csv(path):
+    df = pd.read_csv(path)
+    df["datetime"] = pd.to_datetime(df["date"], utc=True)
+    df = df.drop(columns=["date"])
+    return df
+
+
+DEPLOY_ALL_COLORS = {
+    "a": ["#1e3a5f", "#1d4ed8", "#60a5fa", "#bfdbfe"],
+    "b": ["#7f1d1d", "#991b1b", "#c2410c", "#ea580c"],
+}
+
+
+def generate_deploy_graph(metric, result_dir_a, result_dir_b, label_a, label_b,
+                          output_path, width, height, phases_a=None, phases_b=None):
+    ddef = DEPLOY_DEFS[metric]
+    csv_a = os.path.join(result_dir_a, "monitor_data.csv")
+    csv_b = os.path.join(result_dir_b, "monitor_data.csv")
+
+    if not os.path.isfile(csv_a):
+        logger.warning("monitor_data.csv not found, skipping {}: {}".format(metric, csv_a))
+        return False
+    if not os.path.isfile(csv_b):
+        logger.warning("monitor_data.csv not found, skipping {}: {}".format(metric, csv_b))
+        return False
+
+    df_a, t0_a = to_elapsed_minutes(read_monitor_csv(csv_a))
+    df_b, t0_b = to_elapsed_minutes(read_monitor_csv(csv_b))
+
+    fig = go.Figure()
+
+    if phases_a or phases_b:
+        pa = phases_to_elapsed(phases_a, t0_a) if phases_a else []
+        pb = phases_to_elapsed(phases_b, t0_b) if phases_b else []
+        add_phase_annotations(fig, pa, pb, label_a, label_b)
+
+    b_dash = "1px 1px"
+    is_combined = "milestone_cols" in ddef
+
+    # Dynamically trim x-axis to focus on deploy activity:
+    # - Keep 30 min of idle before the earliest deploy start (trim only if idle > 30 min)
+    # - Keep 60 min of soak after the latest soak start (trim only if soak > 60 min)
+    # - Never trim the deploy phase — use the union of both results' deploy windows
+    x_range = None
+    if phases_a or phases_b:
+        pa = phases_to_elapsed(phases_a, t0_a) if phases_a else []
+        pb = phases_to_elapsed(phases_b, t0_b) if phases_b else []
+        max_data_minutes = max(df_a["minutes"].max(), df_b["minutes"].max())
+        deploy_starts = []
+        soak_starts = []
+        soak_durations = []
+        for phases_elapsed in [pa, pb]:
+            for num, _, start_min, end_min in phases_elapsed:
+                if num == "2":
+                    deploy_starts.append(start_min)
+                elif num == "3":
+                    soak_starts.append(start_min)
+                    soak_durations.append(end_min - start_min)
+
+        x_min = 0
+        x_max = max_data_minutes
+        if deploy_starts and min(deploy_starts) > 30:
+            x_min = min(deploy_starts) - 30
+        if soak_starts and soak_durations and max(soak_durations) > 60:
+            x_max = max(soak_starts) + 60
+        if x_min > 0 or x_max < max_data_minutes:
+            x_range = [x_min, x_max]
+
+    if is_combined:
+        milestones = ddef["milestone_cols"]
+        a_colors = DEPLOY_ALL_COLORS["a"]
+        b_colors = DEPLOY_ALL_COLORS["b"]
+
+        fig.add_trace(go.Scatter(
+            x=df_a["minutes"], y=df_a["cluster_applied"], mode="lines",
+            name="{} Applied".format(label_a),
+            line=dict(color=a_colors[0], width=2),
+        ))
+        for i, (col, label) in enumerate(milestones):
+            fig.add_trace(go.Scatter(
+                x=df_a["minutes"], y=df_a[col], mode="lines",
+                name="{} {}".format(label_a, label),
+                line=dict(color=a_colors[i + 1], width=1.5),
+            ))
+
+        fig.add_trace(go.Scatter(
+            x=df_b["minutes"], y=df_b["cluster_applied"], mode="lines",
+            name="{} Applied".format(label_b),
+            line=dict(color=b_colors[0], width=2, dash=b_dash),
+        ))
+        for i, (col, label) in enumerate(milestones):
+            fig.add_trace(go.Scatter(
+                x=df_b["minutes"], y=df_b[col], mode="lines",
+                name="{} {}".format(label_b, label),
+                line=dict(color=b_colors[i + 1], width=1.5, dash=b_dash),
+            ))
+    else:
+        milestone_col = ddef["milestone_col"]
+        milestone_label = ddef["milestone_label"]
+
+        fig.add_trace(go.Scatter(
+            x=df_a["minutes"], y=df_a["cluster_applied"], mode="lines",
+            name="{} Applied".format(label_a),
+            line=dict(color=DEPLOY_COLORS["a_applied"], width=2),
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_a["minutes"], y=df_a[milestone_col], mode="lines",
+            name="{} {}".format(label_a, milestone_label),
+            line=dict(color=DEPLOY_COLORS["a_milestone"], width=1.5),
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_b["minutes"], y=df_b["cluster_applied"], mode="lines",
+            name="{} Applied".format(label_b),
+            line=dict(color=DEPLOY_COLORS["b_applied"], width=2, dash=b_dash),
+        ))
+        fig.add_trace(go.Scatter(
+            x=df_b["minutes"], y=df_b[milestone_col], mode="lines",
+            name="{} {}".format(label_b, milestone_label),
+            line=dict(color=DEPLOY_COLORS["b_milestone"], width=1.5, dash=b_dash),
+        ))
+
+    title = "{} — {} vs {}".format(ddef["title"], label_a, label_b)
+    layout = dict(
+        title=title,
+        yaxis_title="# Clusters",
+        width=width,
+        height=height,
+        **LAYOUT_DEFAULTS,
+    )
+    if x_range:
+        layout["xaxis"] = dict(**LAYOUT_DEFAULTS["xaxis"], range=x_range)
+    if is_combined:
+        layout["legend"] = dict(
+            orientation="v",
+            yanchor="top",
+            y=1.0,
+            xanchor="left",
+            x=1.02,
+            font=dict(size=11),
+        )
+        layout["margin"] = dict(l=70, r=200, t=80, b=75)
+
+    fig.update_layout(**layout)
+
+    fig.write_image(output_path)
+    logger.info("Wrote: {}".format(output_path))
+    return True
 
 
 def add_phase_annotations(fig, phases_a_elapsed, phases_b_elapsed, label_a, label_b):
@@ -443,8 +622,22 @@ def main():
         except Exception:
             logger.exception("Failed to generate graph for metric: {}".format(metric))
 
+    deploy_generated = 0
+    for dmetric in DEPLOY_DEFS:
+        output_path = os.path.join(cliargs.output_dir, "{}-{}.png".format(cliargs.prefix, dmetric))
+        try:
+            if generate_deploy_graph(dmetric, cliargs.result_dir_a, cliargs.result_dir_b,
+                                     cliargs.label_a, cliargs.label_b,
+                                     output_path, cliargs.width, cliargs.height,
+                                     phases_a=phases_a, phases_b=phases_b):
+                deploy_generated += 1
+        except Exception:
+            logger.exception("Failed to generate deploy graph: {}".format(dmetric))
+
     elapsed = time.time() - start_time
-    logger.info("Generated {}/{} graphs in {:.1f}s".format(generated, len(cliargs.metrics), elapsed))
+    total = generated + deploy_generated
+    logger.info("Generated {} graphs ({} resource, {} deploy) in {:.1f}s".format(
+        total, generated, deploy_generated, elapsed))
 
 
 if __name__ == "__main__":

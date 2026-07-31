@@ -114,6 +114,7 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (plaintext percentiles) |
 | `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (plaintext percentiles, two stat blocks) |
 | `acm-deploy-load/analyze-clustergroupupgrades.py` | CGU `.stats` file format (header + plaintext percentiles) |
+| `acm-deploy-load/graph-acm-compare.py` | `GRAPH_DEFS` and `DEPLOY_DEFS` graph definitions, comparison graph naming (`comparison-{metric}.png`), cluster deploy graph types |
 | `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |
 | `scripts/acm-telco-core-load.sh` | Full-test Prometheus analysis prefix (`acm-telco-load-hub`) |
 
