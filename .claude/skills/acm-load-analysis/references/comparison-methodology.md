@@ -115,6 +115,7 @@ Always include the full result directory names so the report is self-contained.
        [graphs: backend-commit-etcd, fsync-etcd, peer-rtt-etcd, db-size-etcd]
 ## N+2. Full-Test Component Comparison
      ### Components Present in Both Results
+       (canonical order — see metrics-and-units.md)
      [### {Asymmetric Component} Resource Footprint]
 ## N+3. Storage Comparison
      ### PVC Usage Max (GB)
@@ -208,6 +209,23 @@ Leader Elections (during test).
 **Full-test etcd:** Same 6 rows in a 5-column table (with Delta %) plus
 a Target column. Follow with a threshold status table.
 
+**Full-test etcd threshold status table (5-column):**
+```
+| Metric | {Label A} (A) | {Label B} (B) | Threshold | Status |
+|---|---|---|---|---|
+| Backend Commit P99 | {value} ms | {value} ms | < 25 ms | PASS/FAIL |
+| WAL Fsync P99 | {value} ms | {value} ms | < 10 ms | PASS/FAIL |
+| Peer RTT P99 | {value} ms | {value} ms | < 50 ms | PASS/FAIL |
+| DB Size Max | {value} GB | {value} GB | < 8.59 GB | PASS/FAIL |
+| Leader Elections | {count} | {count} | 0 | PASS/FAIL |
+```
+Rules:
+- Values include units inline (e.g., `14.13 ms`, `7.97 GB`, `0` for elections)
+- Metric names are clean — no threshold embedded in the metric name
+- Threshold column uses the same format as the Target column in the main table
+- Status is `PASS` when the worst-case value across both results is within the threshold; `FAIL` otherwise
+- Rows appear in this fixed order regardless of which metrics are near their limit
+
 **Per-node network — phases (compact, no deltas):**
 ```
 | Node | A Rcv | B Rcv | A Xmt | B Xmt |
@@ -229,6 +247,14 @@ Do NOT include component-level network (see below).
 **Cluster-level resource tables** always include 5 rows: CPU P95 (cores),
 App CPU P95 (cores), Memory Max (GiB), App Memory Max (GiB),
 Non-term Pods Max.
+
+**Component tables (Section N+2):** Use the canonical component order defined in
+`metrics-and-units.md` (section "Canonical Component Table Order") — do NOT sort
+by value. The CPU table and Memory table use the same component order. Include
+`acm-complete` and `acm-complete-no-obs` as two separate rows from the same
+`acm-complete/stats/` directory. Skip any row whose stats file is absent. ODF and
+other asymmetric components (present in one result only) are reported in a
+separate sub-section (`### {Component} Resource Footprint`) outside the main table.
 
 ### Node Name Convention
 

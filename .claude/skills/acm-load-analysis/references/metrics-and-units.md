@@ -123,16 +123,17 @@ for the component total.
 |---|---|---|
 | `acm-mce-complete` | ACM + MCE combined | open-cluster-management*, hive, hypershift, multicluster-engine, openshift-user-workload-monitoring |
 | `acm-complete` | ACM all namespaces | open-cluster-management* |
+| `acm-complete` (no-obs) | ACM all namespaces excluding Observability | open-cluster-management* (excluding open-cluster-management-observability) |
 | `mce-complete` | MCE all namespaces | hive, hypershift, multicluster-engine, openshift-user-workload-monitoring |
+| `base-ocp` | Base OpenShift platform | openshift-* (platform namespaces) |
 | `acm` | ACM core | open-cluster-management |
+| `acm-observability` | ACM Observability | open-cluster-management-observability |
 | `acm-hub` | ACM hub | open-cluster-management-hub |
 | `acm-agent` | ACM agent | open-cluster-management-agent, -agent-addon |
-| `acm-observability` | ACM Observability | open-cluster-management-observability |
 | `mce` | MCE core | multicluster-engine |
 | `hive` | Hive | hive |
 | `hypershift` | HyperShift | hypershift |
 | `hypershift-uwm` | User Workload Monitoring | openshift-user-workload-monitoring |
-| `base-ocp` | Base OpenShift platform | openshift-* (platform namespaces) |
 | `core-ocp` | Core OCP control plane | openshift-etcd, -kube-apiserver, etc. |
 | `odf` | OpenShift Data Foundation | openshift-storage |
 | `lso` | Local Storage Operator | openshift-local-storage |
@@ -142,6 +143,43 @@ for the component total.
 | `minio` | MinIO | minio |
 | `mcgh` | Multicluster Global Hub | multicluster-global-hub |
 | `ztp-day2` | ZTP Day 2 Automation | ztp-day2-automation |
+
+**`acm-complete` no-obs stats files:** The `acm-complete` directory contains two
+parallel stat sets: `cpu-acm-complete.stats` / `mem-acm-complete.stats` (all ACM
+namespaces including Observability) and `cpu-acm-complete-no-obs.stats` /
+`mem-acm-complete-no-obs.stats` (all ACM namespaces excluding Observability). Both
+rows appear in Section 8 component tables — they are distinct entries read from the
+same directory, not a separate component directory.
+
+### Canonical Component Table Order
+
+Section 8 (Full-Test Component Comparison) and the single-result component
+breakdown (Section 4d) always use this fixed order — never sort by value.
+Include each row only when the corresponding directory (or stats file) exists;
+skip silently if absent.
+
+| Position | Row Label | Source |
+|---|---|---|
+| 1 | Base OCP | `base-ocp/stats/cpu-base-ocp.stats` |
+| 2 | ACM & MCE Complete | `acm-mce-complete/stats/cpu-acm-mce-complete.stats` |
+| 3 | ACM Complete | `acm-complete/stats/cpu-acm-complete.stats` |
+| 4 | ACM Complete (No Obs) | `acm-complete/stats/cpu-acm-complete-no-obs.stats` |
+| 5 | MCE Complete | `mce-complete/stats/cpu-mce-complete.stats` |
+| 6 | ACM | `acm/stats/cpu-acm.stats` |
+| 7 | ACM Observability | `acm-observability/stats/cpu-acm-observability.stats` |
+| 8 | ACM Hub | `acm-hub/stats/cpu-acm-hub.stats` |
+| 9 | ACM Agent | `acm-agent/stats/cpu-acm-agent.stats` |
+| 10 | MCE | `mce/stats/cpu-mce.stats` |
+| 11 | Hive | `hive/stats/cpu-hive.stats` |
+| 12 | GitOps | `gitops/stats/cpu-gitops.stats` |
+| 13 | TALM | `talm/stats/cpu-talm.stats` |
+| 14 | LSO | `lso/stats/cpu-lso.stats` |
+
+Memory stats use the same order; substitute `cpu-` with `mem-` in the stats file path.
+
+Components not in this list (e.g., `hypershift`, `aap`, `odf`, `mcgh`) are reported
+separately outside the main component table — ODF goes in its own asymmetric footprint
+section; others are included when present and noted as additional.
 
 ## Resource Count Metrics
 

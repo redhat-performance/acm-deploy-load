@@ -175,10 +175,13 @@ For each detected component directory in the Prometheus analysis:
 - CPU P95 (cores)
 - Memory Max (GiB)
 
-Present as a table sorted by Memory Max descending. Do NOT include
-component-level network — it measures container I/O (including intra-node
-pod-to-pod traffic) and routinely exceeds physical NIC capacity. Report
-network at the per-node level only.
+Use the canonical component order defined in `references/metrics-and-units.md`
+(section "Canonical Component Table Order"). This is a fixed order — do NOT sort
+by value. Include `acm-complete` and `acm-complete-no-obs` as separate rows read
+from the same `acm-complete/stats/` directory. Skip any row whose stats file is
+absent. Do NOT include component-level network — it measures container I/O
+(including intra-node pod-to-pod traffic) and routinely exceeds physical NIC
+capacity. Report network at the per-node level only.
 
 #### 4e. etcd Health
 - DB Size Max (GB) — flag if approaching 8.59 GB (the 8 GiB binary quota)
