@@ -87,6 +87,8 @@ Always include the full result directory names so the report is self-contained.
      ### CGU Per-Cluster Policy Time (seconds)
      ### ClusterInstance Total Duration (seconds)
      [### ACI Per-Cluster Install Time — if AI method]
+     ### Cluster Deploy Progression
+       [graphs: deploy-installed, deploy-managed, deploy-compliant, deploy-all]
 ## 3. Phase 1 — Idle Baseline Comparison      [conditional: both have phases]
      ### Cluster-Level Resources
      ### Per-Node CPU P95 (cores)
@@ -367,8 +369,7 @@ x-axis: idle is trimmed to 30 minutes before the earliest deploy start (only if
 idle exceeds 30 min), soak is trimmed to 60 minutes after the latest soak start
 (only if soak exceeds 60 min), and the deploy phase is never trimmed — the union
 of both results' deploy windows is always fully visible. These are auto-generated
-when `monitor_data.csv` exists in both results. Place deploy graphs in Section 2
-after Deployment Milestones.
+when `monitor_data.csv` exists in both results.
 
 **Naming:** `comparison-{metric}.png` where metric is the file suffix from the
 tables above (e.g., `comparison-cpu-cluster.png`, `comparison-deploy-installed.png`).

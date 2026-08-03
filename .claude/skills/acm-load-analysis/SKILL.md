@@ -351,17 +351,8 @@ base-2 tick intervals (32, 64, 128 GiB, etc.).
 
 **Report placement:** Distribute graphs under the subsection they
 illustrate — do NOT group them in a single "Resource Consumption Over
-Time" block. Place each graph immediately after its associated table:
-
-| Graphs | Placed after |
-|---|---|
-| deploy-installed, deploy-managed, deploy-compliant, deploy-all | Timing Comparison (Section 2), after Deployment Milestones |
-| cpu-cluster, mem-cluster | Cluster-Level Resources (Full Test) table |
-| cpu-node | Per-Node CPU P95 table |
-| mem-node | Per-Node Memory Max table |
-| net-rcv-node, net-xmt-node | Per-Node Network P95 table |
-| disk-iops-write-etcd, disk-tput-write-etcd | Per-Node Disk I/O tables |
-| backend-commit-etcd, fsync-etcd, peer-rtt-etcd, db-size-etcd | Full-Test etcd Comparison (Section N+1) |
+Time" block. The section template in `references/comparison-methodology.md`
+defines where each graph goes via `[graph: ...]` and `[graphs: ...]` annotations.
 
 In markdown: `![title](filename.png)`. In plain text: `Graph: filename.png`
 or `Graphs: file1.png, file2.png`.
