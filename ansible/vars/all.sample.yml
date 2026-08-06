@@ -6,6 +6,10 @@ http_store_path: /opt/http_store
 # Leave blank if not doing disconnected
 rhacm_disconnected_registry:
 rhacm_disconnected_registry_port: 5000
+# Use oc-mirror v2 mirror locations for OCP release images
+# When true: ocp-release -> openshift/release-images, ocp-v4.0-art-dev -> openshift/release
+# When false (default): both -> ocp4/openshift4
+use_oc_mirror: false
 # Bastion registry default auth
 registry_user: registry
 registry_password: registry

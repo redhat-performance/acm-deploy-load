@@ -15,7 +15,7 @@
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-release"
         pull-from-mirror = "digest-only"
       [[registry.mirror]]
-        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4"
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release-images{% else %}ocp4/openshift4{% endif %}"
         pull-from-mirror = "digest-only"
 
     [[registry]]
@@ -25,7 +25,7 @@
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-v4.0-art-dev"
         pull-from-mirror = "digest-only"
       [[registry.mirror]]
-        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/ocp4/openshift4"
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release{% else %}ocp4/openshift4{% endif %}"
         pull-from-mirror = "digest-only"
 
     [[registry]]
