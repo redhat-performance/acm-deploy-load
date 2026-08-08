@@ -73,6 +73,14 @@ data:
 
     [[registry]]
       prefix = ""
+      location = "quay.io/openshift-release-dev/ocp-v5.0-art-dev"
+      mirror-by-digest-only = false
+
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release{% else %}ocp5/openshift5{% endif %}"
+
+    [[registry]]
+      prefix = ""
       location = "registry.redhat.io/rhacm2"
       mirror-by-digest-only = false
 

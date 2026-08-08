@@ -62,9 +62,15 @@ policies:
             source: registry-proxy.engineering.redhat.com
           - mirrors:
             - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release{% else %}ocp4/openshift4{% endif %}
+
             source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
           - mirrors:
+            - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release{% else %}ocp5/openshift5{% endif %}
+
+            source: quay.io/openshift-release-dev/ocp-v5.0-art-dev
+          - mirrors:
             - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release-images{% else %}ocp4/openshift4{% endif %}
+
             source: quay.io/openshift-release-dev/ocp-release
 {% endif %}
 - name: common-latest-subscriptions-policy

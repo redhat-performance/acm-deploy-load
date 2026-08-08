@@ -30,6 +30,16 @@
 
     [[registry]]
       prefix = ""
+      location = "quay.io/openshift-release-dev/ocp-v5.0-art-dev"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-release-dev/ocp-v5.0-art-dev"
+        pull-from-mirror = "digest-only"
+      [[registry.mirror]]
+        location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror %}openshift/release{% else %}ocp5/openshift5{% endif %}"
+        pull-from-mirror = "digest-only"
+
+    [[registry]]
+      prefix = ""
       location = "registry.redhat.io/multicluster-engine"
       [[registry.mirror]]
         location = "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine"
