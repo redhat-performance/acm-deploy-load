@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
-# Generate overlay comparison graphs from two acm-deploy-load / acm-telco-core-load
-# Prometheus analysis directories.
+# Generate overlay comparison graphs from two or more acm-deploy-load /
+# acm-telco-core-load Prometheus analysis directories.
 #
 #  Copyright 2026 Red Hat
 #
@@ -153,13 +153,35 @@ DEPLOY_DEFS = {
     },
 }
 
-COLORS = {"a": "#2563eb", "b": "#c2410c"}
-DEPLOY_COLORS = {
-    "a_applied": "#1e3a5f", "a_milestone": "#60a5fa",
-    "b_applied": "#7f1d1d", "b_milestone": "#c2410c",
-}
+RESULT_COLORS = ["#2563eb", "#c2410c", "#16a34a", "#9333ea", "#0891b2", "#be185d"]
+RESULT_DASHES = ["solid", "4px 4px", "8px 4px", "2px 2px 6px 2px", "12px 4px", "2px 6px"]
+
+DEPLOY_RESULT_COLORS = [
+    {"applied": "#1e3a5f", "milestone": "#60a5fa"},
+    {"applied": "#7f1d1d", "milestone": "#c2410c"},
+    {"applied": "#14532d", "milestone": "#4ade80"},
+    {"applied": "#581c87", "milestone": "#a78bfa"},
+    {"applied": "#164e63", "milestone": "#22d3ee"},
+    {"applied": "#831843", "milestone": "#f472b6"},
+]
+
+DEPLOY_ALL_RESULT_COLORS = [
+    ["#1e3a5f", "#1d4ed8", "#60a5fa", "#bfdbfe"],
+    ["#7f1d1d", "#991b1b", "#c2410c", "#ea580c"],
+    ["#14532d", "#15803d", "#22c55e", "#86efac"],
+    ["#581c87", "#7e22ce", "#a78bfa", "#ddd6fe"],
+    ["#164e63", "#0e7490", "#22d3ee", "#a5f3fc"],
+    ["#831843", "#be185d", "#f472b6", "#fbcfe8"],
+]
 
 PHASE_COLORS = ["#dbeafe", "#fef9c3", "#dcfce7"]
+PHASE_BAR_COLORS = [
+    ["#93c5fd", "#fde047", "#86efac"],
+    ["#c4b5fd", "#fdba74", "#67e8f9"],
+    ["#f9a8d4", "#a3e635", "#fcd34d"],
+    ["#99f6e4", "#fca5a5", "#d8b4fe"],
+    ["#bae6fd", "#fef08a", "#bbf7d0"],
+]
 PHASE_LABELS = {
     "1": "Idle",
     "2": "Deploy",
@@ -288,121 +310,189 @@ def read_monitor_csv(path):
     return df
 
 
-DEPLOY_ALL_COLORS = {
-    "a": ["#1e3a5f", "#1d4ed8", "#60a5fa", "#bfdbfe"],
-    "b": ["#7f1d1d", "#991b1b", "#c2410c", "#ea580c"],
-}
+def add_phase_annotations(fig, all_phases_elapsed, labels, shading_idx=0):
+    """Add phase annotations for all results.
+
+    The result at shading_idx gets full-height shaded regions with labels at top.
+    All other results get thin bars stacked along the bottom.
+    A legend annotation explains which shading belongs to which result.
+    """
+    n = len(all_phases_elapsed)
+
+    bar_indices = [i for i in range(n) if i != shading_idx]
+
+    shading_parts = []
+    if all_phases_elapsed[shading_idx]:
+        shading_parts.append("Shading: {}".format(labels[shading_idx]))
+    for bar_num, i in enumerate(bar_indices, 1):
+        if all_phases_elapsed[i]:
+            shading_parts.append("Bar {}: {}".format(bar_num, labels[i]))
+
+    if shading_parts:
+        fig.add_annotation(
+            x=1.0, xref="paper", xanchor="right",
+            y=0.0, yref="paper", yanchor="bottom",
+            text="<br>".join(shading_parts),
+            showarrow=False,
+            font=dict(size=10, color="#374151"),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#d1d5db",
+            borderwidth=1,
+            borderpad=4,
+        )
+
+    if all_phases_elapsed[shading_idx]:
+        for num, label, start_min, end_min in all_phases_elapsed[shading_idx]:
+            color = PHASE_COLORS[int(num) % len(PHASE_COLORS) - 1]
+            fig.add_vrect(
+                x0=start_min, x1=end_min,
+                fillcolor=color, opacity=0.4,
+                layer="below", line_width=0,
+            )
+            fig.add_vline(
+                x=start_min, line_dash="dot", line_color="#9ca3af", line_width=1,
+            )
+            fig.add_annotation(
+                x=(start_min + end_min) / 2,
+                y=1.0, yref="paper",
+                text="<b>{}</b>".format(label),
+                showarrow=False,
+                font=dict(size=11, color="#374151"),
+                yanchor="bottom",
+            )
+
+    bar_height = 0.02
+    bar_gap = 0.002
+    for bar_num, i in enumerate(bar_indices, 1):
+        if not all_phases_elapsed[i]:
+            continue
+        bar_colors = PHASE_BAR_COLORS[(bar_num - 1) % len(PHASE_BAR_COLORS)]
+        y0 = (bar_height + bar_gap) * (bar_num - 1)
+        y1 = y0 + bar_height
+        fig.add_annotation(
+            x=0.0, xref="paper", xanchor="left",
+            y=(y0 + y1) / 2, yref="paper", yanchor="middle",
+            text=" <b>{}</b>".format(bar_num),
+            showarrow=False,
+            font=dict(size=8, color="#000000"),
+        )
+        for num, _, start_min, end_min in all_phases_elapsed[i]:
+            color = bar_colors[int(num) % len(bar_colors) - 1]
+            fig.add_shape(
+                type="rect",
+                x0=start_min, x1=end_min,
+                y0=y0, y1=y1, yref="paper",
+                fillcolor=color, opacity=0.9,
+                layer="above", line_width=0,
+            )
+            fig.add_vline(
+                x=start_min, line_dash="dot", line_color="#d1d5db", line_width=0.8,
+            )
 
 
-def generate_deploy_graph(metric, result_dir_a, result_dir_b, label_a, label_b,
-                          output_path, width, height, phases_a=None, phases_b=None):
+def compute_x_range(all_phases_elapsed, all_dfs):
+    """Compute trimmed x-axis range across all results."""
+    max_data_minutes = max(df["minutes"].max() for df in all_dfs)
+    deploy_starts = []
+    soak_starts = []
+    soak_durations = []
+    for phases_elapsed in all_phases_elapsed:
+        for num, _, start_min, end_min in phases_elapsed:
+            if num == "2":
+                deploy_starts.append(start_min)
+            elif num == "3":
+                soak_starts.append(start_min)
+                soak_durations.append(end_min - start_min)
+
+    x_min = 0
+    x_max = max_data_minutes
+    if deploy_starts and min(deploy_starts) > 30:
+        x_min = min(deploy_starts) - 30
+    if soak_starts and soak_durations and max(soak_durations) > 60:
+        x_max = max(soak_starts) + 60
+    if x_min > 0 or x_max < max_data_minutes:
+        return [x_min, x_max]
+    return None
+
+
+def generate_deploy_graph(metric, result_dirs, labels, output_path, width, height,
+                          all_phases=None, mirror_yaxis=False, solid_lines=False,
+                          shading_idx=0, trim_idx=None):
     ddef = DEPLOY_DEFS[metric]
-    csv_a = os.path.join(result_dir_a, "monitor_data.csv")
-    csv_b = os.path.join(result_dir_b, "monitor_data.csv")
+    n = len(result_dirs)
 
-    if not os.path.isfile(csv_a):
-        logger.warning("monitor_data.csv not found, skipping {}: {}".format(metric, csv_a))
-        return False
-    if not os.path.isfile(csv_b):
-        logger.warning("monitor_data.csv not found, skipping {}: {}".format(metric, csv_b))
-        return False
+    csv_paths = [os.path.join(d, "monitor_data.csv") for d in result_dirs]
+    for path in csv_paths:
+        if not os.path.isfile(path):
+            logger.warning("monitor_data.csv not found, skipping {}: {}".format(metric, path))
+            return False
 
-    df_a, t0_a = to_elapsed_minutes(read_monitor_csv(csv_a))
-    df_b, t0_b = to_elapsed_minutes(read_monitor_csv(csv_b))
+    dfs = []
+    t0s = []
+    for path in csv_paths:
+        df, t0 = to_elapsed_minutes(read_monitor_csv(path))
+        dfs.append(df)
+        t0s.append(t0)
 
     fig = go.Figure()
 
-    if phases_a or phases_b:
-        pa = phases_to_elapsed(phases_a, t0_a) if phases_a else []
-        pb = phases_to_elapsed(phases_b, t0_b) if phases_b else []
-        add_phase_annotations(fig, pa, pb, label_a, label_b)
+    all_phases_elapsed = []
+    if all_phases:
+        for i in range(n):
+            if all_phases[i]:
+                all_phases_elapsed.append(phases_to_elapsed(all_phases[i], t0s[i]))
+            else:
+                all_phases_elapsed.append([])
+        add_phase_annotations(fig, all_phases_elapsed, labels, shading_idx=shading_idx)
 
-    b_dash = "1px 1px"
-    is_combined = "milestone_cols" in ddef
-
-    # Dynamically trim x-axis to focus on deploy activity:
-    # - Keep 30 min of idle before the earliest deploy start (trim only if idle > 30 min)
-    # - Keep 60 min of soak after the latest soak start (trim only if soak > 60 min)
-    # - Never trim the deploy phase — use the union of both results' deploy windows
     x_range = None
-    if phases_a or phases_b:
-        pa = phases_to_elapsed(phases_a, t0_a) if phases_a else []
-        pb = phases_to_elapsed(phases_b, t0_b) if phases_b else []
-        max_data_minutes = max(df_a["minutes"].max(), df_b["minutes"].max())
-        deploy_starts = []
-        soak_starts = []
-        soak_durations = []
-        for phases_elapsed in [pa, pb]:
-            for num, _, start_min, end_min in phases_elapsed:
-                if num == "2":
-                    deploy_starts.append(start_min)
-                elif num == "3":
-                    soak_starts.append(start_min)
-                    soak_durations.append(end_min - start_min)
+    if all_phases_elapsed:
+        if trim_idx is not None and all_phases_elapsed[trim_idx]:
+            x_range = compute_x_range([all_phases_elapsed[trim_idx]], dfs)
+        else:
+            x_range = compute_x_range(all_phases_elapsed, dfs)
 
-        x_min = 0
-        x_max = max_data_minutes
-        if deploy_starts and min(deploy_starts) > 30:
-            x_min = min(deploy_starts) - 30
-        if soak_starts and soak_durations and max(soak_durations) > 60:
-            x_max = max(soak_starts) + 60
-        if x_min > 0 or x_max < max_data_minutes:
-            x_range = [x_min, x_max]
+    is_combined = "milestone_cols" in ddef
 
     if is_combined:
         milestones = ddef["milestone_cols"]
-        a_colors = DEPLOY_ALL_COLORS["a"]
-        b_colors = DEPLOY_ALL_COLORS["b"]
+        for i in range(n):
+            colors = DEPLOY_ALL_RESULT_COLORS[i % len(DEPLOY_ALL_RESULT_COLORS)]
+            dash = RESULT_DASHES[i % len(RESULT_DASHES)]
+            line_dash = "solid" if solid_lines or i == 0 else dash
 
-        fig.add_trace(go.Scatter(
-            x=df_a["minutes"], y=df_a["cluster_applied"], mode="lines",
-            name="{} Applied".format(label_a),
-            line=dict(color=a_colors[0], width=2),
-        ))
-        for i, (col, label) in enumerate(milestones):
             fig.add_trace(go.Scatter(
-                x=df_a["minutes"], y=df_a[col], mode="lines",
-                name="{} {}".format(label_a, label),
-                line=dict(color=a_colors[i + 1], width=1.5),
+                x=dfs[i]["minutes"], y=dfs[i]["cluster_applied"], mode="lines",
+                name="{} Applied".format(labels[i]),
+                line=dict(color=colors[0], width=2, dash=line_dash),
             ))
-
-        fig.add_trace(go.Scatter(
-            x=df_b["minutes"], y=df_b["cluster_applied"], mode="lines",
-            name="{} Applied".format(label_b),
-            line=dict(color=b_colors[0], width=2, dash=b_dash),
-        ))
-        for i, (col, label) in enumerate(milestones):
-            fig.add_trace(go.Scatter(
-                x=df_b["minutes"], y=df_b[col], mode="lines",
-                name="{} {}".format(label_b, label),
-                line=dict(color=b_colors[i + 1], width=1.5, dash=b_dash),
-            ))
+            for j, (col, mlabel) in enumerate(milestones):
+                fig.add_trace(go.Scatter(
+                    x=dfs[i]["minutes"], y=dfs[i][col], mode="lines",
+                    name="{} {}".format(labels[i], mlabel),
+                    line=dict(color=colors[j + 1], width=1.5, dash=line_dash),
+                ))
     else:
         milestone_col = ddef["milestone_col"]
         milestone_label = ddef["milestone_label"]
 
-        fig.add_trace(go.Scatter(
-            x=df_a["minutes"], y=df_a["cluster_applied"], mode="lines",
-            name="{} Applied".format(label_a),
-            line=dict(color=DEPLOY_COLORS["a_applied"], width=2),
-        ))
-        fig.add_trace(go.Scatter(
-            x=df_a["minutes"], y=df_a[milestone_col], mode="lines",
-            name="{} {}".format(label_a, milestone_label),
-            line=dict(color=DEPLOY_COLORS["a_milestone"], width=1.5),
-        ))
-        fig.add_trace(go.Scatter(
-            x=df_b["minutes"], y=df_b["cluster_applied"], mode="lines",
-            name="{} Applied".format(label_b),
-            line=dict(color=DEPLOY_COLORS["b_applied"], width=2, dash=b_dash),
-        ))
-        fig.add_trace(go.Scatter(
-            x=df_b["minutes"], y=df_b[milestone_col], mode="lines",
-            name="{} {}".format(label_b, milestone_label),
-            line=dict(color=DEPLOY_COLORS["b_milestone"], width=1.5, dash=b_dash),
-        ))
+        for i in range(n):
+            dcolors = DEPLOY_RESULT_COLORS[i % len(DEPLOY_RESULT_COLORS)]
+            dash = RESULT_DASHES[i % len(RESULT_DASHES)]
+            line_dash = "solid" if solid_lines or i == 0 else dash
 
-    title = "{} — {} vs {}".format(ddef["title"], label_a, label_b)
+            fig.add_trace(go.Scatter(
+                x=dfs[i]["minutes"], y=dfs[i]["cluster_applied"], mode="lines",
+                name="{} Applied".format(labels[i]),
+                line=dict(color=dcolors["applied"], width=2, dash=line_dash),
+            ))
+            fig.add_trace(go.Scatter(
+                x=dfs[i]["minutes"], y=dfs[i][milestone_col], mode="lines",
+                name="{} {}".format(labels[i], milestone_label),
+                line=dict(color=dcolors["milestone"], width=1.5, dash=line_dash),
+            ))
+
+    title = "{} — {}".format(ddef["title"], " vs ".join(labels))
     layout = dict(
         title=title,
         yaxis_title="# Clusters",
@@ -425,104 +515,76 @@ def generate_deploy_graph(metric, result_dir_a, result_dir_b, label_a, label_b,
 
     fig.update_layout(**layout)
 
+    if mirror_yaxis:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], yaxis="y2",
+            showlegend=False, hoverinfo="skip",
+        ))
+        fig.update_layout(
+            yaxis2=dict(
+                title="# Clusters",
+                overlaying="y",
+                side="right",
+                matches="y",
+                showgrid=False,
+            ),
+        )
+        if not is_combined:
+            fig.update_layout(margin=dict(l=70, r=70, t=80, b=75))
+
     fig.write_image(output_path)
     logger.info("Wrote: {}".format(output_path))
     return True
 
 
-def add_phase_annotations(fig, phases_a_elapsed, phases_b_elapsed, label_a, label_b):
-    """Add phase annotations for both results.
-
-    Result A: full-height shaded regions with labels at top.
-    Result B: thin bar along the bottom with labels.
-    Legend entries explain which shading belongs to which result.
-    """
-    # Phase shading key — bottom-right corner
-    fig.add_annotation(
-        x=1.0, xref="paper", xanchor="right",
-        y=0.0, yref="paper", yanchor="bottom",
-        text="Shading: {}<br>Bottom bar: {}".format(label_a, label_b),
-        showarrow=False,
-        font=dict(size=10, color="#374151"),
-        bgcolor="rgba(255,255,255,0.85)",
-        bordercolor="#d1d5db",
-        borderwidth=1,
-        borderpad=4,
-    )
-
-    for num, label, start_min, end_min in phases_a_elapsed:
-        color = PHASE_COLORS[int(num) % len(PHASE_COLORS) - 1]
-        fig.add_vrect(
-            x0=start_min, x1=end_min,
-            fillcolor=color, opacity=0.4,
-            layer="below", line_width=0,
-        )
-        fig.add_vline(
-            x=start_min, line_dash="dot", line_color="#9ca3af", line_width=1,
-        )
-        fig.add_annotation(
-            x=(start_min + end_min) / 2,
-            y=1.0, yref="paper",
-            text="<b>{}</b>".format(label),
-            showarrow=False,
-            font=dict(size=11, color="#374151"),
-            yanchor="bottom",
-        )
-
-    PHASE_COLORS_B = ["#93c5fd", "#fde047", "#86efac"]
-    for num, _, start_min, end_min in phases_b_elapsed:
-        color = PHASE_COLORS_B[int(num) % len(PHASE_COLORS_B) - 1]
-        fig.add_shape(
-            type="rect",
-            x0=start_min, x1=end_min,
-            y0=0, y1=0.05, yref="paper",
-            fillcolor=color, opacity=0.9,
-            layer="above", line_width=0,
-        )
-        fig.add_vline(
-            x=start_min, line_dash="dot", line_color="#d1d5db", line_width=0.8,
-        )
-
-
-def generate_graph(metric, dir_a, dir_b, label_a, label_b, output_path,
-                   width, height, phases_a=None, phases_b=None):
+def generate_graph(metric, pa_dirs, labels, output_path, width, height,
+                   all_phases=None, mirror_yaxis=False,
+                   solid_lines=False, shading_idx=0, trim_idx=None):
     gdef = GRAPH_DEFS[metric]
-    csv_a = os.path.join(dir_a, gdef["csv"])
-    csv_b = os.path.join(dir_b, gdef["csv"])
+    n = len(pa_dirs)
 
-    if not os.path.isfile(csv_a):
-        logger.warning("CSV not found, skipping {}: {}".format(metric, csv_a))
-        return False
-    if not os.path.isfile(csv_b):
-        logger.warning("CSV not found, skipping {}: {}".format(metric, csv_b))
-        return False
+    csv_paths = [os.path.join(d, gdef["csv"]) for d in pa_dirs]
+    for path in csv_paths:
+        if not os.path.isfile(path):
+            logger.warning("CSV not found, skipping {}: {}".format(metric, path))
+            return False
 
-    df_a, t0_a = to_elapsed_minutes(read_csv(csv_a))
-    df_b, t0_b = to_elapsed_minutes(read_csv(csv_b))
-
-    series_a = get_series(df_a, gdef["agg"])
-    series_b = get_series(df_b, gdef["agg"])
-
-    scale = gdef.get("scale")
-    if scale:
-        series_a = series_a * scale
-        series_b = series_b * scale
+    dfs = []
+    t0s = []
+    all_series = []
+    for path in csv_paths:
+        df, t0 = to_elapsed_minutes(read_csv(path))
+        series = get_series(df, gdef["agg"])
+        scale = gdef.get("scale")
+        if scale:
+            series = series * scale
+        dfs.append(df)
+        t0s.append(t0)
+        all_series.append(series)
 
     fig = go.Figure()
 
-    if phases_a or phases_b:
-        pa = phases_to_elapsed(phases_a, t0_a) if phases_a else []
-        pb = phases_to_elapsed(phases_b, t0_b) if phases_b else []
-        add_phase_annotations(fig, pa, pb, label_a, label_b)
+    all_phases_elapsed = []
+    if all_phases:
+        for i in range(n):
+            if all_phases[i]:
+                all_phases_elapsed.append(phases_to_elapsed(all_phases[i], t0s[i]))
+            else:
+                all_phases_elapsed.append([])
+        add_phase_annotations(fig, all_phases_elapsed, labels, shading_idx=shading_idx)
 
-    fig.add_trace(go.Scatter(
-        x=df_a["minutes"], y=series_a, mode="lines", name=label_a,
-        line=dict(color=COLORS["a"], width=1.5),
-    ))
-    fig.add_trace(go.Scatter(
-        x=df_b["minutes"], y=series_b, mode="lines", name=label_b,
-        line=dict(color=COLORS["b"], width=1.5),
-    ))
+    x_range = None
+    if trim_idx is not None and all_phases_elapsed and all_phases_elapsed[trim_idx]:
+        phases = all_phases_elapsed[trim_idx]
+        x_range = [min(s for _, _, s, _ in phases), max(e for _, _, _, e in phases)]
+
+    for i in range(n):
+        color = RESULT_COLORS[i % len(RESULT_COLORS)]
+        line_dash = "solid" if solid_lines or i == 0 else RESULT_DASHES[i % len(RESULT_DASHES)]
+        fig.add_trace(go.Scatter(
+            x=dfs[i]["minutes"], y=all_series[i], mode="lines", name=labels[i],
+            line=dict(color=color, width=1.5, dash=line_dash),
+        ))
 
     if "hline" in gdef:
         fig.add_hline(
@@ -531,17 +593,36 @@ def generate_graph(metric, dir_a, dir_b, label_a, label_b, output_path,
             annotation_font_color="#dc2626", annotation_font_size=11,
         )
 
-    title = "{} — {} vs {}".format(gdef["title"], label_a, label_b)
-    fig.update_layout(
+    title = "{} — {}".format(gdef["title"], " vs ".join(labels))
+    layout = dict(
         title=title,
         yaxis_title=gdef["yaxis"],
         width=width,
         height=height,
         **LAYOUT_DEFAULTS,
     )
+    if x_range:
+        layout["xaxis"] = dict(**LAYOUT_DEFAULTS["xaxis"], range=x_range)
+    fig.update_layout(**layout)
+
+    if mirror_yaxis:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], yaxis="y2",
+            showlegend=False, hoverinfo="skip",
+        ))
+        fig.update_layout(
+            yaxis2=dict(
+                title=gdef["yaxis"],
+                overlaying="y",
+                side="right",
+                matches="y",
+                showgrid=False,
+            ),
+            margin=dict(l=70, r=70, t=80, b=75),
+        )
 
     if gdef.get("memory"):
-        max_val = max(series_a.max(), series_b.max())
+        max_val = max(s.max() for s in all_series)
         major, minor = memory_ticks(max_val)
         fig.update_yaxes(
             dtick=major,
@@ -558,19 +639,15 @@ def main():
     start_time = time.time()
 
     parser = argparse.ArgumentParser(
-        description="Generate overlay comparison graphs from two test results",
+        description="Generate overlay comparison graphs from two or more test results",
         prog="graph-acm-compare.py",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    parser.add_argument("result_dir_a", type=str,
-        help="Result directory for result A (top-level, e.g., results/20260718-...)")
-    parser.add_argument("result_dir_b", type=str,
-        help="Result directory for result B")
-    parser.add_argument("--label-a", type=str, default="Result A",
-        help="Display label for result A")
-    parser.add_argument("--label-b", type=str, default="Result B",
-        help="Display label for result B")
+    parser.add_argument("result_dirs", type=str, nargs="+",
+        help="Result directories to compare (two or more)")
+    parser.add_argument("--labels", type=str, nargs="+",
+        help="Display labels for each result (must match number of result dirs)")
     parser.add_argument("-o", "--output-dir", type=str, default=".",
         help="Directory to write PNG files")
     parser.add_argument("-p", "--prefix", type=str, default="comparison",
@@ -583,31 +660,64 @@ def main():
         help="Graph width in pixels")
     parser.add_argument("-t", "--height", type=int, default=600,
         help="Graph height in pixels")
+    parser.add_argument("--mirror-yaxis", action="store_true", default=False,
+        help="Show y-axis labels on both left and right sides")
+    parser.add_argument("--solid-lines", action="store_true", default=False,
+        help="Use solid lines for all series instead of varied dash patterns")
+    parser.add_argument("--shading-index", type=int, default=0,
+        help="Which result (0-based) provides the full-height phase shading")
+    parser.add_argument("--trim-index", type=int, default=None,
+        help="Trim x-axis using this result's phases (0-based)")
 
     cliargs = parser.parse_args()
 
-    for d in [cliargs.result_dir_a, cliargs.result_dir_b]:
+    if len(cliargs.result_dirs) < 2:
+        logger.error("At least two result directories are required")
+        sys.exit(1)
+
+    n = len(cliargs.result_dirs)
+
+    if cliargs.labels:
+        if len(cliargs.labels) != n:
+            logger.error("Number of labels ({}) must match number of result directories ({})".format(
+                len(cliargs.labels), n))
+            sys.exit(1)
+        labels = cliargs.labels
+    else:
+        labels = ["Result {}".format(chr(65 + i)) for i in range(n)]
+
+    shading_idx = cliargs.shading_index
+    if shading_idx < 0 or shading_idx >= n:
+        logger.error("--shading-index {} is out of range (0 to {})".format(shading_idx, n - 1))
+        sys.exit(1)
+
+    trim_idx = cliargs.trim_index
+    if trim_idx is not None and (trim_idx < 0 or trim_idx >= n):
+        logger.error("--trim-index {} is out of range (0 to {})".format(trim_idx, n - 1))
+        sys.exit(1)
+
+    for d in cliargs.result_dirs:
         if not os.path.isdir(d):
             logger.error("Directory not found: {}".format(d))
             sys.exit(1)
 
-    dir_a = find_deploy_pa(cliargs.result_dir_a)
-    dir_b = find_deploy_pa(cliargs.result_dir_b)
-    if not dir_a:
-        logger.error("No deploy-pa / acm-telco-load-hub directory found in: {}".format(cliargs.result_dir_a))
-        sys.exit(1)
-    if not dir_b:
-        logger.error("No deploy-pa / acm-telco-load-hub directory found in: {}".format(cliargs.result_dir_b))
-        sys.exit(1)
-    logger.info("Result A analysis dir: {}".format(dir_a))
-    logger.info("Result B analysis dir: {}".format(dir_b))
+    pa_dirs = []
+    for d in cliargs.result_dirs:
+        pa = find_deploy_pa(d)
+        if not pa:
+            logger.error("No deploy-pa / acm-telco-load-hub directory found in: {}".format(d))
+            sys.exit(1)
+        pa_dirs.append(pa)
 
-    phases_a = parse_phases(os.path.join(cliargs.result_dir_a, "report.txt"))
-    phases_b = parse_phases(os.path.join(cliargs.result_dir_b, "report.txt"))
-    if phases_a:
-        logger.info("Parsed {} phases from result A".format(len(phases_a)))
-    if phases_b:
-        logger.info("Parsed {} phases from result B".format(len(phases_b)))
+    for i, pa in enumerate(pa_dirs):
+        logger.info("Result {} ({}) analysis dir: {}".format(chr(65 + i), labels[i], pa))
+
+    all_phases = []
+    for i, d in enumerate(cliargs.result_dirs):
+        phases = parse_phases(os.path.join(d, "report.txt"))
+        all_phases.append(phases)
+        if phases:
+            logger.info("Parsed {} phases from result {}".format(len(phases), chr(65 + i)))
 
     os.makedirs(cliargs.output_dir, exist_ok=True)
 
@@ -615,9 +725,12 @@ def main():
     for metric in cliargs.metrics:
         output_path = os.path.join(cliargs.output_dir, "{}-{}.png".format(cliargs.prefix, metric))
         try:
-            if generate_graph(metric, dir_a, dir_b, cliargs.label_a, cliargs.label_b,
-                              output_path, cliargs.width, cliargs.height,
-                              phases_a=phases_a, phases_b=phases_b):
+            if generate_graph(metric, pa_dirs, labels, output_path, cliargs.width,
+                              cliargs.height, all_phases=all_phases,
+                              mirror_yaxis=cliargs.mirror_yaxis,
+                              solid_lines=cliargs.solid_lines,
+                              shading_idx=shading_idx,
+                              trim_idx=trim_idx):
                 generated += 1
         except Exception:
             logger.exception("Failed to generate graph for metric: {}".format(metric))
@@ -626,10 +739,13 @@ def main():
     for dmetric in DEPLOY_DEFS:
         output_path = os.path.join(cliargs.output_dir, "{}-{}.png".format(cliargs.prefix, dmetric))
         try:
-            if generate_deploy_graph(dmetric, cliargs.result_dir_a, cliargs.result_dir_b,
-                                     cliargs.label_a, cliargs.label_b,
+            if generate_deploy_graph(dmetric, cliargs.result_dirs, labels,
                                      output_path, cliargs.width, cliargs.height,
-                                     phases_a=phases_a, phases_b=phases_b):
+                                     all_phases=all_phases,
+                                     mirror_yaxis=cliargs.mirror_yaxis,
+                                     solid_lines=cliargs.solid_lines,
+                                     shading_idx=shading_idx,
+                                     trim_idx=trim_idx):
                 deploy_generated += 1
         except Exception:
             logger.exception("Failed to generate deploy graph: {}".format(dmetric))
