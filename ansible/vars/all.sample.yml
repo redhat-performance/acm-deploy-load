@@ -82,11 +82,18 @@ mce_assisted_ocp_versions:
 mce_assisted_service_namespace: multicluster-engine
 # Set true to disable container image policy checks in assisted-service (for OCP 4.22+ RC builds)
 setup_asc_disable_image_policy: false
+# use_oc_mirror_v2: true
 mce_clusterimagesets:
-- name: openshift-4.20.10
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
-- name: openshift-4.20.11
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.20.11-x86_64
+- name: openshift-4.22.9
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.9-x86_64
+- name: openshift-4.22.8
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.222.8-x86_64
+# use_oc_mirror_v2: false
+# mce_clusterimagesets:
+# - name: openshift-4.22.9
+#   releaseImage: registry.example.com:5000/ocp4/openshift4:4.22.9-x86_64
+# - name: openshift-4.22.8
+#   releaseImage: registry.example.com:5000/ocp4/openshift4:4.22.8-x86_64
 
 # Enable SiteConfig Operator in ACM (Included since ACM 2.12)
 acm_enable_siteconfig: false

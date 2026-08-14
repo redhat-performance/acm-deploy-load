@@ -243,6 +243,11 @@ mce_clusterimagesets:
   releaseImage: quay.io/openshift-release-dev/ocp-release:4.21.14-x86_64
 
 # Disconnected environment (reference the local mirror registry):
+# use_oc_mirror_v2: true
+mce_clusterimagesets:
+- name: openshift-4.21.14
+  releaseImage: registry.example.com:5000/openshift/release-images:4.21.14-x86_64
+# use_oc_mirror_v2: false
 mce_clusterimagesets:
 - name: openshift-4.21.14
   releaseImage: registry.example.com:5000/ocp4/openshift4:4.21.14-x86_64
