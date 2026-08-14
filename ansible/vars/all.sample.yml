@@ -87,7 +87,7 @@ mce_clusterimagesets:
 - name: openshift-4.22.9
   releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.9-x86_64
 - name: openshift-4.22.8
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.222.8-x86_64
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.8-x86_64
 # use_oc_mirror_v2: false
 # mce_clusterimagesets:
 # - name: openshift-4.22.9
