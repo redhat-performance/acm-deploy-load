@@ -75,7 +75,7 @@
   when: item.enabled | default(false)
   loop:
   - src: release-{{ telco_core_profile_version }}/control-plane-system-reserved.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/telco-core/"
+    dest: "{{ role_path }}/files/release-{{ telco_core_profile_version }}/reference-crs/optional/tuning/"
     enabled: "{{ telco_core_profile_version is version('4.22', '==') }}"
 
 - name: Commit and push Telco Core ZTP
