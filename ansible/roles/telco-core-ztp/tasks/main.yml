@@ -77,6 +77,9 @@
   - src: release-{{ telco_core_profile_version }}/control-plane-system-reserved.yaml
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/telco-core/reference-crs/optional/tuning/"
     enabled: "{{ telco_core_profile_version is version('4.22', '==') }}"
+  - src: release-{{ telco_core_profile_version }}/PerformanceProfile.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/telco-core/reference-crs/required/performance/"
+    enabled: "{{ telco_core_profile_version is version('4.22', '==') }}"
 
 - name: Commit and push Telco Core ZTP
   shell: |
