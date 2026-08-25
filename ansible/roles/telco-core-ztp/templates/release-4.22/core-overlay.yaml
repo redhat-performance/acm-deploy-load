@@ -99,10 +99,9 @@ policies:
         patches:
         - metadata:
             name: worker-profile-1
+            annotations:
+              kubeletconfig.experimental: '{"allowedUnsafeSysctls":["net.ipv6.conf.all.accept_ra"],"systemReserved":{"memory":"{{ telco_core_performance_profile_worker_1_system_reserved_memory }}"}}'
           spec:
-            kubeletConfig:
-              systemReserved:
-                memory: "{{ telco_core_performance_profile_worker_1_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-1-reserved" | toLiteral hub}}'
@@ -121,10 +120,9 @@ policies:
         patches:
         - metadata:
             name: worker-profile-2
+            annotations:
+              kubeletconfig.experimental: '{"allowedUnsafeSysctls":["net.ipv6.conf.all.accept_ra"],"systemReserved":{"memory":"{{ telco_core_performance_profile_worker_2_system_reserved_memory }}"}}'
           spec:
-            kubeletConfig:
-              systemReserved:
-                memory: "{{ telco_core_performance_profile_worker_2_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-2-reserved" | toLiteral hub}}'
@@ -143,10 +141,9 @@ policies:
         patches:
         - metadata:
             name: worker-profile-3
+            annotations:
+              kubeletconfig.experimental: '{"allowedUnsafeSysctls":["net.ipv6.conf.all.accept_ra"],"systemReserved":{"memory":"{{ telco_core_performance_profile_worker_3_system_reserved_memory }}"}}'
           spec:
-            kubeletConfig:
-              systemReserved:
-                memory: "{{ telco_core_performance_profile_worker_3_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-3-reserved" | toLiteral hub}}'
