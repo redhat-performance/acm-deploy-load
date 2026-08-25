@@ -23,8 +23,10 @@ telco_core_lso_device_path: /dev/disk/by-path/pci-0000:02:00.0-scsi-0:0:0:1
 # overrides turning control-plane reservedSystem memory
 telco_core_control_plane_system_reserved_memory: 30Gi
 
-# override PerformanceProfile reservedSystem memory
-telco_core_performance_system_reserved_memory: 11Gi
+# override workers-[1,2,3] reservedSystem memory in the PerformanceProfile template
+telco_core_performance_profile_worker_1_system_reserved_memory: 11Gi
+telco_core_performance_profile_worker_2_system_reserved_memory: 11Gi
+telco_core_performance_profile_worker_3_system_reserved_memory: 11Gi
 
 # Enable overriding the clusterlogging subscription reference CR channel
 telco_core_reference_cluster_logging_channel_override_enable: true

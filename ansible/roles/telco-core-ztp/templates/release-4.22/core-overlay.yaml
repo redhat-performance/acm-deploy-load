@@ -100,6 +100,9 @@ policies:
         - metadata:
             name: worker-profile-1
           spec:
+            kubeletConfig:
+              systemReserved:
+                memory: "{{ telco_core_performance_profile_worker_1_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-1-reserved" | toLiteral hub}}'
@@ -119,6 +122,9 @@ policies:
         - metadata:
             name: worker-profile-2
           spec:
+            kubeletConfig:
+              systemReserved:
+                memory: "{{ telco_core_performance_profile_worker_2_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-2-reserved" | toLiteral hub}}'
@@ -138,6 +144,9 @@ policies:
         - metadata:
             name: worker-profile-3
           spec:
+            kubeletConfig:
+              systemReserved:
+                memory: "{{ telco_core_performance_profile_worker_3_system_reserved_memory }}"
             cpu:
               {%- raw %}
               reserved: '{{hub fromConfigMap "" "hw-types" "role-worker-3-reserved" | toLiteral hub}}'

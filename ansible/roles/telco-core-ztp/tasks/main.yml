@@ -68,16 +68,6 @@
     src: "{{ role_path }}/files/release-{{ telco_core_profile_version }}/reference-crs"
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/telco-core/"
 
-- name: Override Telco Core reference CRs (if necessary)
-  template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-  when: item.enabled | default(false)
-  loop:
-  - src: release-{{ telco_core_profile_version }}/PerformanceProfile.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policy/telco-core/reference-crs/required/performance/"
-    enabled: "{{ telco_core_profile_version is version('4.22', '==') }}"
-
 - name: Commit and push Telco Core ZTP
   shell: |
     cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
