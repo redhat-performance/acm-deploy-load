@@ -67,6 +67,11 @@ policies:
     manifests:
       # Set auto sizing of control plane nodes
       - path: reference-crs/optional/tuning/control-plane-system-reserved.yaml
+        patches:
+        - spec:
+            kubeletConfig:
+              systemReserved:
+                memory: "{{ telco_core_control_plane_system_reserved_memory }}"
 
       # Multus networks
       - path: reference-crs/required/networking/Network.yaml
