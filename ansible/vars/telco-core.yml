@@ -1,0 +1,60 @@
+---
+# Telco Core vars
+
+# Common vars
+core_ocp_version: "4.22"
+core_cluster_image_set: openshift-4.22.7
+core_cluster_base_domain: rdu2.scalelab.redhat.com
+core_boot_mode: UEFI
+
+# BM Telco Core vars
+ocp_inventory:
+
+# Nodes you do not want included in the manifests (Ex: Bastion, hub machines etc)
+denylist_nodes: []
+
+# Network Settings
+core_cluster_dns_address: 198.18.0.1
+core_cluster_default_gateway_address: 198.18.0.1
+
+# Cluster network settings
+core_cluster_machine_network: 198.18.0.0/16
+core_cluster_api_address: 198.18.0.5
+core_cluster_ingress_address: 198.18.0.6
+# Make sure to select values which do not produce an ip conflict, Ex offset should be nth host > than api/ingress addresses
+core_cluster_node_ip_offset: 7
+
+# ipv6 - "fd01::/48", ipv4 - "10.128.0.0/14"
+core_cluster_cluster_network: 10.128.0.0/14
+# ipv6 - 64, ipv4 - 24
+core_cluster_host_prefix: 24
+# ipv6 - "fd02::/112", ipv4 - "172.30.0.0/16"
+core_cluster_service_network: 172.30.0.0/16
+
+core_cluster_ntp_source: clock.redhat.com
+
+# Corresponds to the index of the ocp_inventory file mac address array, -1 selects last mac address
+core_cluster_network_interface_idx: 0
+
+# Disable Prometheus for telco hub/spokes
+setup_cluster_monitoring: false
+
+# VM Telco Core vars
+telco_core_clusterinstance_extra_manifests: true
+telco_core_clusterinstance_custom_manifests: true
+
+# VM Telco Core Network Vars are determined by the inventory instead of this vars file
+
+cluster_definitions:
+ - workers: 12
+   labels:
+     size: "small_15x4_1"
+ - workers: 12
+   labels:
+     size: "small_15x4_2"
+ - workers: 12
+   labels:
+     size: "small_15x4_3"
+ - workers: 12
+   labels:
+     size: "small_15x4_4"

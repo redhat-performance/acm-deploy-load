@@ -1,0 +1,113 @@
+---
+# Common AAP/ACM/ZTP vars
+install_directory: /root
+http_store_path: /opt/http_store
+
+# Leave blank if not doing disconnected
+rhacm_disconnected_registry:
+rhacm_disconnected_registry_port: 5000
+# Bastion registry default auth
+registry_user: registry
+registry_password: registry
+
+# Setup ZTP Core Policies
+setup_core_ztp: false
+# Setup ZTP Ran DU Policies
+setup_ran_du_ztp: false
+
+# ZTP DU Policies
+setup_ztp_sno_policy: true
+setup_ztp_compact_policy: true
+setup_ztp_standard_policy: true
+setup_ztp_common_policy: true
+setup_ztp_sno_site_policy: false
+# ZTP Setup Vars - DU Profile Performance Profile Settings
+setup_ztp_enable_performanceprofile: false
+setup_ztp_perfprofile_isolated_cpus: "4-7"
+setup_ztp_perfprofile_reserved_cpus: "0-3"
+setup_ztp_perfprofile_hugepage_count: 1
+setup_ztp_perfprofile_realtime: true
+setup_ztp_searchcollector_enabled: true
+
+
+# Install ACM/ZTP vars
+is_konflux_build: false
+# Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
+rhacm_build:
+# Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
+mce_build:
+# Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
+acm_source: cs-redhat-operator-index-v4-19
+acm_channel: release-2.17
+
+rhacm_disableHubSelfManagement: false
+hub_cluster_kubeconfig: /root/mno/kubeconfig
+# Configuring ICSP for tag mirroring does not apply to konflux builds
+rhacm_icsp_enable_tag_mirror: false
+# When installing Downstream RHACM or MCE in a connected environment this pull secret must be populated
+rhacm_quay_pullsecret: {}
+
+setup_rhacm_search_pv: true
+setup_rhacm_search_api_route: true
+setup_rhacm_observability: true
+
+# Deploy Topology Aware Lifecycle Manager (TALM)
+# Only have one set to true or none (setup_talm_operator or setup_talm_repo)
+# Deploy TALM via Operator Subscription
+setup_talm_operator: false
+# redhat-operator-index = disconnected setup, redhat-operators = connected setup
+talm_operator_source: redhat-operators
+# Deploy TALM via Repo
+setup_talm_repo: true
+talm_repo: https://github.com/openshift-kni/cluster-group-upgrades-operator.git
+talm_repo_branch: release-4.22
+talm_image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.22.0
+talm_precache_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-precache:4.22.0"
+talm_recovery_image: "{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/cluster-group-upgrades-operator-recovery:4.22.0"
+
+# Apply ZTP argocd patches and create the argocd applications
+setup_rhacm_ztp_patches: true
+gitops_redis_mem_patch: true
+setup_ztp_cluster_applications: true
+setup_ztp_policy_application: true
+
+# MCE Assisted-installer items (Installed with RHACM)
+mce_assisted_ocp_versions:
+- quay.io/openshift-release-dev/ocp-release:4.22.7-x86_64
+mce_assisted_service_namespace: multicluster-engine
+# Set true to disable container image policy checks in assisted-service (for OCP 4.22+ RC builds)
+setup_asc_disable_image_policy: false
+mce_clusterimagesets:
+- name: openshift-4.22.7
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.7-x86_64
+
+# Enable SiteConfig Operator in ACM (Included since ACM 2.12)
+acm_enable_siteconfig: true
+# Enable IBIO in MCE
+mce_enable_ibio: false
+
+# AAP deploy/configure vars
+# Place the license file in the base directory of the cloned acm-deploy-load repo, Example:
+# (.venv) [user@fedora acm-deploy-load]$ ls aap_manifest.zip
+aap_license_manifest: "{{ lookup('file', '../aap_manifest.zip') }}"
+
+# Customizations
+setup_odf: false
+setup_lso: false
+acm_operator_source: redhat-operators
+acm_operator_channel: release-2.17
+gogs_host: "198.18.0.1"
+setup_core_ztp: true
+setup_ran_du_ztp: false
+telco_reference_branch: "release-4.22"
+ztp_site_generator_image_tag: "4.21.0"
+gitops_operator_source: redhat-operators
+gitops_operator_channel: gitops-1.21
+acm_source: redhat-operators
+
+setup_cluster_monitoring: false
+telco_core_control_plane_system_reserved_memory: 3Gi
+telco_core_performance_profile_worker_1_system_reserved_memory: 3Gi
+telco_core_performance_profile_worker_2_system_reserved_memory: 3Gi
+telco_core_performance_profile_worker_3_system_reserved_memory: 3Gi
+
