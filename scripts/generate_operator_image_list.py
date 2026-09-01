@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 import os
 import random
+import shutil
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -42,7 +44,58 @@ def fetch_pyxis_data(endpoint: str, params: dict) -> list:
     return []
 
 
-def get_random_operator_images(target_count: int) -> list:
+def is_image_accessible(quay_pull_spec: str) -> bool:
+    """Verifies image manifest accessibility using skopeo inspect or direct HTTP Quay API checks."""
+    # Method 1: Use skopeo inspect if available on the system
+    if shutil.which("skopeo"):
+        try:
+            cmd = ["skopeo", "inspect", "--raw", f"docker://{quay_pull_spec}"]
+            res = subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=8,
+            )
+            return res.returncode == 0
+        except Exception:
+            return False
+
+    # Method 2: Pure Python HTTP check against Quay Registry v2 API
+    try:
+        parts = quay_pull_spec.split("/", 1)
+        if len(parts) < 2 or "@" not in parts[1]:
+            return False
+        repo_path, digest = parts[1].split("@", 1)
+
+        # 1. Acquire anonymous Bearer token for repository pull access
+        auth_url = f"https://quay.io/v2/auth?service=quay.io&scope=repository:{repo_path}:pull"
+        auth_req = urllib.request.Request(
+            auth_url, headers={"User-Agent": "Pyxis-ACS-Operator-Extractor/1.0"}
+        )
+        with urllib.request.urlopen(auth_req, timeout=5) as auth_resp:
+            token = json.loads(auth_resp.read().decode("utf-8")).get("token")
+
+        if not token:
+            return False
+
+        # 2. Probe manifest availability via HEAD request
+        manifest_url = f"https://quay.io/v2/{repo_path}/manifests/{digest}"
+        manifest_req = urllib.request.Request(
+            manifest_url,
+            method="HEAD",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json",
+                "User-Agent": "Pyxis-ACS-Operator-Extractor/1.0",
+            },
+        )
+        with urllib.request.urlopen(manifest_req, timeout=5) as manifest_resp:
+            return manifest_resp.status == 200
+    except Exception:
+        return False
+
+
+def get_random_operator_images(target_count: int, validate: bool = True) -> list:
     """Retrieves images for `target_count` unique operators, formatted with SHA digests."""
     log(f"Fetching Operator packages from Pyxis (Target count: {target_count})...")
 
@@ -70,7 +123,6 @@ def get_random_operator_images(target_count: int) -> list:
 
         bundle = bundles[0]
 
-        # Check Pyxis bundle digest fields including bundle_path_digest
         digest = (
             bundle.get("bundle_path_digest")
             or bundle.get("digest")
@@ -78,7 +130,6 @@ def get_random_operator_images(target_count: int) -> list:
             or bundle.get("manifest_schema2_digest")
         )
 
-        # Check Pyxis image reference fields including bundle_path
         image_ref = (
             bundle.get("bundle_path")
             or bundle.get("bundle_image")
@@ -108,6 +159,12 @@ def get_random_operator_images(target_count: int) -> list:
             repo_path = f"operators/{pkg_name}"
 
         quay_pull_spec = f"{TARGET_REGISTRY}/{repo_path}@{digest}"
+
+        # Filter out unauthorized or non-existent public images prior to Ansible execution
+        if validate:
+            if not is_image_accessible(quay_pull_spec):
+                log(f"Skipping inaccessible/unauthorized image: {quay_pull_spec}")
+                continue
 
         results.append(
             {
@@ -143,9 +200,14 @@ def main():
         action="store_true",
         help="Skip generating disk output files (.txt and .json)",
     )
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip image accessibility check against Quay.io",
+    )
     args = parser.parse_args()
 
-    image_entries = get_random_operator_images(args.count)
+    image_entries = get_random_operator_images(args.count, validate=not args.skip_validation)
 
     if not image_entries:
         log("Error: Failed to generate image list.")
@@ -168,7 +230,7 @@ def main():
             json.dump(image_entries, jf, indent=2)
 
         log(f"\nCompleted successfully:")
-        log(f"- Processed {len(image_entries)} images.")
+        log(f"- Processed {len(image_entries)} valid images.")
         log(f"- Pull list written to: {txt_file}")
         log(f"- Full metadata written to: {json_file}")
 
