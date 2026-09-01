@@ -46,23 +46,20 @@ def get_random_operator_images(target_count: int) -> list:
     """Retrieves images for `target_count` unique operators, formatted with SHA digests."""
     log(f"Fetching Operator packages from Pyxis (Target count: {target_count})...")
 
-    packages = fetch_pyxis_data("operators/packages", {"page_size": 300, "page": 0})
+    packages = fetch_pyxis_data("operators/packages", {"page_size": 500, "page": 0})
     if not packages:
         log("No operator packages retrieved from Pyxis.")
         return []
 
     unique_packages = list({pkg.get("package_name") for pkg in packages if pkg.get("package_name")})
-
-    if len(unique_packages) < target_count:
-        selected_packages = unique_packages
-    else:
-        selected_packages = random.sample(unique_packages, target_count)
-
-    log(f"Selected {len(selected_packages)} unique operators. Fetching image digests...")
+    random.shuffle(unique_packages)
 
     results = []
 
-    for pkg_name in selected_packages:
+    for pkg_name in unique_packages:
+        if len(results) >= target_count:
+            break
+
         bundles = fetch_pyxis_data(
             "operators/bundles",
             {"filter": f'package=="{pkg_name}"', "page_size": 1},
@@ -73,14 +70,21 @@ def get_random_operator_images(target_count: int) -> list:
 
         bundle = bundles[0]
 
-        # Extract SHA digest from root fields or related images
+        # Check Pyxis bundle digest fields including bundle_path_digest
         digest = (
-            bundle.get("digest")
+            bundle.get("bundle_path_digest")
+            or bundle.get("digest")
             or bundle.get("docker_image_digest")
             or bundle.get("manifest_schema2_digest")
         )
 
-        image_ref = bundle.get("bundle_image") or bundle.get("image") or ""
+        # Check Pyxis image reference fields including bundle_path
+        image_ref = (
+            bundle.get("bundle_path")
+            or bundle.get("bundle_image")
+            or bundle.get("image")
+            or ""
+        )
 
         if not digest and "@sha256:" in image_ref:
             digest = image_ref.split("@")[-1]
@@ -147,12 +151,10 @@ def main():
         log("Error: Failed to generate image list.")
         sys.exit(1)
 
-    # Output to stdout if requested
     if args.stdout:
         for entry in image_entries:
             print(entry["quay_image"])
 
-    # Write output files unless explicitly disabled
     if not args.no_files:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         txt_file = CUSTOM_TXT_FILE or f"{OUTPUT_PREFIX}_{timestamp}.txt"
