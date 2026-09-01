@@ -12,7 +12,7 @@
   tasks:
     - name: Retrieve operator image specs from Pyxis API
       ansible.builtin.command:
-        cmd: "python3 {{ playbook_dir }}/../generate_operator_image_list.py --stdout --no-files --count {{ target_count }}"
+        cmd: "python3 {{ playbook_dir }}/../scripts/generate_operator_image_list.py --stdout --no-files --count {{ target_count }}"
       register: pyxis_output
       changed_when: false
 
