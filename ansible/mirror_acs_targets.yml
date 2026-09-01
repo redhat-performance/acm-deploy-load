@@ -1,0 +1,35 @@
+---
+- name: ACS Scanner Target Mirroring Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    registry_port: 9443
+    internal_registry: "registry.{{ ansible_facts['fqdn'] }}:{{ registry_port }}/acs_targets"
+    target_count: 25
+
+  tasks:
+    - name: Retrieve operator image specs from Pyxis API
+      ansible.builtin.command:
+        cmd: "python3 {{ playbook_dir }}/../generate_operator_image_list.py --stdout --no-files --count {{ target_count }}"
+      register: pyxis_output
+      changed_when: false
+
+    - name: Convert output into image spec list
+      ansible.builtin.set_fact:
+        image_list: "{{ pyxis_output.stdout_lines }}"
+
+    - name: Mirror images to local registry via Skopeo
+      ansible.builtin.command:
+        cmd: >
+          skopeo copy
+          --src-tls-verify=true
+          --dest-tls-verify=false
+          docker://{{ item }}
+          docker://{{ internal_registry }}/{{ item.split('/')[-1] }}
+      loop: "{{ image_list }}"
+      register: skopeo_results
+      retries: 3
+      delay: 5
+      until: skopeo_results.rc == 0
