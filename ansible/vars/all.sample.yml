@@ -5,6 +5,7 @@ install_directory: /root
 # Leave blank if not doing disconnected
 rhacm_disconnected_registry:
 rhacm_disconnected_registry_port: 5000
+
 # Use oc-mirror v2 mirror locations for OCP release images
 # When true (default): ocp-release -> openshift/release-images, ocp-v4.0-art-dev -> openshift/release, ocp-v5.0-art-dev -> openshift/release
 # When false: ocp-release -> ocp4/openshift4, ocp-v4.0-art-dev -> ocp4/openshift4, ocp-v5.0-art-dev -> ocp5/openshift5
@@ -32,7 +33,6 @@ setup_ztp_perfprofile_hugepage_count: 1
 setup_ztp_perfprofile_realtime: true
 setup_ztp_searchcollector_enabled: true
 
-
 # Install ACM/ZTP vars
 is_konflux_build: false
 # Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
@@ -40,8 +40,8 @@ rhacm_build:
 # Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
 mce_build:
 # Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
-acm_source: cs-redhat-operator-index-v4-20
-acm_channel: release-2.15
+acm_source: cs-redhat-operator-index-v4-22
+acm_channel: release-2.17
 
 rhacm_disableHubSelfManagement: false
 hub_cluster_kubeconfig: /root/mno/kubeconfig
@@ -58,8 +58,8 @@ setup_rhacm_observability: false
 # Only have one set to true or none (setup_talm_operator or setup_talm_repo)
 # Deploy TALM via Operator Subscription
 setup_talm_operator: true
-# redhat-operator-index = disconnected setup, redhat-operators = connected setup
-talm_operator_source: redhat-operators
+# cs-redhat-operator-index-v4-22 = disconnected setup, redhat-operators = connected setup
+talm_operator_source: cs-redhat-operator-index-v4-22
 # Deploy TALM via Repo
 setup_talm_repo: false
 talm_repo: https://github.com/openshift-kni/cluster-group-upgrades-operator.git
@@ -76,23 +76,18 @@ setup_ztp_policy_application: true
 
 # MCE Assisted-installer items (Installed with RHACM)
 mce_assisted_ocp_versions:
-- quay.io/openshift-release-dev/ocp-release:4.20.10-x86_64
-- quay.io/openshift-release-dev/ocp-release:4.20.11-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.22.12-x86_64
 mce_assisted_service_namespace: multicluster-engine
-# Set true to disable container image policy checks in assisted-service (for OCP 4.22+ RC builds)
+# Set true to disable container image policy checks in assisted-service (For OCP builds that do not have image signatures)
 setup_asc_disable_image_policy: false
-# use_oc_mirror_v2: true
+# When use_oc_mirror_v2: true, the default, the namespace/organization is openshift and the image/repository is release-images
 mce_clusterimagesets:
-- name: openshift-4.22.9
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.9-x86_64
-- name: openshift-4.22.8
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.8-x86_64
-# use_oc_mirror_v2: false
+- name: openshift-4.22.12
+  releaseImage: quay.io/openshift/release-images:4.22.12-x86_64
+# When use_oc_mirror_v2: false, the namespace/organization is ocp4 and the image/repository is openshift4
 # mce_clusterimagesets:
-# - name: openshift-4.22.9
-#   releaseImage: registry.example.com:5000/ocp4/openshift4:4.22.9-x86_64
-# - name: openshift-4.22.8
-#   releaseImage: registry.example.com:5000/ocp4/openshift4:4.22.8-x86_64
+# - name: openshift-4.22.12
+#   releaseImage: registry.example.com:5000/ocp4/openshift4:4.22.12-x86_64
 
 # Enable SiteConfig Operator in ACM (Included since ACM 2.12)
 acm_enable_siteconfig: false
