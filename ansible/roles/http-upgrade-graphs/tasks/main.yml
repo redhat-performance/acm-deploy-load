@@ -1,6 +1,10 @@
 ---
 # http-upgrade-graphs task
 
+- name: Determine http_store_path
+  set_fact:
+    http_store_path: "{{ lookup('first_found', http_store_paths, errors='ignore') | default(http_store_paths[0], true) }}"
+
 - name: Create directory for upgrade graphs
   file:
     path: "{{ http_store_path }}/data/upgrade"

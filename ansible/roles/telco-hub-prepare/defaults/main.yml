@@ -12,7 +12,11 @@ gogs_port: 10880
 gogs_username: testadmin
 gogs_password: testadmin
 
-registry_path: /opt/registry
+# Possible registry certificate paths (checked in order)
+registry_cert_paths:
+  - /opt/jetlag/registry/certs/domain.crt
+  - /opt/registry/certs/domain.crt
+
 # Http store host is required due to mce-assisted-installer role populating os_images
 http_store_host: "{{ groups['bastion'][0] }}"
 http_store_port: 8081

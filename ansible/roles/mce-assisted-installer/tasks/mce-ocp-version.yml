@@ -1,6 +1,10 @@
 ---
 # mce-ocp-version tasks
 
+- name: Determine http_store_path
+  set_fact:
+    http_store_path: "{{ lookup('first_found', http_store_paths, errors='ignore') | default(http_store_paths[0], true) }}"
+
 # Ex: quay.io/openshift-release-dev/ocp-release:4.15.2-x86_64 becomes 4.15
 - name: Determine OCP version in "{{ item }}"
   set_fact:

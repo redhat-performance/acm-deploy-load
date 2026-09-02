@@ -1,7 +1,6 @@
 ---
 # Common AAP/ACM/ZTP vars
 install_directory: /root
-http_store_path: /opt/http_store
 
 # Leave blank if not doing disconnected
 rhacm_disconnected_registry:

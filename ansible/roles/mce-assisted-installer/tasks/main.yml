@@ -17,12 +17,13 @@
 
 - name: Get disconnected registry certificate
   slurp:
-    src: "{{ registry_path }}/certs/domain.crt"
+    src: "{{ lookup('first_found', registry_cert_paths, errors='ignore') }}"
   register: mirror_cert
   when:
   - rhacm_disconnected_registry is defined
   - rhacm_disconnected_registry is not none
   - rhacm_disconnected_registry | length > 1
+  - lookup('first_found', registry_cert_paths, errors='ignore') | length > 0
 
 - name: Template files for mce/rhacm assisted-installer
   template:

@@ -7,8 +7,15 @@ ocp_ibi_version: quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
 # Version of the seed image we are using for this ibi iso file
 seed_image_version: 4.19.14
 
-# Path to Registry on the Bastion machine
-registry_path: /opt/registry
+# Possible registry certificate paths (checked in order)
+registry_cert_paths:
+  - /opt/jetlag/registry/certs/domain.crt
+  - /opt/registry/certs/domain.crt
+
+# Possible HTTP store paths (checked in order, defaults to first if neither exists)
+http_store_paths:
+  - /opt/jetlag/http_store
+  - /opt/http_store
 
 # SSH Key to access machine thathas booted IBI Prep ISO
 ssh_public_key_file: ~/.ssh/id_rsa.pub

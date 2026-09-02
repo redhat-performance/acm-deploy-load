@@ -1,0 +1,7 @@
+---
+# http-upgrade-graphs default vars
+
+# Possible HTTP store paths (checked in order, defaults to first if neither exists)
+http_store_paths:
+  - /opt/jetlag/http_store
+  - /opt/http_store

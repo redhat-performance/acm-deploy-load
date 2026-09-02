@@ -5,7 +5,15 @@
 http_store_host: "{{ groups['bastion'][0] }}"
 http_store_port: 8081
 
-registry_path: /opt/registry
+# Possible registry certificate paths (checked in order)
+registry_cert_paths:
+  - /opt/jetlag/registry/certs/domain.crt
+  - /opt/registry/certs/domain.crt
+
+# Possible HTTP store paths (checked in order, defaults to first if neither exists)
+http_store_paths:
+  - /opt/jetlag/http_store
+  - /opt/http_store
 
 # Patch to address - https://bugzilla.redhat.com/show_bug.cgi?id=2101987
 mce_2_1_patch: false
