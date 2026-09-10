@@ -7,13 +7,13 @@ additionalTrustBundle: |
   {{ mirror_cert.content | b64decode | indent(width=2) }}
 ImageDigestSources:
 - mirrors:
-  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror_v2 %}openshift/release-images{% else %}ocp4/openshift4{% endif %}
+  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ 'openshift/release-images' if use_oc_mirror_v2 else 'ocp4/openshift4' }}
   source: quay.io/openshift-release-dev/ocp-release
 - mirrors:
-  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror_v2 %}openshift/release{% else %}ocp4/openshift4{% endif %}
+  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ 'openshift/release' if use_oc_mirror_v2 else 'ocp4/openshift4' }}
   source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
 - mirrors:
-  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{% if use_oc_mirror_v2 %}openshift/release{% else %}ocp5/openshift5{% endif %}
+  - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ 'openshift/release' if use_oc_mirror_v2 else 'ocp5/openshift5' }}
   source: quay.io/openshift-release-dev/ocp-v5.0-art-dev
 - mirrors:
   - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
@@ -32,7 +32,7 @@ ImageDigestSources:
 seedImage: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/ocp-ibu:{{ seed_image_version }}.ibu-x86_64
 seedVersion: "{{ seed_image_version }}"
 extraPartitionStart: "50G"
-{% if ibi_prep_iso_ignitionConfigOverride|length > 2%}
+{% if ibi_prep_iso_ignitionConfigOverride|length > 2 %}
 ignitionConfigOverride: '{{ ibi_prep_iso_ignitionConfigOverride }}'
 {% endif %}
 installationDisk: "/dev/sda"
