@@ -37,7 +37,7 @@ rhacm_build:
 # Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
 mce_build:
 # Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
-acm_source: cs-redhat-operator-index-v4-19
+acm_source: cs-redhat-operator-index-v4-22
 acm_channel: release-2.17
 
 rhacm_disableHubSelfManagement: false
@@ -73,13 +73,13 @@ setup_ztp_policy_application: true
 
 # MCE Assisted-installer items (Installed with RHACM)
 mce_assisted_ocp_versions:
-- quay.io/openshift-release-dev/ocp-release:4.22.7-x86_64
+- quay.io/openshift-release-dev/ocp-release:4.22.12-x86_64
 mce_assisted_service_namespace: multicluster-engine
 # Set true to disable container image policy checks in assisted-service (for OCP 4.22+ RC builds)
 setup_asc_disable_image_policy: false
 mce_clusterimagesets:
-- name: openshift-4.22.7
-  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.7-x86_64
+- name: openshift-4.22.12
+  releaseImage: quay.io/openshift-release-dev/ocp-release:4.22.12-x86_64
 
 # Enable SiteConfig Operator in ACM (Included since ACM 2.12)
 acm_enable_siteconfig: true
@@ -94,7 +94,7 @@ aap_license_manifest: "{{ lookup('file', '../aap_manifest.zip') }}"
 # Customizations
 setup_odf: false
 setup_lso: false
-acm_operator_source: redhat-operators
+acm_operator_source: redhat-operators-disconnected
 acm_operator_channel: release-2.17
 gogs_host: "198.18.0.1"
 setup_core_ztp: true
@@ -103,7 +103,7 @@ telco_reference_branch: "release-4.22"
 ztp_site_generator_image_tag: "4.21.0"
 gitops_operator_source: redhat-operators
 gitops_operator_channel: gitops-1.21
-acm_source: redhat-operators
+acm_source: cs-redhat-operator-index-v4-22
 
 setup_cluster_monitoring: false
 telco_core_control_plane_system_reserved_memory: 3Gi

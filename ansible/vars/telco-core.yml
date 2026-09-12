@@ -3,7 +3,7 @@
 
 # Common vars
 core_ocp_version: "4.22"
-core_cluster_image_set: openshift-4.22.7
+core_cluster_image_set: openshift-4.22.12
 core_cluster_base_domain: rdu2.scalelab.redhat.com
 core_boot_mode: UEFI
 
