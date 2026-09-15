@@ -1,0 +1,7 @@
+---
+# operator-container-images-curator role defaults
+
+registry_port: 5000
+internal_registry: "{{ ansible_facts['fqdn'] }}:{{ registry_port }}/"
+org_name: "operator-containers"
+target_count: 50

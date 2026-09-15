@@ -1,0 +1,24 @@
+---
+- name: Retrieve operator image specs from Pyxis API
+  ansible.builtin.command:
+    cmd: "python3 {{ role_path }}/files/generate_operator_image_list.py --stdout --no-files --count {{ target_count }}"
+  register: pyxis_output
+  changed_when: false
+
+- name: Convert output into image spec list
+  ansible.builtin.set_fact:
+    image_list: "{{ pyxis_output.stdout_lines }}"
+
+- name: Mirror images to local registry with valid destination tags
+  ansible.builtin.command:
+    cmd: >
+      skopeo copy
+      --src-tls-verify=true
+      --dest-tls-verify=false
+      docker://{{ item }}
+      docker://{{ internal_registry }}/{{org_name}}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
+  loop: "{{ image_list }}"
+  register: skopeo_results
+  retries: 3
+  delay: 5
+  until: skopeo_results.rc == 0

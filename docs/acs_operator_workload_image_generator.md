@@ -1,6 +1,6 @@
 # ACS Operator Workload Image Generator
 
-`generate_operator_image_list.py` queries the Red Hat Pyxis API to generate randomized lists of deployable Operator container images pinned by immutable `sha256` digests.
+`generate_operator_image_list.py` queries the Red Hat Pyxis API to generate randomized lists of deployable Operator container images pinned by immutable `sha256` digests. Image mirroring is orchestrated via the **operator-container-images-curator** Ansible role.
 
 ## Primary Use Case
 
@@ -38,10 +38,24 @@ This tool automates workload generation for Red Hat Advanced Cluster Security (A
 
 ---
 
+## Deployment
+
+The **operator-container-images-curator** Ansible role automates image mirroring:
+
+```bash
+ansible-playbook -i inventory/hosts ansible/mirror_acs_targets.yml
+```
+
+Override defaults with `--extra-vars`:
+```bash
+ansible-playbook -i inventory/hosts ansible/mirror_acs_targets.yml \
+  --extra-vars "target_count=100 registry_port=5000"
+```
+
 ## Basic Usage
 
 ### Standard File Generation
 Generates 50 random operator image specs and writes timestamped files to disk:
 ```bash
-python3 generate_operator_image_list.py
+python3 scripts/generate_operator_image_list.py
 ```

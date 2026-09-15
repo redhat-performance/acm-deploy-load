@@ -1,0 +1,17 @@
+---
+# Playbook to generate a list of operator container images for use in ACS testing
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/curate-images-for-acs-testing.yml
+#
+- name: Generate a list of random operator container images for ACS Scanner testing
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars_files:
+  - vars/all.yml
+
+  roles:
+    - operator-container-images-curator
