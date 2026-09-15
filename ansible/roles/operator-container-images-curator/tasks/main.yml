@@ -16,7 +16,7 @@
       --src-tls-verify=true
       --dest-tls-verify=false
       docker://{{ item }}
-      docker://{{ acs_internal_registry }}{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
   loop: "{{ image_list }}"
   register: skopeo_results
   retries: 3
@@ -29,8 +29,8 @@
       skopeo copy
       --src-tls-verify=false
       --dest-tls-verify=false
-      docker://{{ acs_internal_registry }}{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
-      docker://{{ acs_internal_registry }}{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing
   loop: "{{ image_list }}"
   register: skopeo_tag_results
   retries: 2
@@ -44,14 +44,18 @@
 
 - name: Query registry for acs-testing tagged images
   ansible.builtin.uri:
-    url: "https://{{ acs_internal_registry }}v2/{{ acs_org_name }}/{{ item }}/tags/list"
+    url: "https://{{ acs_internal_registry }}/v2/{{ acs_org_name }}/{{ item }}/tags/list"
     method: GET
     validate_certs: false
     return_content: true
+    user: "{{ acs_registry_username }}"
+    password: "{{ acs_registry_password }}"
+    force_basic_auth: "{{ true if acs_registry_username else false }}"
   loop: "{{ acs_local_images }}"
   register: registry_image_tags
   changed_when: false
   ignore_errors: true
+  no_log: true
 
 - name: Parse registry image details
   ansible.builtin.set_fact:
