@@ -5,3 +5,6 @@ acs_registry_port: 5000
 acs_internal_registry: "{{ ansible_facts['fqdn'] }}:{{ acs_registry_port }}"
 acs_org_name: "operator-containers"
 acs_operator_containers_target_count: 50
+
+# Output file for container names
+acs_container_names_file: "/tmp/acs_container_names.txt"

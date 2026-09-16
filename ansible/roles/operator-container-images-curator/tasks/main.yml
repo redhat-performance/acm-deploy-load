@@ -45,6 +45,12 @@
   changed_when: false
   ignore_errors: true
 
-- name: Parse mirrored image metadata
+- name: Extract container names from successfully mirrored images
   ansible.builtin.set_fact:
-    acs_registry_images: "{{ skopeo_inspect_results.results | selectattr('rc', 'equalto', 0) | map(attribute='stdout') | map('from_json') | list }}"
+    acs_container_names: "{{ skopeo_inspect_results.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | map('regex_replace', '^.*/', '') | map('regex_replace', '@.*', '') | list }}"
+
+- name: Write container names to file
+  ansible.builtin.copy:
+    content: "{{ acs_container_names | join('\n') }}\n"
+    dest: "{{ acs_container_names_file }}"
+  when: acs_container_names | length > 0
