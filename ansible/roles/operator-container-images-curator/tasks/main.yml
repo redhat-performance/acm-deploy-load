@@ -37,26 +37,14 @@
   delay: 3
   until: skopeo_tag_results.rc == 0
 
-- name: Collect acs-testing tagged images
-  ansible.builtin.set_fact:
-    acs_local_images: "{{ image_list | map('regex_replace', '^.*/', '') | map('regex_replace', '@.*', '') | map('regex_replace', '.*/', '') | list }}"
-  when: skopeo_tag_results.results | selectattr('rc', 'equalto', 0) | list | length > 0
-
-- name: Query registry for acs-testing tagged images
-  ansible.builtin.uri:
-    url: "https://{{ acs_internal_registry }}/v2/{{ acs_org_name }}/{{ item }}/tags/list"
-    method: GET
-    validate_certs: false
-    return_content: true
-    user: "{{ acs_registry_username }}"
-    password: "{{ acs_registry_password }}"
-    force_basic_auth: "{{ true if acs_registry_username else false }}"
-  loop: "{{ acs_local_images }}"
-  register: registry_image_tags
+- name: Inspect mirrored images from registry
+  ansible.builtin.command:
+    cmd: "skopeo inspect --tls-verify=false docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing"
+  loop: "{{ image_list }}"
+  register: skopeo_inspect_results
   changed_when: false
   ignore_errors: true
-  no_log: true
 
-- name: Parse registry image details
+- name: Parse mirrored image metadata
   ansible.builtin.set_fact:
-    acs_registry_images: "{{ registry_image_tags.results | selectattr('status', 'equalto', 200) | map(attribute='json') | list }}"
+    acs_registry_images: "{{ skopeo_inspect_results.results | selectattr('rc', 'equalto', 0) | map(attribute='stdout') | map('from_json') | list }}"
