@@ -59,10 +59,10 @@ group_policy_storage_name: "config-storage-policy"
 
 # Image Based Upgrades requires the oadp operator to be installed on SNOs
 include_oadp_operator: false
-# Adjust URL to match your cluster's minio route
-oadp_s3Url: http://minio-minio.apps.bm.example.com
-s3_access_key_id: minio
-s3_secret_access_key: minio123
+# Adjust URL to match where the object store is accessible
+oadp_s3Url: http://{{ groups['bastion'][0] }}:9000
+s3_access_key_id: rustfs
+s3_secret_access_key: rustfs123
 
 # Image Based Upgrades requires the Lifecycle-agent operator to be installed on SNOs
 include_lca_operator: false

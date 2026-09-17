@@ -11,17 +11,16 @@ observability_receiveStorageSize: 100Gi
 observability_ruleStorageSize: 20Gi
 observability_storeStorageSize: 100Gi
 
-# Storage method for thanos object storage: minio or odf
-observability_storage_method: minio
+# Storage method for thanos object storage: object-store or odf
+observability_storage_method: object-store
 
-# MinIO settings (used when observability_storage_method == "minio")
-# MinIO on cluster: minio.minio.svc.cluster.local:9000
-# MinIO on bastion: {{ groups['bastion'][0] }}:9000
+# Object-store settings (used when observability_storage_method == "object-store")
+# Object-store on bastion: {{ groups['bastion'][0] }}:9000
 observability_thanos_s3_bucket_name: thanos
 observability_thanos_s3_bucket_endpoint: "{{ groups['bastion'][0] }}:9000"
 observability_thanos_s3_bucket_insecure: true
-observability_thanos_s3_bucket_access_key: minio
-observability_thanos_s3_bucket_secret_key: minio123
+observability_thanos_s3_bucket_access_key: rustfs
+observability_thanos_s3_bucket_secret_key: rustfs123
 
 # Apply the observabilityRoutePolicy on the hub to set acm-hub-cluster-id and
 # acm-alertmanager-route annotations on ManagedCluster resources
