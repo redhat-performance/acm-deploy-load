@@ -23,5 +23,6 @@
     - role: refresh-vulnerabilities-definition
       tags:
         - refresh-vulns
-    - acs-spokes-registration
-    - acs-sensor-setup
+# WIP Roles
+#   - acs-spokes-registration
+#   - acs-sensor-setup
