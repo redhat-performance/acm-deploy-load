@@ -1,0 +1,8 @@
+---
+# defaults for refresh-vulnerabilities-definition role
+
+rox_central_address: ""
+rox_api_token: ""
+work_directory: "/tmp/acs-scanner-db"
+scanner_db_file: "scanner-vuln-updates.zip"
+roxctl_insecure: true
