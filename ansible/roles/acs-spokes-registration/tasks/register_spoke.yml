@@ -1,0 +1,58 @@
+---
+# Register a single managed cluster (spoke) with ACS Central
+
+- name: Get managed cluster kubeconfig
+  shell: |
+    oc get secret -n {{ managed_cluster_name }} {{ managed_cluster_name }}-admin-kubeconfig \
+      -o jsonpath='{.data.kubeconfig}' | base64 -d
+  register: spoke_kubeconfig
+  changed_when: false
+  failed_when: spoke_kubeconfig.rc != 0
+
+- name: Create stackrox namespace on spoke
+  shell: |
+    set -e
+    export KUBECONFIG=/dev/stdin
+    echo '{{ spoke_kubeconfig.stdout }}' | oc create namespace stackrox --dry-run=client -o yaml | oc apply -f -
+  changed_when: "'created' in namespace_result.stdout"
+  register: namespace_result
+
+- name: Create stackrox docker-registry secret on spoke
+  shell: |
+    set -e
+    export KUBECONFIG=/dev/stdin
+    echo '{{ spoke_kubeconfig.stdout }}' | oc create secret docker-registry stackrox \
+      --docker-server=registry.redhat.io \
+      --docker-username="{{ rh_registry_io_username }}" \
+      --docker-password="{{ rh_registry_io_password }}" \
+      -n stackrox \
+      --dry-run=client -o yaml | oc apply -f -
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig.stdout }}"
+  changed_when: "'created' in stackrox_secret_result.stdout"
+  register: stackrox_secret_result
+
+- name: Create collector-stackrox docker-registry secret on spoke
+  shell: |
+    set -e
+    export KUBECONFIG=/dev/stdin
+    echo '{{ spoke_kubeconfig.stdout }}' | oc create secret docker-registry collector-stackrox \
+      --docker-server=registry.redhat.io/advanced-cluster-security \
+      --docker-username="{{ rh_registry_io_username }}" \
+      --docker-password="{{ rh_registry_io_password }}" \
+      -n stackrox \
+      --dry-run=client -o yaml | oc apply -f -
+  changed_when: "'created' in collector_secret_result.stdout"
+  register: collector_secret_result
+
+- name: Apply CRS to register spoke with Central
+  shell: |
+    set -e
+    export KUBECONFIG=/dev/stdin
+    echo '{{ spoke_kubeconfig.stdout }}' | oc apply -f {{ rox_crs_cache_dir }}/admin-crs.yml
+  changed_when: "'created' in crs_apply_result.stdout or 'configured' in crs_apply_result.stdout"
+  register: crs_apply_result
+
+- name: Display spoke registration result
+  debug:
+    msg: "Registered managed cluster '{{ managed_cluster_name }}' with ACS Central"

@@ -1,0 +1,9 @@
+---
+# defaults for acs-spokes-registration role
+
+rox_central_address: ""
+rox_crs_cache_dir: "acs-crs"
+rox_crs_valid_for: "720h"
+roxctl_insecure: true
+rh_registry_io_username: ""
+rh_registry_io_password: ""

@@ -1,0 +1,52 @@
+---
+# acs-spokes-registration tasks - Register managed clusters with ACS Central
+
+- name: Validate required variables
+  assert:
+    that:
+      - rox_api_token | length > 0
+      - rox_central_address | length > 0
+      - rh_registry_io_username | length > 0
+      - rh_registry_io_password | length > 0
+    fail_msg: "Required variables not set: rox_api_token, rox_central_address, rh_registry_io_username, rh_registry_io_password"
+
+- name: Create CRS cache directory
+  file:
+    path: "{{ rox_crs_cache_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Check if CRS already exists
+  stat:
+    path: "{{ rox_crs_cache_dir }}/admin-crs.yml"
+  register: crs_stat
+
+- name: Generate Cluster Registration Secret
+  block:
+    - name: Generate CRS with roxctl
+      shell: |
+        set -e
+        cd {{ rox_crs_cache_dir }}
+        roxctl central crs generate \
+          --valid-for "{{ rox_crs_valid_for }}" \
+          {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
+          -e {{ rox_central_address }} \
+          admin-crs \
+          --output admin-crs.yml
+      environment:
+        ROX_API_TOKEN: "{{ rox_api_token }}"
+      register: crs_generate_result
+      changed_when: true
+
+    - name: Display CRS generation output
+      debug:
+        msg: "{{ crs_generate_result.stdout }}"
+      when: crs_generate_result.stdout | length > 0
+  when: not crs_stat.stat.exists
+
+- name: Register each managed cluster with ACS Central
+  include_tasks: register_spoke.yml
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  loop_control:
+    loop_var: managed_cluster_name
+  when: groups.get('managed_clusters', []) | length > 0
