@@ -45,13 +45,22 @@
   changed_when: "'created' in collector_secret_result.stdout"
   register: collector_secret_result
 
+- name: Get CRS secret from hub namespace
+  shell: |
+    oc get secret {{ rox_crs_secret_name }} -n {{ managed_cluster_name }} \
+      -o jsonpath='{.data.admin-crs\.yml}' | base64 -d
+  register: spoke_crs_secret
+  changed_when: false
+
 - name: Apply CRS to register spoke with Central
   shell: |
     set -e
     export KUBECONFIG=/dev/stdin
-    echo '{{ spoke_kubeconfig.stdout }}' | oc apply -f {{ rox_crs_cache_dir }}/admin-crs.yml
-  changed_when: "'created' in crs_apply_result.stdout or 'configured' in crs_apply_result.stdout"
+    echo '{{ spoke_kubeconfig.stdout }}' | oc apply -f - 2>&1 <<'EOF'
+{{ spoke_crs_secret.stdout }}
+EOF
   register: crs_apply_result
+  changed_when: crs_apply_result.stdout is search('(created|configured)')
 
 - name: Display spoke registration result
   debug:

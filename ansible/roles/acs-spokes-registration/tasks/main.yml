@@ -10,23 +10,51 @@
       - rh_registry_io_password | length > 0
     fail_msg: "Required variables not set: rox_api_token, rox_central_address, rh_registry_io_username, rh_registry_io_password"
 
-- name: Create CRS cache directory
-  file:
-    path: "{{ rox_crs_cache_dir }}"
-    state: directory
-    mode: '0755'
+- name: Check CRS secrets in spoke namespaces
+  block:
+    - name: Get CRS secret from first spoke namespace
+      shell: |
+        oc get secret {{ rox_crs_secret_name }} -n {{ groups['managed_clusters'][0] }} \
+          -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d
+      register: first_spoke_crs
+      changed_when: false
+      failed_when: false
 
-- name: Check if CRS already exists
-  stat:
-    path: "{{ rox_crs_cache_dir }}/admin-crs.yml"
-  register: crs_stat
+    - name: Check if all spokes have matching CRS
+      shell: |
+        set -e
+        first_crs="{{ first_spoke_crs.stdout }}"
+        for cluster in {{ groups['managed_clusters'] | join(' ') }}; do
+          current_crs=$(oc get secret {{ rox_crs_secret_name }} -n $cluster \
+            -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d || echo "MISSING")
+          if [ "$current_crs" != "$first_crs" ]; then
+            echo "MISMATCH"
+            exit 0
+          fi
+        done
+        echo "MATCH"
+      register: crs_check_result
+      changed_when: false
+      failed_when: false
+      when: first_spoke_crs.stdout | length > 0
+
+    - name: Set crs_needs_regeneration flag
+      set_fact:
+        crs_needs_regeneration: "{{ (first_spoke_crs.stdout | length == 0) or (crs_check_result.stdout == 'MISMATCH') }}"
+  when: groups.get('managed_clusters', []) | length > 0
 
 - name: Generate Cluster Registration Secret
   block:
+    - name: Create temporary work directory
+      file:
+        path: "{{ rox_crs_work_dir }}"
+        state: directory
+        mode: '0755'
+
     - name: Generate CRS with roxctl
       shell: |
         set -e
-        cd {{ rox_crs_cache_dir }}
+        cd {{ rox_crs_work_dir }}
         roxctl central crs generate \
           --valid-for "{{ rox_crs_valid_for }}" \
           {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
@@ -42,7 +70,27 @@
       debug:
         msg: "{{ crs_generate_result.stdout }}"
       when: crs_generate_result.stdout | length > 0
-  when: not crs_stat.stat.exists
+
+    - name: Read generated CRS content
+      slurp:
+        src: "{{ rox_crs_work_dir }}/admin-crs.yml"
+      register: crs_content
+
+    - name: Update CRS secret in all spoke namespaces
+      shell: |
+        set -e
+        oc create secret generic {{ rox_crs_secret_name }} \
+          --from-literal=admin-crs.yml='{{ crs_content['content'] | b64decode }}' \
+          -n {{ item }} \
+          --dry-run=client -o yaml | oc apply -f -
+      loop: "{{ groups.get('managed_clusters', []) }}"
+      changed_when: true
+
+    - name: Clean up work directory
+      file:
+        path: "{{ rox_crs_work_dir }}"
+        state: absent
+  when: crs_needs_regeneration | default(false)
 
 - name: Register each managed cluster with ACS Central
   include_tasks: register_spoke.yml
