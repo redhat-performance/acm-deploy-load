@@ -47,8 +47,7 @@
   block:
     - name: Revoke existing CRS if present
       shell: |
-        roxctl central crs revoke \
-          --id admin-crs \
+        roxctl central crs revoke {{ rox_crs_secret_name }} \
           {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
           -e {{ rox_central_address }}
       environment:
