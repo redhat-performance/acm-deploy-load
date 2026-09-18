@@ -45,6 +45,18 @@
 
 - name: Generate Cluster Registration Secret
   block:
+    - name: Revoke existing CRS if present
+      shell: |
+        roxctl central crs revoke \
+          --id admin-crs \
+          {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
+          -e {{ rox_central_address }}
+      environment:
+        ROX_API_TOKEN: "{{ rox_api_token }}"
+      register: crs_revoke_result
+      changed_when: false
+      failed_when: false
+
     - name: Create temporary work directory
       file:
         path: "{{ rox_crs_work_dir }}"
