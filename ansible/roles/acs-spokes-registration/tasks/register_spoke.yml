@@ -55,8 +55,7 @@
 - name: Apply CRS to register spoke with Central
   shell: |
     set -e
-    export KUBECONFIG=/dev/stdin
-    echo '{{ spoke_kubeconfig.stdout }}' | oc apply -f - 2>&1 <<'EOF'
+    echo '{{ spoke_kubeconfig.stdout }}' | KUBECONFIG=/dev/stdin oc apply -f - 2>&1 <<EOF
 {{ spoke_crs_secret.stdout }}
 EOF
   register: crs_apply_result
