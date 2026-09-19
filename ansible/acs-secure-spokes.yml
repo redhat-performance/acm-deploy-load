@@ -28,6 +28,6 @@
     - role: acs-spokes-registration
       tags:
         - registeration
- 
-# WIP Roles
-#   - acs-spokes-sensor-setup
+    - role: acs-spokes-sensor-setup
+      tags:
+        - sensor-setup

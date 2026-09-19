@@ -1,0 +1,8 @@
+---
+# defaults for acs-spokes-sensor-setup role
+
+rox_central_address: ""
+rox_api_token: ""
+openshift_version: "4"
+roxctl_insecure: true
+sensor_work_dir: "/tmp/acs-sensor-gen"
