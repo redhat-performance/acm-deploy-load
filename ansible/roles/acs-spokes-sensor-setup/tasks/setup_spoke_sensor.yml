@@ -58,16 +58,22 @@
     msg: "{{ sensor_generate_result.stdout }}"
   when: sensor_generate_result.stdout | length > 0
 
+- name: Check if sensor directory exists
+  stat:
+    path: "{{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}"
+  register: sensor_dir_stat
+
 - name: Deploy sensor to {{ managed_cluster_name }}
   shell: |
     set -e
-    cd {{ sensor_work_dir }}/{{ managed_cluster_name }}
+    cd {{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}
     ./sensor.sh
   environment:
     KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   register: sensor_deploy_result
   changed_when: "'creating' in sensor_deploy_result.stdout.lower() or 'created' in sensor_deploy_result.stdout.lower()"
   failed_when: sensor_deploy_result.rc != 0
+  when: sensor_dir_stat.stat.exists and sensor_dir_stat.stat.isdir
 
 - name: Display sensor deployment output
   debug:
@@ -90,5 +96,5 @@
 
 - name: Clean up sensor generation directory
   file:
-    path: "{{ sensor_work_dir }}/{{ managed_cluster_name }}"
+    path: "{{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}"
     state: absent
