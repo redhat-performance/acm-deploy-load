@@ -27,24 +27,15 @@
     state: directory
     mode: '0755'
 
-- name: Check if cluster already exists in ACS Central
-  shell: |
-    roxctl cluster list -e {{ rox_central_address }} {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} 2>/dev/null | grep -q "{{ managed_cluster_name }}" && echo "EXISTS" || echo "NOTFOUND"
-  environment:
-    ROX_API_TOKEN: "{{ rox_api_token }}"
-  register: cluster_check
-  changed_when: false
-  failed_when: false
-
 - name: Delete existing cluster if force_sensor_regeneration is enabled
   shell: |
-    roxctl cluster delete {{ managed_cluster_name }} -e {{ rox_central_address }} {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} --force 2>/dev/null
+    roxctl cluster delete {{ managed_cluster_name }} -e {{ rox_central_address }} {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} --force 2>/dev/null || true
   environment:
     ROX_API_TOKEN: "{{ rox_api_token }}"
   register: cluster_delete
   changed_when: false
   failed_when: false
-  when: cluster_check.stdout == "EXISTS" and force_sensor_regeneration | bool
+  when: force_sensor_regeneration | bool
 
 - name: Generate sensor for {{ managed_cluster_name }}
   shell: |
@@ -59,8 +50,8 @@
   environment:
     ROX_API_TOKEN: "{{ rox_api_token }}"
   register: sensor_generate_result
-  changed_when: true
-  when: cluster_check.stdout == "NOTFOUND" or force_sensor_regeneration | bool
+  changed_when: "'generated' in sensor_generate_result.stderr"
+  failed_when: sensor_generate_result.rc != 0 and 'AlreadyExists' not in sensor_generate_result.stderr
 
 - name: Display sensor generation output
   debug:
@@ -75,8 +66,8 @@
   environment:
     KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   register: sensor_deploy_result
-  changed_when: true
-  when: cluster_check.stdout == "NOTFOUND" or force_sensor_regeneration | bool
+  changed_when: "'creating' in sensor_deploy_result.stdout.lower() or 'created' in sensor_deploy_result.stdout.lower()"
+  failed_when: sensor_deploy_result.rc != 0
 
 - name: Display sensor deployment output
   debug:
