@@ -27,7 +27,7 @@
         - refresh-vulns
     - role: acs-spokes-registration
       tags:
-        - registeration
+        - registration
     - role: acs-spokes-sensor-setup
       tags:
         - sensor-setup
