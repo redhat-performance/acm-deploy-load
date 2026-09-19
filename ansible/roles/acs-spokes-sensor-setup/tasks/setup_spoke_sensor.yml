@@ -78,7 +78,7 @@
 - name: Display sensor deployment output
   debug:
     msg: "{{ sensor_deploy_result.stdout }}"
-  when: sensor_deploy_result.stdout | length > 0
+  when: sensor_dir_stat.stat.exists and sensor_dir_stat.stat.isdir and sensor_deploy_result.stdout | length > 0
 
 - name: Record sensor setup result
   set_fact:
