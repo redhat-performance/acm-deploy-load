@@ -6,7 +6,7 @@
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/curate-images-for-acs-testing.yml
 #
 - name: Generate a list of random operator container images for ACS Scanner testing
-  hosts: localhost
+  hosts: bastion
   connection: local
   gather_facts: true
 
