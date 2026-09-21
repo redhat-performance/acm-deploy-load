@@ -45,11 +45,11 @@ The `operator-container-images-curator` role uses the `generate_operator_image_l
 The **operator-container-images-curator** Ansible role automates operator containers image mirroring, making them available on a local registry to isolate network latency as a factor that could skew test results:
 
 ```bash
-ansible-playbook -i inventory/hosts ansible/mirror_acs_targets.yml
+ansible-playbook -i inventory/hosts ansible/curate-images-for-acs-testing.yml
 ```
 
 Override defaults with `--extra-vars`:
 ```bash
-ansible-playbook -i inventory/hosts ansible/mirror_acs_targets.yml \
+ansible-playbook -i inventory/hosts ansible/curate-images-for-acs-testing.yml \
   --extra-vars "acs_operator_containers_target_count=100 acs_registry_port=5000"
 ```
