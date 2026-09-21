@@ -8,7 +8,7 @@
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml --skip-tags refresh-vulns
 #
 - name: Prepare spokes for registring against Central and setup ACS collectors
-  hosts: localhost
+  hosts: bastion
   connection: local
   gather_facts: true
 
