@@ -9,9 +9,7 @@
   hosts: bastion
   connection: local
   gather_facts: true
-
   vars_files:
   - vars/all.yml
-
   roles:
     - operator-container-images-curator
