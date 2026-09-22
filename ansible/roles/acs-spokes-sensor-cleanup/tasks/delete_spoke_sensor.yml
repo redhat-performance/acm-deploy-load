@@ -1,0 +1,79 @@
+---
+# Delete ACS sensor from a single managed cluster
+
+- name: Check if sensor directory exists for {{ managed_cluster_name }}
+  stat:
+    path: "{{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}/delete-sensor.sh"
+  register: delete_sensor_script
+
+- name: Get managed cluster kubeconfig
+  shell: |
+    oc get secret -n {{ managed_cluster_name }} {{ managed_cluster_name }}-admin-kubeconfig \
+      -o jsonpath='{.data.kubeconfig}' | base64 -d
+  register: spoke_kubeconfig
+  changed_when: false
+  failed_when: spoke_kubeconfig.rc != 0
+  when: delete_sensor_script.stat.exists
+
+- name: Create temporary kubeconfig file for spoke
+  tempfile:
+    state: file
+    suffix: .kubeconfig
+  register: spoke_kubeconfig_file
+  when: delete_sensor_script.stat.exists
+
+- name: Write kubeconfig to temporary file
+  copy:
+    content: "{{ spoke_kubeconfig.stdout }}"
+    dest: "{{ spoke_kubeconfig_file.path }}"
+    mode: '0600'
+  when: delete_sensor_script.stat.exists
+
+- name: Delete sensor from {{ managed_cluster_name }}
+  shell: |
+    set -e
+    cd {{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}
+    ./delete-sensor.sh
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+  register: sensor_delete_result
+  changed_when: true
+  failed_when: sensor_delete_result.rc != 0
+  when: delete_sensor_script.stat.exists
+
+- name: Display sensor deletion output
+  debug:
+    msg: "{{ sensor_delete_result.stdout }}"
+  when: delete_sensor_script.stat.exists and sensor_delete_result.stdout | length > 0
+
+- name: Clean up temporary kubeconfig file
+  file:
+    path: "{{ spoke_kubeconfig_file.path }}"
+    state: absent
+  when: delete_sensor_script.stat.exists
+
+- name: Record sensor cleanup result - SUCCESS
+  set_fact:
+    sensor_cleanup_results: "{{ sensor_cleanup_results + [cleanup_result] }}"
+  vars:
+    cleanup_result:
+      cluster: "{{ managed_cluster_name }}"
+      status: "SUCCESS"
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+  when: delete_sensor_script.stat.exists
+
+- name: Record sensor cleanup result - SKIPPED
+  set_fact:
+    sensor_cleanup_results: "{{ sensor_cleanup_results + [cleanup_result] }}"
+  vars:
+    cleanup_result:
+      cluster: "{{ managed_cluster_name }}"
+      status: "SKIPPED"
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+  when: not delete_sensor_script.stat.exists
+
+- name: Clean up sensor generation directory
+  file:
+    path: "{{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}"
+    state: absent
+  when: delete_sensor_script.stat.exists and cleanup_sensor_generation_after_delete | bool
