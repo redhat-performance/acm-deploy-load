@@ -15,5 +15,14 @@
   vars_files:
   - vars/all.yml
 
+  vars:
+    rox_api_token: "{{ lookup('env', 'ROX_API_TOKEN') }}"
+    rox_central_address: "{{ lookup('env', 'ROX_CENTRAL_ADDRESS') }}"
+
   roles:
-    - acs-spokes-sensor-cleanup
+    - role: acs-spokes-sensor-cleanup
+      tags:
+        - sensor-cleanup
+    - role: acs-spokes-unregister
+      tags:
+        - unregister

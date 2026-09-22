@@ -1,0 +1,47 @@
+---
+# acs-spokes-unregister tasks - Unregister managed clusters from ACS Central
+
+- name: Validate required variables
+  assert:
+    that:
+      - rox_api_token | length > 0
+      - rox_central_address | length > 0
+    fail_msg: "Required variables not set: rox_api_token, rox_central_address"
+
+- name: Initialize unregister results
+  set_fact:
+    cluster_unregister_results: []
+
+- name: Unregister each managed cluster from ACS Central
+  include_tasks: unregister_spoke.yml
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  loop_control:
+    loop_var: managed_cluster_name
+  when: groups.get('managed_clusters', []) | length > 0
+
+- name: Print cluster unregister summary
+  block:
+    - name: Display unregister summary header
+      debug:
+        msg: |
+          ============================================
+          ACS Cluster Unregister Summary
+          ============================================
+
+    - name: Display unregister results
+      debug:
+        msg: |
+          Cluster: {{ item.cluster }}
+          Status: {{ item.status }}
+          Timestamp: {{ item.timestamp }}
+      loop: "{{ cluster_unregister_results }}"
+
+    - name: Display unregister summary footer
+      debug:
+        msg: |
+          ============================================
+          Total clusters processed: {{ cluster_unregister_results | length }}
+          Successfully unregistered: {{ cluster_unregister_results | selectattr('status', 'equalto', 'SUCCESS') | length }}
+          Not found/already removed: {{ cluster_unregister_results | selectattr('status', 'equalto', 'NOT_FOUND') | length }}
+          ============================================
+  when: cluster_unregister_results | length > 0

@@ -1,0 +1,32 @@
+---
+# Unregister a single managed cluster from ACS Central
+
+- name: Unregister cluster {{ managed_cluster_name }} from ACS Central
+  shell: |
+    roxctl cluster delete {{ managed_cluster_name }} \
+      -e {{ rox_central_address }} \
+      {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
+      --force
+  environment:
+    ROX_API_TOKEN: "{{ rox_api_token }}"
+  register: cluster_delete_result
+  changed_when: "'deleted' in cluster_delete_result.stdout.lower() or 'removed' in cluster_delete_result.stdout.lower()"
+  failed_when: cluster_delete_result.rc != 0 and 'not found' not in cluster_delete_result.stderr.lower()
+
+- name: Display cluster unregister output
+  debug:
+    msg: "{{ cluster_delete_result.stdout }}"
+  when: cluster_delete_result.stdout | length > 0
+
+- name: Determine unregister result status
+  set_fact:
+    unregister_status: "{{ 'NOT_FOUND' if ('not found' in cluster_delete_result.stderr.lower()) else 'SUCCESS' }}"
+
+- name: Record cluster unregister result
+  set_fact:
+    cluster_unregister_results: "{{ cluster_unregister_results + [unregister_result] }}"
+  vars:
+    unregister_result:
+      cluster: "{{ managed_cluster_name }}"
+      status: "{{ unregister_status }}"
+      timestamp: "{{ ansible_date_time.iso8601 }}"

@@ -1,0 +1,6 @@
+---
+# defaults for acs-spokes-unregister role
+
+rox_central_address: ""
+rox_api_token: ""
+roxctl_insecure: true
