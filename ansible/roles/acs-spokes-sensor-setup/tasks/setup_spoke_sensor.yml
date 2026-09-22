@@ -98,3 +98,4 @@
   file:
     path: "{{ sensor_work_dir }}/sensor-{{ managed_cluster_name }}"
     state: absent
+  when: cleanup_sensor_generation | bool
