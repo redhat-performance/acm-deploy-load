@@ -13,7 +13,7 @@
   ansible.builtin.command:
     cmd: >
       skopeo copy
-      --additional-tag "acs-testing"
+      --additional-tag "{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing"
       --src-tls-verify=true
       --dest-tls-verify=false
       docker://{{ item }}
