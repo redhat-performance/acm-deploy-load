@@ -34,8 +34,9 @@
 - name: Add acs-testing tag to mirrored images
   ansible.builtin.command:
     cmd: >
-      skopeo tag
+      skopeo copy
       --tls-verify=false
+      --dest-tls-verify=false
       docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
       docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing
   loop: "{{ image_list }}"
