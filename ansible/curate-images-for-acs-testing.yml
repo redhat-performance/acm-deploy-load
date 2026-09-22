@@ -11,5 +11,8 @@
   gather_facts: true
   vars_files:
   - vars/all.yml
+  vars:
+    acs_registry_username: "{{ lookup('env', 'ACS_REGISTRY_USERNAME') }}"
+    acs_registry_password: "{{ lookup('env', 'ACS_REGISTRY_PASSWORD') }}"
   roles:
     - operator-container-images-curator

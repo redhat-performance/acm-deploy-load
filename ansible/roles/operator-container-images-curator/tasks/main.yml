@@ -9,6 +9,14 @@
   ansible.builtin.set_fact:
     image_list: "{{ pyxis_output.stdout_lines }}"
 
+- name: Login to destination registry with skopeo
+  ansible.builtin.command:
+    cmd: "skopeo login -u {{ acs_registry_username }} -p {{ acs_registry_password }} {{ acs_internal_registry }}"
+  no_log: true
+  when:
+    - acs_registry_username | length > 0
+    - acs_registry_password | length > 0
+
 - name: Mirror images to local registry with valid destination tags
   ansible.builtin.command:
     cmd: >
