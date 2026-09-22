@@ -5,8 +5,7 @@
   shell: |
     roxctl cluster delete {{ managed_cluster_name }} \
       -e {{ rox_central_address }} \
-      {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
-      --force
+      {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %}
   environment:
     ROX_API_TOKEN: "{{ rox_api_token }}"
   register: cluster_delete_result
