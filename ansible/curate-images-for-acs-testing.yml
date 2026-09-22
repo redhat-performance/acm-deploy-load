@@ -11,8 +11,13 @@
   gather_facts: true
   vars_files:
   - vars/all.yml
-  vars:
-    acs_registry_username: "{{ lookup('env', 'ACS_REGISTRY_USERNAME') }}"
-    acs_registry_password: "{{ lookup('env', 'ACS_REGISTRY_PASSWORD') }}"
+  pre_tasks:
+    - name: Set registry credentials from environment if provided
+      ansible.builtin.set_fact:
+        acs_registry_username: "{{ lookup('env', 'ACS_REGISTRY_USERNAME') }}"
+        acs_registry_password: "{{ lookup('env', 'ACS_REGISTRY_PASSWORD') }}"
+      when:
+        - lookup('env', 'ACS_REGISTRY_USERNAME', default='') != ''
+        - lookup('env', 'ACS_REGISTRY_PASSWORD', default='') != ''
   roles:
     - operator-container-images-curator
