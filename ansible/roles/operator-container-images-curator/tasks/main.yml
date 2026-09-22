@@ -31,21 +31,21 @@
   delay: 5
   until: skopeo_results.rc == 0
 
-- name: Add acs-testing tag to mirrored images
+- name: Add {{ custom_image_tag }} tag to mirrored images
   ansible.builtin.command:
     cmd: >
       skopeo copy
       --tls-verify=false
       --dest-tls-verify=false
       docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
-      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ custom_image_tag }}
   loop: "{{ image_list }}"
   retries: 3
   delay: 5
 
 - name: Inspect mirrored images from registry
   ansible.builtin.command:
-    cmd: "skopeo inspect --tls-verify=false docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:acs-testing"
+    cmd: "skopeo inspect --tls-verify=false docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ custom_image_tag }}"
   loop: "{{ image_list }}"
   register: skopeo_inspect_results
   changed_when: false

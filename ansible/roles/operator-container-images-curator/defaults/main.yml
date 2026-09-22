@@ -12,3 +12,6 @@ acs_container_names_file: "/tmp/acs_container_names.txt"
 # Registry credentials for skopeo login (set by playbook)
 acs_registry_username: "registry"
 acs_registry_password: "registry"
+
+# Tag for mirrored images
+custom_image_tag: "custom-tag"

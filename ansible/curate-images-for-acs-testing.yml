@@ -11,6 +11,8 @@
   gather_facts: true
   vars_files:
   - vars/all.yml
+  vars:
+    custom_image_tag: "acs-testing"
   pre_tasks:
     - name: Set registry credentials from environment if provided
       ansible.builtin.set_fact:
