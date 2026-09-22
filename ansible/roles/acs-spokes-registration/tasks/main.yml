@@ -6,6 +6,7 @@
     that:
       - rox_api_token | length > 0
       - rox_central_address | length > 0
+      - rox_central_address is ansible.builtin.url
       - rh_registry_io_username | length > 0
       - rh_registry_io_password | length > 0
     fail_msg: "Required variables not set: rox_api_token, rox_central_address, rh_registry_io_username, rh_registry_io_password"
