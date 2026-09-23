@@ -147,13 +147,13 @@ This playbook performs cleanup on all managed clusters:
 #### Delete Sensors Only (Keep Generation Directories)
 
 ```bash
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --tags sensor-cleanup
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags registration
 ```
 
 #### Delete Sensors and Clean Up Generation Directories
 
 ```bash
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --tags sensor-cleanup -e cleanup_sensor_generation_after_delete=true
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags registration -e cleanup_sensor_generation_after_delete=true
 ```
 
 #### Unregister Clusters from Central Only
@@ -162,7 +162,7 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sens
 export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --tags registration
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags sensor-cleanup
 ```
 
 #### Full Cleanup (Delete Sensors and Unregister)

@@ -113,8 +113,8 @@ See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usa
 - `ROX_CENTRAL_ADDRESS` - ACS Central URL (required for unregister role only)
 
 **Options**:
-- `--tags sensor-cleanup` - Only delete sensors, skip unregister
-- `--tags unregister` - Only unregister clusters, skip sensor deletion
+- `--skip-tags registration` - Only delete sensors, skip unregister
+- `--skip-tags sensor-cleanup` - Only unregister clusters, skip sensor deletion
 - `-e cleanup_sensor_generation_after_delete=true` - Remove sensor generation directories after deletion
 
 See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usage.

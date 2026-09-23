@@ -6,6 +6,8 @@
 #
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml -e cleanup_sensor_generation_after_delete=true
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags registration
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags sensor-cleanup
 #
 - name: Cleanup ACS sensors from managed clusters
   hosts: bastion 
