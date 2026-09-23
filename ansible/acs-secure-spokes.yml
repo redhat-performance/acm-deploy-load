@@ -11,16 +11,13 @@
   hosts: bastion
   connection: local
   gather_facts: true
-
   vars_files:
   - vars/all.yml
-
   vars:
     rox_api_token: "{{ lookup('env', 'ROX_API_TOKEN') }}"
     rox_central_address: "{{ lookup('env', 'ROX_CENTRAL_ADDRESS') }}"
     rh_registry_io_username: "{{ lookup('env', 'RH_REGISTRY_IO_USERNAME') }}"
     rh_registry_io_password: "{{ lookup('env', 'RH_REGISTRY_IO_PASSWORD') }}"
-
   roles:
     - role: refresh-vulnerabilities-definition
       tags:
