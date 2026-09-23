@@ -2,9 +2,11 @@
 # defaults for acs-spokes-registration role
 
 rox_central_address: ""
+rox_api_token: ""
 rox_crs_valid_for: "720h"
 rox_crs_secret_name: "admin-crs"
 rox_crs_work_dir: "/tmp/acs-crs-gen"
 roxctl_insecure: true
 rh_registry_io_username: ""
 rh_registry_io_password: ""
+acs_spokes_registration_action: "register"

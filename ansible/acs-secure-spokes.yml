@@ -23,6 +23,8 @@
       tags:
         - refresh-vulns
     - role: acs-spokes-registration
+      vars:
+        acs_spokes_registration_action: register
       tags:
         - registration
     - role: acs-spokes-sensor-setup

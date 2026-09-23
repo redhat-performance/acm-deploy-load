@@ -162,7 +162,7 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sens
 export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --tags unregister
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --tags registration
 ```
 
 #### Full Cleanup (Delete Sensors and Unregister)
@@ -192,9 +192,10 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sens
 - Optionally removes sensor generation directory (controlled by `cleanup_sensor_generation_after_delete`)
 - Prints cleanup summary
 
-#### `acs-spokes-unregister`
+#### `acs-spokes-registration` (unregister action)
+- Set with `acs_spokes_registration_action: unregister` variable
 - Validates required environment variables
-- Runs `roxctl cluster delete --name <cluster> --force`
+- Runs `roxctl cluster delete --name <cluster>`
 - Gracefully handles "not found" errors
 - Records SUCCESS or NOT_FOUND status
 - Prints unregister summary

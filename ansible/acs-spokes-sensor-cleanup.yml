@@ -23,6 +23,8 @@
     - role: acs-spokes-sensor-cleanup
       tags:
         - sensor-cleanup
-    - role: acs-spokes-unregister
+    - role: acs-spokes-registration
+      vars:
+        acs_spokes_registration_action: unregister
       tags:
-        - unregister
+        - registration

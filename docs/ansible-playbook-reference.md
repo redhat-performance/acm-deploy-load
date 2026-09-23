@@ -106,7 +106,7 @@ See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usa
 
 **Roles executed** (in order):
 1. `acs-spokes-sensor-cleanup` (tagged `sensor-cleanup`) - Deletes sensors from spokes
-2. `acs-spokes-unregister` (tagged `unregister`) - Unregisters spokes from ACS Central
+2. `acs-spokes-registration` (tagged `registration`, action: `unregister`) - Unregisters spokes from ACS Central
 
 **Environment variables required**:
 - `ROX_API_TOKEN` - ACS Central API token (required for unregister role only)
