@@ -29,11 +29,10 @@
           current_crs=$(oc get secret {{ rox_crs_secret_name }} -n $cluster \
             -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d || echo "MISSING")
           if [ "$current_crs" != "$first_crs" ]; then
-            echo "MISMATCH"
-            exit 0
+            exit 1
           fi
         done
-        echo "MATCH"
+        exit 0
       register: crs_check_result
       changed_when: false
       failed_when: false
@@ -41,7 +40,7 @@
 
     - name: Set crs_needs_regeneration flag
       set_fact:
-        crs_needs_regeneration: "{{ (first_spoke_crs.stdout | length == 0) or (crs_check_result.stdout == 'MISMATCH') }}"
+        crs_needs_regeneration: "{{ (first_spoke_crs.stdout | length == 0) or (crs_check_result.rc == 1) }}"
   when: groups.get('managed_clusters', []) | length > 0
 
 - name: Generate Cluster Registration Secret
