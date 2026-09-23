@@ -12,6 +12,7 @@
     fail_msg: "Required variables not set: rox_api_token, rox_central_address, rh_registry_io_username, rh_registry_io_password"
 
 - name: Check CRS secrets in spoke namespaces
+  when: groups.get('managed_clusters', []) | length > 0
   block:
     - name: Get CRS secret from first spoke namespace
       shell: |
@@ -41,9 +42,9 @@
     - name: Set crs_needs_regeneration flag
       set_fact:
         crs_needs_regeneration: "{{ (first_spoke_crs.stdout | length == 0) or (crs_check_result.rc == 1) }}"
-  when: groups.get('managed_clusters', []) | length > 0
 
 - name: Generate Cluster Registration Secret
+  when: crs_needs_regeneration | default(false)
   block:
     - name: Revoke existing CRS if present
       shell: |
@@ -101,7 +102,6 @@
       file:
         path: "{{ rox_crs_work_dir }}"
         state: absent
-  when: crs_needs_regeneration | default(false)
 
 - name: Register each managed cluster with ACS Central
   include_tasks: register_spoke.yml
