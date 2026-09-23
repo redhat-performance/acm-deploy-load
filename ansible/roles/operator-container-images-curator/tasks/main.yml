@@ -1,0 +1,62 @@
+---
+- name: Retrieve operator image specs from Pyxis API
+  ansible.builtin.command:
+    cmd: "python3 {{ role_path }}/files/generate_operator_image_list.py --stdout --no-files --count {{ acs_operator_containers_target_count }}"
+  register: pyxis_output
+  changed_when: false
+
+- name: Convert output into image spec list
+  ansible.builtin.set_fact:
+    image_list: "{{ pyxis_output.stdout_lines }}"
+
+- name: Login to destination registry with skopeo
+  ansible.builtin.command:
+    cmd: "skopeo login -u {{ acs_registry_username }} -p {{ acs_registry_password }} {{ acs_internal_registry }}"
+  no_log: true
+  when:
+    - acs_registry_username | length > 0
+    - acs_registry_password | length > 0
+
+- name: Mirror images to local registry with valid destination tags
+  ansible.builtin.command:
+    cmd: >
+      skopeo copy
+      --src-tls-verify=true
+      --dest-tls-verify=false
+      docker://{{ item }}
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
+  loop: "{{ image_list }}"
+  register: skopeo_results
+  retries: 3
+  delay: 5
+  until: skopeo_results.rc == 0
+
+- name: Add {{ custom_image_tag }} tag to mirrored images
+  ansible.builtin.command:
+    cmd: >
+      skopeo copy
+      --tls-verify=false
+      --dest-tls-verify=false
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ (item.split('@')[1]).replace('sha256:', 'sha256-') }}
+      docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ custom_image_tag }}
+  loop: "{{ image_list }}"
+  retries: 3
+  delay: 5
+
+- name: Inspect mirrored images from registry
+  ansible.builtin.command:
+    cmd: "skopeo inspect --tls-verify=false docker://{{ acs_internal_registry }}/{{ acs_org_name }}/{{ (item.split('/')[-1]).split('@')[0] }}:{{ custom_image_tag }}"
+  loop: "{{ image_list }}"
+  register: skopeo_inspect_results
+  changed_when: false
+  ignore_errors: true
+
+- name: Extract container names from successfully mirrored images
+  ansible.builtin.set_fact:
+    acs_container_names: "{{ skopeo_inspect_results.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | map('regex_replace', '^.*/', '') | map('regex_replace', '@.*', '') | list }}"
+
+- name: Write container names to file
+  ansible.builtin.copy:
+    content: "{{ acs_container_names | join('\n') }}\n"
+    dest: "{{ acs_container_names_file }}"
+  when: acs_container_names | length > 0

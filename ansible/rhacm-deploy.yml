@@ -31,3 +31,5 @@
   - role: mce-image-based-install
     when: mce_enable_ibio
   - mce-add-clusterimagesets
+  - role: o-cloud-manager-deploy
+    when: setup_ocloud_manager

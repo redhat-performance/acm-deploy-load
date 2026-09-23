@@ -1,0 +1,56 @@
+---
+# o-cloud-manager-deploy tasks - Install O-Cloud Manager Operator on a cluster
+
+# To set a default storage class manually:
+# oc annotate storageclass <storageclass-name> storageclass.kubernetes.io/is-default-class=true
+- name: Check for default storage class
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get sc -o json | jq -r '.items[] | select(.metadata.annotations."storageclass.kubernetes.io/is-default-class"=="true") | .metadata.name'
+  register: default_sc
+  changed_when: false
+
+- name: Verify default storage class exists
+  ansible.builtin.fail:
+    msg: "No default storage class found. O-Cloud Manager requires a default storage class to be configured. Please set a default storage class before deploying O-Cloud Manager."
+  when: default_sc.stdout == ""
+
+- name: Create directory for O-Cloud Manager Operator
+  ansible.builtin.file:
+    path: "{{ install_directory }}/o-cloud-manager-deploy"
+    state: directory
+
+- name: Create O-Cloud Manager Operator manifests
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: o-cloud-manager-operator.yaml.j2
+    dest: "{{ install_directory }}/o-cloud-manager-deploy/o-cloud-manager-operator.yaml"
+
+- name: Apply O-Cloud Manager Operator manifest
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/o-cloud-manager-deploy/o-cloud-manager-operator.yaml
+
+- name: Wait for O-Cloud Manager controller pod exists
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n {{ ocloud_manager_namespace }} -l app=o-cloud-manager
+  retries: 150
+  delay: 2
+  register: ocloud_pod
+  until: ocloud_pod.failed == false and ocloud_pod.stdout_lines | length > 1
+
+- name: Wait for O-Cloud Manager controller pod running
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n {{ ocloud_manager_namespace }} -l app=o-cloud-manager -o jsonpath='{.items[0].status.phase}'
+  retries: 150
+  delay: 2
+  register: ocloud_pod_running
+  until: ocloud_pod_running.stdout == "Running"
+
+- name: Wait for all O-Cloud Manager pods ready
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get pods -n {{ ocloud_manager_namespace }} --no-headers | grep -v Running || true
+  retries: 150
+  delay: 2
+  register: ocloud_pods_not_ready
+  until: ocloud_pods_not_ready.stdout == ""

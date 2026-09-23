@@ -94,6 +94,11 @@ acm_enable_siteconfig: false
 # Enable IBIO in MCE
 mce_enable_ibio: false
 
+# Deploy O-Cloud Manager Operator
+setup_ocloud_manager: false
+# cs-redhat-operator-index-v4-22 = disconnected setup, redhat-operators = connected setup
+ocloud_manager_source: cs-redhat-operator-index-v4-22
+
 # AAP deploy/configure vars
 # Place the license file in the base directory of the cloned acm-deploy-load repo, Example:
 # (.venv) [user@fedora acm-deploy-load]$ ls aap_manifest.zip

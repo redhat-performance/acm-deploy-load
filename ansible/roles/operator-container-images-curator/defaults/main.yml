@@ -1,0 +1,17 @@
+---
+# operator-container-images-curator role defaults
+
+acs_registry_port: 5000
+acs_internal_registry: "{{ ansible_facts['fqdn'] }}:{{ acs_registry_port }}"
+acs_org_name: "operator-containers"
+acs_operator_containers_target_count: 50
+
+# Output file for container names
+acs_container_names_file: "/tmp/acs_container_names.txt"
+
+# Registry credentials for skopeo login (set by playbook)
+acs_registry_username: "registry"
+acs_registry_password: "registry"
+
+# Tag for mirrored images
+custom_image_tag: "custom-tag"

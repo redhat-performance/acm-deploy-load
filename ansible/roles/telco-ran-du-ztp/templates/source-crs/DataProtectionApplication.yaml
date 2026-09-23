@@ -17,7 +17,7 @@ spec:
   - velero:
       config:
         profile: "default"
-        region: minio
+        region: us-east-1
         s3Url: $placeholder_url
         insecureSkipTLSVerify: "true"
         s3ForcePathStyle: "true"

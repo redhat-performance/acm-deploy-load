@@ -23,7 +23,7 @@ spec:
         backupLocations:
           - velero:
               config:
-                region: minio
+                region: us-east-1
                 s3Url: {{ oadp_s3Url }}
               objectStorage:
                 bucket: '{% raw %}{{hub (printf "%s" .ManagedClusterName) hub}}{% endraw %}-ibu'

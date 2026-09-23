@@ -1,0 +1,25 @@
+---
+# Playbook to generate a list of operator container images for use in ACS testing
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/curate-images-for-acs-testing.yml
+#
+- name: Generate a list of random operator container images for ACS Scanner testing
+  hosts: bastion
+  connection: local
+  gather_facts: true
+  vars_files:
+  - vars/all.yml
+  vars:
+    custom_image_tag: "acs-testing"
+  pre_tasks:
+    - name: Set registry credentials from environment if provided
+      ansible.builtin.set_fact:
+        acs_registry_username: "{{ lookup('env', 'ACS_REGISTRY_USERNAME') }}"
+        acs_registry_password: "{{ lookup('env', 'ACS_REGISTRY_PASSWORD') }}"
+      when:
+        - lookup('env', 'ACS_REGISTRY_USERNAME', default='') != ''
+        - lookup('env', 'ACS_REGISTRY_PASSWORD', default='') != ''
+  roles:
+    - operator-container-images-curator
