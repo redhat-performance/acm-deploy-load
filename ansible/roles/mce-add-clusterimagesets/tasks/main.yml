@@ -2,21 +2,21 @@
 # mce-add-clusterimagesets tasks
 
 - name: Clean directory with ClusterImageSets
-  file:
+  ansible.builtin.file:
     path: "{{ install_directory }}/mce-clusterimageset"
     state: absent
 
 - name: Create directory for ClusterImageSets
-  file:
+  ansible.builtin.file:
     path: "{{ install_directory }}/mce-clusterimageset"
     state: directory
 
 - name: Template out ClusterImageSets for MCE
-  template:
+  ansible.builtin.template:
     src: cis.yaml.j2
     dest: "{{ install_directory }}/mce-clusterimageset/{{ item.name }}-cis.yaml"
-  with_items: "{{ mce_clusterimagesets }}"
+  loop: "{{ mce_clusterimagesets }}"
 
 - name: Apply ClusterImageSets to RHACM Hub Cluster
-  shell: |
+  ansible.builtin.shell: |
     KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/mce-clusterimageset
