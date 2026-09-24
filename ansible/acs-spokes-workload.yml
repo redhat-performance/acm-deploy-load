@@ -1,0 +1,34 @@
+---
+# Playbook to deploy workload pods on ACM managed spoke clusters
+#
+# This playbook reads container image names from a file, determines the number of worker
+# nodes in each spoke cluster, and deploys a workload with matching replicas and pod
+# anti-affinity to distribute pods across worker nodes.
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-workload.yml \
+#   -e container_images_file=./workload_images.txt
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-workload.yml \
+#   -e container_images_file=./workload_images.txt \
+#   -e workload_namespace=my-workload \
+#   -e container_image_registry=registry.example.com \
+#   -e container_image_tag=v1.0.0
+
+- name: Deploy workload to ACM managed spoke clusters
+  hosts: bastion
+  connection: local
+  gather_facts: true
+
+  vars_files:
+    - vars/all.yml
+
+  vars:
+    container_image_registry: "{{ inventory_hostname }}"
+    container_registry_port: "5000"
+    container_registry_namespace: "operator-containers"
+    container_image_tag: "acs-testing"
+
+  roles:
+    - role: acs-spokes-deploy-load
