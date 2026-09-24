@@ -1,0 +1,14 @@
+---
+# Location CR - defines a physical/logical place
+# Referenced by OCloudSite.spec.globalLocationName
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: Location
+metadata:
+  name: {{ ocloud_location_name }}
+  namespace: oran-o2ims
+spec:
+  description: {{ ocloud_location_description }}
+  address: "456 Tech Park Drive, San Jose, CA 95134, USA"
+  extensions:
+    region: "us-west"
+    tier: "primary"

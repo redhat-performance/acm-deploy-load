@@ -1,0 +1,17 @@
+---
+# ResourcePool CR - groups related resources (servers) within an O-Cloud Site
+# Referenced by BareMetalHost label resources.clcm.openshift.io/resourcePoolName
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: ResourcePool
+metadata:
+  name: {{ ocloud_resourcepool_name }}
+  namespace: oran-o2ims
+spec:
+  # Must match an existing OCloudSite's metadata.name
+  oCloudSiteName: {{ ocloud_site_name }}
+  description: {{ ocloud_resourcepool_description }}
+  extensions:
+{% if ocloud_hardware_mgmt_enabled %}
+    hardware-profile: {{ ocloud_hardware_profile_name }}
+{% endif %}
+    purpose: "ran-du"

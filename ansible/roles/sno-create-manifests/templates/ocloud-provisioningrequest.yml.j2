@@ -1,0 +1,98 @@
+---
+apiVersion: clcm.openshift.io/v1alpha1
+kind: ProvisioningRequest
+metadata:
+  name: {{ inventory_hostname | to_uuid }}
+spec:
+  name: "{{ inventory_hostname }}-provisioning"
+  description: "Provisioning request for SNO cluster {{ inventory_hostname }}"
+  templateName: {{ ocloud_clustertemplate_name }}
+  templateVersion: {{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ ocloud_clustertemplate_revision }}
+  templateParameters:
+    nodeClusterName: {{ inventory_hostname }}
+    oCloudSiteId: {{ ocloud_site_name }}
+    # hwMgmtParameters allows overriding hardware management defaults.
+    hwMgmtParameters:
+      # Override the hardware provisioning timeout (optional)
+      # hardwareProvisioningTimeout: "120m"
+      nodeGroupData:
+        - name: master
+          role: master
+{% if ocloud_hardware_mgmt_enabled %}
+          hwProfile: {{ ocloud_hardware_profile_name }}
+{% endif %}
+          resourcePoolId: {{ ocloud_resourcepool_name }}
+          # Additional resource selector criteria (optional, merged with hwMgmtDefaults selectors)
+          resourceSelector:
+            resourceselector.clcm.openshift.io/server-id: {{ inventory_hostname }}
+    clusterInstanceParameters:
+      additionalNTPSources:
+        - {{ hostvars[inventory_hostname]['hv_ip'] }}
+      clusterName: {{ inventory_hostname }}
+      # extraAnnotations:
+      #   AgentClusterInstall:
+      #     extra-annotation-key: extra-annotation-value
+      extraLabels:
+        ManagedCluster:
+          site: {{ inventory_hostname }}
+      nodes:
+        - bootMode: UEFI
+          # extraAnnotations:
+          #   BareMetalHost:
+          #     extra-annotation-key: extra-annotation-value
+          # extraLabels:
+          #   BareMetalHost:
+          #     extra-label-key: extra-label-value
+          hostName: {{ inventory_hostname }}
+          nodeLabels:
+            node-role.kubernetes.io/master: ""
+          nodeNetwork:
+            config:
+              dns-resolver:
+                config:
+                  server:
+                    - {{ hostvars[inventory_hostname]['hv_ip'] }}
+              interfaces:
+{% if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv4 %}
+                - ipv4:
+                    address:
+                      - ip: {{ hostvars[inventory_hostname]['ip'] }}
+                        prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+                    dhcp: false
+                    enabled: true
+                  ipv6:
+                    dhcp: false
+                    enabled: false
+{% else %}
+                - ipv4:
+                    dhcp: false
+                    enabled: false
+                  ipv6:
+                    address:
+                      - ip: {{ hostvars[inventory_hostname]['ip'] }}
+                        prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+                    dhcp: false
+                    enabled: true
+{% endif %}
+                  name: {{ sno_nic_interface }}
+                  type: ethernet
+              routes:
+                config:
+                  - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                    next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+                    next-hop-interface: {{ sno_nic_interface }}
+                    table-id: 254
+    policyTemplateParameters:
+      # cluster-log-fwd-filters-labels: '{"label1": "test1", "label2": "test2"}'
+      # cluster-log-fwd-outputs-url: "tcp://198.51.100.50:9092/test"
+      # cpu-isolated: "2-31"
+      # cpu-reserved: "0-1"
+      # hugepages-count: "16"
+      # hugepages-default: "1G"
+      # hugepages-size: "1G"
+      install-plan-approval: "Automatic"
+      # oadp-s3url: ""
+      # ptpcfgslave-profile-interface: ens15f1
+      # sriov-network-vlan-1: "140"
+      # sriov-network-pfNames-1: '["ens2f0"]'
+      # storage-lv-devicePaths-1: /dev/disk/by-path/pci-0000:62:00.0-scsi-0:2:8:0

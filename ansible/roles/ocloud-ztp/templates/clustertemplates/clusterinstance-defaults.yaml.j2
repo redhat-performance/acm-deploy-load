@@ -1,0 +1,95 @@
+---
+# Uses the first host in the hv_vm group to determine the IP address type and network configuration
+# IP Used: {{ hostvars[groups['hv_vm'][0]]['ip'] }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clusterinstance-defaults-{{ item.type }}-v1
+  namespace: {{ ocloud_clustertemplate_namespace }}
+data:
+  clusterinstance-defaults: |
+    baseDomain: {{ ocloud_base_domain }}
+    clusterImageSetNameRef: {{ cluster_image_set }}
+    clusterNetwork:
+      - cidr: {{ "fd01::/48" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "10.128.0.0/14" }}
+        hostPrefix: {{ 64 if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else 23 }}
+    clusterType: SNO
+    cpuPartitioningMode: AllNodes
+    # extraAnnotations:
+    #   ManagedCluster:
+    #     test-annotation: test
+    extraLabels:
+      ManagedCluster:
+        cluster-version: "{{ ocloud_clustertemplate_version }}"
+        sno-ran-du-policy: "v1"
+{% if item.type == "ai" %}
+    extraManifestsRefs:
+      - name: {{ ocloud_clustertemplate_name }}-extra-manifest-v1
+{% endif %}
+{% if ocloud_du_profile in ["4.16", "4.17", "4.18", "4.19", "4.20", "4.21", "4.22"] %}
+    ignitionConfigOverride: '{"ignition": {"version": "3.2.0"}, "storage": {"files": [{"overwrite": true, "path": "/etc/containers/policy.json", "contents": {"source":"data:text/plain;base64,ewogICAgImRlZmF1bHQiOiBbCiAgICAgICAgewogICAgICAgICAgICAidHlwZSI6ICJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIgogICAgICAgIH0KICAgIF0sCiAgICAidHJhbnNwb3J0cyI6CiAgICAgICAgewogICAgICAgICAgICAiZG9ja2VyLWRhZW1vbiI6CiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgIiI6IFt7InR5cGUiOiJpbnNlY3VyZUFjY2VwdEFueXRoaW5nIn1dCiAgICAgICAgICAgICAgICB9CiAgICAgICAgfQp9Cgo="}}]}}'
+{% endif %}
+{% if ocloud_du_profile == "4.15" %}
+    installConfigOverrides: '{"capabilities": {"baselineCapabilitySet": "None", "additionalEnabledCapabilities": ["OperatorLifecycleManager", "NodeTuning"]}}'
+{% elif ocloud_du_profile in ["4.16", "4.17", "4.18", "4.19", "4.20", "4.21", "4.22"] %}
+    installConfigOverrides: '{"capabilities": {"baselineCapabilitySet": "None", "additionalEnabledCapabilities": ["NodeTuning", "OperatorLifecycleManager", "Ingress"]}}'
+{% endif %}
+    machineNetwork:
+      - cidr: {{ hostvars[groups['hv_vm'][0]]['machine_network'] }}
+    networkType: OVNKubernetes
+    nodes:
+      - automatedCleaningMode: disabled
+        bootMode: UEFI
+        ironicInspect: "disabled"
+        nodeNetwork:
+          config:
+            interfaces:
+{% if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv4 %}
+              - ipv4:
+                  enabled: true
+                ipv6:
+                  enabled: false
+{% else %}
+              - ipv4:
+                  enabled: false
+                ipv6:
+{% if item.type == "ibi" %}
+                  autoconf: false
+{% endif %}
+                  enabled: true
+{% endif %}
+                name: {{ sno_nic_interface }}
+                state: up
+                type: ethernet
+            routes:
+              config:
+                - destination: {{ "::/0" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                  next-hop-interface: {{ sno_nic_interface }}
+                  table-id: 254
+          interfaces:
+            - name: {{ sno_nic_interface }}
+              label: boot-interface
+        role: master
+        # rootDeviceHints:
+        #   deviceName: /dev/disk/by-path/pci-0000:01:00.0-nvme-1
+        templateRefs:
+{% if item.type == "ai" %}
+          - name: {{ ai_clusterinstance_node_templates }}
+            namespace: {{ ai_clusterinstance_node_templates_ns }}
+{% else %}
+          - name: {{ ibi_clusterinstance_node_templates }}
+            namespace: {{ ibi_clusterinstance_node_templates_ns }}
+{% endif %}
+    pullSecretRef:
+      name: pull-secret
+    serviceNetwork:
+      - cidr: {{ "fd02::/112" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "172.30.0.0/16" }}
+    sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
+    templateRefs:
+{% if item.type == "ai" %}
+      - name: {{ ai_clusterinstance_cluster_templates }}
+        namespace: {{ ai_clusterinstance_cluster_templates_ns }}
+{% else %}
+      - name: {{ ibi_clusterinstance_cluster_templates }}
+        namespace: {{ ibi_clusterinstance_cluster_templates_ns }}
+{% endif %}

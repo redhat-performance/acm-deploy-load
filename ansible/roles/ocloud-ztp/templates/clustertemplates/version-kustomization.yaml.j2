@@ -1,0 +1,25 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+configMapGenerator:
+- files:
+  - extra-manifest/marketplace-ns.yaml
+  - extra-manifest/98-var-lib-containers-partitioned.yaml
+{% if include_crun_extra_manifests %}
+  - extra-manifest/enable-crun-master.yaml
+  - extra-manifest/enable-crun-worker.yaml
+{% endif %}
+  name: {{ ocloud_clustertemplate_name }}-extra-manifest-v1
+  namespace: {{ ocloud_clustertemplate_namespace }}
+generatorOptions:
+  disableNameSuffixHash: true
+
+resources:
+- ./{{ ocloud_clustertemplate_name }}/ns.yaml
+- ./{{ ocloud_clustertemplate_name }}/pull-secret.yaml
+- ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ai-v1.yaml
+- ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ibi-v1.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-{{ ocloud_clustertemplate_revision }}.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-{{ ocloud_clustertemplate_revision }}.yaml
+- ./{{ ocloud_clustertemplate_name }}/policytemplates-defaults-v1.yaml

@@ -80,6 +80,29 @@
   - replace: "{{ ztp_site_generator_image_tag }}"
     regexp: "4.10.0"
 
+- name: Append o-cloud CRDs to ArgoCD app-project.yaml
+  ansible.builtin.blockinfile:
+    path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/app-project.yaml"
+    block: "{{ crd_block | indent(2, first=True) }}"
+    marker: "# {mark} ACM-deploy-load o-cloud CRDs appended"
+    create: true
+    insertafter: "  namespaceResourceWhitelist:"
+  vars:
+    crd_block: |
+      - group: 'clcm.openshift.io'
+        kind: ClusterTemplate
+      - group: 'clcm.openshift.io'
+        kind: HardwareProfile
+      - group: 'metal3.io'
+        kind: BareMetalHost
+      - group: 'ocloud.openshift.io'
+        kind: Location
+      - group: 'ocloud.openshift.io'
+        kind: OCloudSite
+      - group: 'ocloud.openshift.io'
+        kind: ResourcePool
+  when: setup_ocloud_ztp | default(false)
+
 - name: Append ManagedClusterAddOn to namespaceResourceWhitelist in app-project.yaml
   ansible.builtin.blockinfile:
     path: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/deployment/app-project.yaml"

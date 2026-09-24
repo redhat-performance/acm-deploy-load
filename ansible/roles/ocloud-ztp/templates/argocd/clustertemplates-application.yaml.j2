@@ -1,0 +1,27 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ocloud-clustertemplate
+  namespace: openshift-gitops
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ ocloud_manager_namespace }}
+  project: ztp-app-project
+  source:
+    path: {{ ztp_argocd_base_path }}/clustertemplates
+    repoURL: http://{{ gogs_username }}:{{ gogs_password }}@{{ gogs_host }}:{{ gogs_port }}/testadmin/{{ ztp_repo_name }}.git
+    targetRevision: {{ ztp_repo_branch }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+  ignoreDifferences:
+  - group: metal3.io
+    jsonPointers:
+    - /spec/preprovisioningNetworkDataName
+    - /spec/online
+    kind: BareMetalHost

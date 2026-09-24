@@ -1,0 +1,111 @@
+---
+# ocloud-ztp default vars
+
+ocloud_manager_namespace: oran-o2ims
+
+hv_vm_manifests_directory: /root/hv-vm
+
+ocloud_inventory_source: "{{ hv_vm_manifests_directory }}/sno/ocloud-inventory"
+ocloud_provisioningrequest_source: "{{ hv_vm_manifests_directory }}/sno"
+
+# Pull secret vars for cluster template secret
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
+# Disconnected registry support
+registry_user: registry
+registry_password: registry
+auth_encoded: "{{ (registry_user + ':' + registry_password) | b64encode }}"
+disconnected_pull_secret: ' {"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}": {"auth": "{{ auth_encoded }}"}}}'
+
+# ocloud ztp will always be using telco-reference repo directories
+ztp_repo_name: telco-reference
+ztp_argocd_base_path: telco-ran/configuration/argocd
+ztp_source_crs_path: telco-ran/configuration/source-crs
+
+# ocloud ocp and clustertemplate/policytemplate version vars
+# Using cluster_image_set to extract the ocp version for all clustertemplate/policytemplate versions
+cluster_image_set: openshift-4.22.16
+# OCP version, extracted from cluster_image_set - 4.22.16
+ocloud_clustertemplate_ocp_version: "{{ cluster_image_set | regex_replace('^openshift-', '') }}"
+# DU Profile version, extracted from ocloud_clustertemplate_ocp_version - 4.22
+ocloud_du_profile: "{{ (ocloud_clustertemplate_ocp_version | split('.'))[:2] | join('.') }}"
+# Clustertemplate name convention - sno-ran-du
+ocloud_clustertemplate_name: sno-ran-du
+
+# Clustertemplate version convention - v4-22-16
+ocloud_clustertemplate_version: "v{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}"
+# The revision for the clustertemplate version.
+ocloud_clustertemplate_revision: "v1"
+# Clustertemplate namespace convention - version-4-22-16-sno-ran-du
+ocloud_clustertemplate_namespace: "version-{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}-{{ ocloud_clustertemplate_name }}"
+# Cluster template folder convention - version_4_22_16
+ocloud_clustertemplate_folder: "version_{{ ocloud_clustertemplate_ocp_version | replace('.', '_') }}"
+
+########################################################
+# Clustertemplate GitOps directory vars
+########################################################
+# Hardware profiles vars
+ocloud_hardware_profile_name: hw-profile-lab
+ocloud_hardware_mgmt_enabled: false
+# Inventory vars
+# Location -> OCloudSite -> ResourcePool
+ocloud_location_name: location-lab
+ocloud_location_description: "Lab Location"
+ocloud_site_name: site-lab
+ocloud_site_description: "Lab Site"
+ocloud_resourcepool_name: resourcepool-lab
+ocloud_resourcepool_description: "Lab Resource Pool"
+# clustertemplate vars (version_X_Y_Z/sno-ran-du directories)
+
+# NIC interface in clusterinstance defaults
+sno_nic_interface: enp1s0
+
+ocloud_base_domain: example.lab.redhat.com
+# Clusterinstance default ssh key
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
+# Extra-manifest vars
+ocloud_var_lib_containers_disk: /dev/sda
+
+# Template refs
+# AI (Assisted Installer) templates
+ai_clusterinstance_cluster_templates_ns: open-cluster-management
+ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search-obs
+ai_clusterinstance_node_templates_ns: open-cluster-management
+ai_clusterinstance_node_templates: ai-node-templates-v1
+
+# IBI (Image-Based Install) templates
+ibi_clusterinstance_cluster_templates_ns: open-cluster-management
+ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-search-obs
+ibi_clusterinstance_node_templates_ns: open-cluster-management
+ibi_clusterinstance_node_templates: ibi-node-templates-v1
+
+# Include the crun container runtime manifest with day-0 install via clustertemplates extra-manifest directory
+include_crun_extra_manifests: true
+
+# Clustertemplate's Policytemplate default of oadp S3 URL to match where the object store is accessible
+oadp_s3Url: http://{{ groups['bastion'][0] }}:9000
+
+########################################################
+# Policytemplate GitOps directory vars
+########################################################
+# Policy namespace follows official convention: ztp-<cluster-template-namespace>
+ocloud_policy_namespace: "ztp-{{ ocloud_clustertemplate_namespace }}" # Ex: ztp-version-4-22-16-sno-ran-du
+
+disconnected_operator_index_name: redhat/redhat-operator-index
+operator_index_tag: v4.22
+disconnected_certified_operator_index_name: redhat/certified-operator-index
+disconnected_certified_operator_index_tag: v4.22
+
+# oadp s3 credentials
+s3_access_key_id: rustfs
+s3_secret_access_key: rustfs123
+
+########################################################
+# Cluster And Policy ArgoCD Application vars
+########################################################
+
+# Gogs credentials and service for each cluster and policy application
+gogs_username: testadmin
+gogs_password: testadmin
+gogs_host: "[fc00:1010::1]"
+gogs_port: 10880

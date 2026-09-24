@@ -1,5 +1,5 @@
 ---
-# o-cloud-manager-deploy tasks - Install O-Cloud Manager Operator on a cluster
+# ocloud-manager-deploy tasks - Install O-Cloud Manager Operator on a cluster
 
 # To set a default storage class manually:
 # oc annotate storageclass <storageclass-name> storageclass.kubernetes.io/is-default-class=true

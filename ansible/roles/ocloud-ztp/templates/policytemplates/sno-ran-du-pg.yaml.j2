@@ -1,0 +1,370 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: {{ ocloud_clustertemplate_name }}-pg-{{ ocloud_clustertemplate_version }}
+policyDefaults:
+  namespace: {{ ocloud_policy_namespace }}
+  # Use an existing placement rule so that placement bindings can be consolidated
+  placement:
+    # These labels must match the labels set for the ManagedCluster either through the ProvisioningRequest
+    # or the ClusterInstance ConfigMap.
+    labelSelector:
+      cluster-version: {{ ocloud_clustertemplate_version}}
+      sno-ran-du-policy: "v1"
+  policyAnnotations:
+    # This annotation contains a comma-separated list of ClusterTemplates (metadata.name) this PG is associated with.
+    # This is used for linking the generated root policies to the ClusterTemplate used by the ProvisioningRequest.
+    clustertemplates.clcm.openshift.io/templates: "{{ ocloud_clustertemplate_name }}.{{ ocloud_clustertemplate_version }}"
+  remediationAction: enforce
+  severity: low
+  namespaceSelector:
+    exclude:
+      - kube-*
+    include:
+      - '*'
+  evaluationInterval:
+    compliant: 10m
+    noncompliant: 10s
+  orderPolicies: true
+policies:
+{% if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 %}
+# CATALOG SOURCE - DISCONNECTED REGISTRY
+- name: v1-catalog-source-policy
+  manifests:
+  - path: source-crs/disconnected-registry/DefaultCatsrc.yaml
+    patches:
+    - metadata:
+        name: redhat-operators-disconnected
+      spec:
+        displayName: disconnected-redhat-operators
+        image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_operator_index_name }}:{{ operator_index_tag }}
+  - path: source-crs/disconnected-registry/DefaultCatsrc.yaml
+    patches:
+    - metadata:
+        name: certified-operators-disconnected
+      spec:
+        displayName: disconnected-certified-operators
+        image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ disconnected_certified_operator_index_name }}:{{ disconnected_certified_operator_index_tag }}
+  - path: source-crs/disconnected-registry/DisconnectedIDMS.yaml
+    patches:
+    - spec:
+        imageDigestMirrors:
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift/release-images
+          source: quay.io/openshift-release-dev/ocp-release
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift/release
+          source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift/release
+          source: quay.io/openshift-release-dev/ocp-v5.0-art-dev
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+          source: registry.redhat.io
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
+          source: registry.connect.redhat.com
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d
+          source: registry.redhat.io/rhacm2
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/multicluster-engine
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d
+          source: registry.redhat.io/multicluster-engine
+        - mirrors:
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/acm-d
+          - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/rhacm2
+          source: quay.io/acm-d
+{% endif %}
+
+# SUBSCRIPTIONS
+- name: v1-subscriptions-policy
+  manifests:
+  # Cluster Logging operator
+  - path: source-crs/cluster-logging/ClusterLogNS.yaml
+  - path: source-crs/cluster-logging/ClusterLogOperGroup.yaml
+  - path: source-crs/cluster-logging/ClusterLogSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+          {%- endraw +%}
+  - path: source-crs/cluster-logging/ClusterLogOperatorStatus.yaml
+  - path: source-crs/cluster-logging/ClusterLogServiceAccount.yaml
+  - path: source-crs/cluster-logging/ClusterLogServiceAccountAuditBinding.yaml
+  - path: source-crs/cluster-logging/ClusterLogServiceAccountInfrastructureBinding.yaml
+  # PTP operator
+  - path: source-crs/ptp-operator/PtpSubscriptionNS.yaml
+  - path: source-crs/ptp-operator/PtpSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub or (index $configMap.data "install-plan-approval") "Manual" hub}}'
+          {%- endraw +%}
+  - path: source-crs/ptp-operator/PtpSubscriptionOperGroup.yaml
+  - path: source-crs/ptp-operator/PtpOperatorStatus.yaml
+  # SRIOV operator
+  - path: source-crs/sriov-operator/SriovSubscriptionNS.yaml
+  - path: source-crs/sriov-operator/SriovSubscriptionOperGroup.yaml
+  - path: source-crs/sriov-operator/SriovSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+          {%- endraw +%}
+  - path: source-crs/sriov-operator/SriovOperatorStatus.yaml
+  # SRIOV Accelerator
+  - path: source-crs/sriov-fec-operator/AcceleratorsNS.yaml
+  - path: source-crs/sriov-fec-operator/AcceleratorsOperGroup.yaml
+  - path: source-crs/sriov-fec-operator/AcceleratorsSubscription.yaml
+    patches:
+    - spec:
+        channel: "stable"
+        source: {{ 'certified-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'certified-operators' }}
+        installPlanApproval:
+        {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+        {%- endraw +%}
+  - path: source-crs/sriov-fec-operator/AcceleratorsOperatorStatus.yaml
+  # LCA
+  - path: source-crs/lca/LcaSubscriptionNS.yaml
+  - path: source-crs/lca/LcaSubscriptionOperGroup.yaml
+  - path: source-crs/lca/LcaSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+          {%- endraw +%}
+  - path: source-crs/lca/LcaOperatorStatus.yaml
+  # OADP
+  - path: source-crs/data-protection/OadpSubscriptionNS.yaml
+  - path: source-crs/data-protection/OadpSubscriptionOperGroup.yaml
+  - path: source-crs/data-protection/OadpSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+          {%- endraw +%}
+  - path: source-crs/data-protection/OadpOperatorStatus.yaml
+  # Local storage operator
+  - path: source-crs/storage-lso/StorageNS.yaml
+  - path: source-crs/storage-lso/StorageOperGroup.yaml
+  - path: source-crs/storage-lso/StorageSubscription.yaml
+    patches:
+    - spec:
+        source: {{ 'redhat-operators-disconnected' if rhacm_disconnected_registry and rhacm_disconnected_registry|length > 1 else 'redhat-operators' }}
+        installPlanApproval:
+          {%- raw %}
+          '{{hub $configMap:=(lookup "v1" "ConfigMap" "" (printf "%s-pg" .ManagedClusterName)) hub}}{{hub dig "data" "install-plan-approval" "Manual" $configMap hub}}'
+          {%- endraw +%}
+  - path: source-crs/storage-lso/StorageOperatorStatus.yaml
+# CONFIGURATION POLICY
+- name: v1-config-policy
+  manifests:
+    - path: source-crs/cluster-tuning/DisableOLMPprof.yaml
+    - path: source-crs/cluster-tuning/disabling-network-diagnostics/DisableSnoNetworkDiag.yaml
+    # REDUCE FOOTPRINT
+    - path: source-crs/cluster-tuning/monitoring-configuration/ReduceMonitoringFootprint.yaml
+    # PERFORMANCE PROFILE
+    # - path: source-crs/node-tuning-operator/x86_64/PerformanceProfile-SetSelector.yaml
+    #   patches:
+    #   - metadata:
+    #       name: openshift-node-performance-profile
+    #     spec:
+    #       cpu:
+    #         # These must be tailored for the specific hardware platform
+    #         isolated: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cpu-isolated" hub}}{% endraw %}'
+    #         reserved: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cpu-reserved" hub}}{% endraw %}'
+    #       hugepages:
+    #         defaultHugepagesSize: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-default" hub}}{% endraw %}'
+    #         pages:
+    #           - size: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-size" hub}}{% endraw %}'
+    #             count: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-count" | toInt hub}}{% endraw %}'
+    #       machineConfigPoolSelector:
+    #         pools.operator.machineconfiguration.openshift.io/master: ""
+    #       nodeSelector:
+    #         node-role.kubernetes.io/master: ''
+    # TUNED CONFIG
+    # - path: source-crs/node-tuning-operator/TunedPerformancePatch.yaml
+    #   patches:
+    #   - spec:
+    #       recommend:
+    #       - machineConfigLabels:
+    #           machineconfiguration.openshift.io/role: "master"
+    #         priority: 18
+    #         profile: ran-du-performance
+    # PTP CONFIG
+    - path: source-crs/ptp-operator/PtpOperatorConfig.yaml
+      patches:
+      - spec:
+          daemonNodeSelector:
+            $patch: replace
+            node-role.kubernetes.io/master: ""
+    - path: source-crs/ptp-operator/configuration/PtpConfigSlave.yaml
+      openapi:
+        path: {{ ocloud_clustertemplate_name }}/schema.openapi
+      patches:
+        - metadata:
+            name: du-ptp-slave
+          spec:
+            profile:
+            - interface: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "ptpcfgslave-profile-interface" hub}}{% endraw %}'
+              name: slave
+            recommend:
+            - match:
+              - nodeLabel: node-role.kubernetes.io/master
+              priority: 4
+              profile: slave
+    # SRIOV OPERATOR CONFIG
+    - path: source-crs/sriov-operator/SriovOperatorConfig.yaml
+      complianceType: musthave
+      patches:
+      - spec:
+          configDaemonNodeSelector:
+            $patch: replace
+            node-role.kubernetes.io/master: ""
+          disableDrain: true
+    # LOCAL STORAGE CONFIG
+    - path: source-crs/storage/StorageLV.yaml
+      patches:
+      - spec:
+          storageClassDevices:
+          - storageClassName: "example-storage-class-1"
+            volumeMode: Filesystem
+            fsType: xfs
+            devicePaths: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "storage-lv-devicePaths-1" | toLiteral hub}}{% endraw %}'
+    - path: source-crs/storage-lso/StorageClass.yaml
+      patches:
+      - metadata:
+          name: example-storage-class-1
+#     # CLUSTER LOGGING
+    - path: source-crs/cluster-logging/ClusterLogForwarder.yaml
+      openapi:
+        path: {{ ocloud_clustertemplate_name }}/schema.openapi
+      patches:
+      - spec:
+          filters:
+          - name: ran-du-labels
+            openshiftLabels: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cluster-log-fwd-filters-labels" | toLiteral hub}}{% endraw %}'
+          outputs:
+          - kafka:
+              # below url is an example
+              url: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cluster-log-fwd-outputs-url"  | toLiteral hub}}{% endraw %}'
+            # The name is needed for a correct merge with the source-cr.
+            name: kafka-output
+#     # SRIOV
+#     - path: source-crs/sriov-operator/SriovNetwork.yaml
+#       patches:
+#       - metadata:
+#           name: sriov-nw-du-fh
+#         spec:
+#           resourceName: du_fh
+#           vlan: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-vlan-1" | toInt hub}}{% endraw %}'
+#     - path: source-crs/sriov-operator/SriovNetworkNodePolicy.yaml
+#       patches:
+#       - metadata:
+#           name: "sriov-nnp-du-fh"
+#         spec:
+#           deviceType: netdevice
+#           isRdma: false
+#           nicSelector:
+#             $patch: replace
+#             pfNames: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-pfNames-1" | toLiteral hub}}{% endraw %}'
+#           nodeSelector:
+#             $patch: replace
+#             node-role.kubernetes.io/master: ""
+#           numVfs: 8
+#           priority: 10
+#           resourceName: du_fh
+#     - path: source-crs/sriov-operator/SriovNetwork.yaml
+#       patches:
+#       - metadata:
+#           name: sriov-nw-du-mh
+#         spec:
+#           resourceName: du_mh
+#           vlan: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-vlan-2" | toInt hub}}{% endraw %}'
+#     - path: source-crs/SriovNetworkNodePolicy.yaml
+#       patches:
+#       - metadata:
+#           name: "sriov-nnp-du-mh"
+#         spec:
+#           deviceType: vfio-pci
+#           isRdma: false
+#           nicSelector:
+#             $patch: replace
+#             pfNames: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-pfNames-2" | toLiteral hub}}{% endraw %}'
+#           nodeSelector:
+#             $patch: replace
+#             node-role.kubernetes.io/master: ""
+#           numVfs: 8
+#           priority: 10
+#           resourceName: du_mh
+#     # FEC
+#     - path: source-crs/sriov-fec-operator/SriovFecClusterConfig.yaml
+#       patches:
+#       - metadata:
+#           name: fec-config
+#         spec:
+#           drainSkip: true
+#           nodeSelector:
+#             $patch: replace
+#             node-role.kubernetes.io/master: ""
+#           acceleratorSelector:
+#             pciAddress: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-fec-pciAddress" | toLiteral hub}}{% endraw %}'
+#           physicalFunction:
+#             pfDriver: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-fec-pfDriver" | toLiteral hub}}{% endraw %}'
+#             vfDriver: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-fec-vfDriver" | toLiteral hub}}{% endraw %}'
+#             vfAmount: 16
+#             bbDevConfig: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-fec-bbDevConfig" | toLiteral hub}}{% endraw %}'
+#             $patch: replace
+# # DU VALIDATOR
+# - name: v1-du-validator-policy
+#   remediationAction: inform
+#   # This policy is not re-evaluated after it becomes
+#   # compliant to reduce resource usage.
+#   evaluationInterval:
+#     compliant: never
+#     noncompliant: 10s
+#   manifests:
+#     - path: source-crs/validatorCRs/informDuValidatorMaster.yaml
+# OADP (Optional)
+- name: v1-oadp-config-policy
+  policyAnnotations:
+    ran.openshift.io/ztp-deploy-wave: "100"
+  manifests:
+    - path: source-crs/data-protection/OadpSecret.yaml
+      patches:
+      - data:
+          cloud: {{ lookup('template', './s3-creds.j2') | b64encode }}
+    - path: source-crs/data-protection/OadpDataProtectionApplication.yaml
+      patches:
+      - spec:
+          backupLocations:
+          - velero:
+              provider: aws
+              default: true
+              credential:
+                key: cloud
+                name: cloud-credentials
+              config:
+                profile: "default"
+                region: us-east-1
+                s3Url: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "oadp-s3url" hub}}{% endraw %}'
+                insecureSkipTLSVerify: "true"
+                s3ForcePathStyle: "true"
+              objectStorage:
+                bucket: ibu
+                prefix: '{% raw %}{{hub .ManagedClusterName hub}}-ibu{% endraw %}'
+    - path: source-crs/data-protection/OadpBackupStorageLocationStatus.yaml

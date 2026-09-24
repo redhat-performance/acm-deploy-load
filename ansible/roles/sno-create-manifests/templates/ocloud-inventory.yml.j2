@@ -1,0 +1,84 @@
+---
+# Network configuration for {{ inventory_hostname }} (required for inspection)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: network-data-{{ inventory_hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+type: Opaque
+stringData:
+  nmstate: |
+    interfaces:
+    - name: {{ sno_nic_interface }}
+      type: ethernet
+      state: up
+{% if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv4 %}
+      ipv4:
+        enabled: true
+        dhcp: false
+        address:
+        - ip: {{ hostvars[inventory_hostname]['ip'] }}
+          prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+      ipv6:
+        enabled: false
+{% else %}
+      ipv4:
+        enabled: false
+      ipv6:
+        enabled: true
+        autoconf: false
+        dhcp: false
+        address:
+        - ip: {{ hostvars[inventory_hostname]['ip'] }}
+          prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+{% endif %}
+    dns-resolver:
+      config:
+        server:
+        - {{ hostvars[inventory_hostname]['hv_ip'] }}
+    routes:
+      config:
+      - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+        next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+        next-hop-interface: {{ sno_nic_interface }}
+---
+# BMC credentials for {{ inventory_hostname }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bmc-secret-{{ inventory_hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+type: Opaque
+data:
+  username: {{ bmc_username_base64 }}
+  password: {{ bmc_password_base64 }}
+---
+# BareMetalHost for {{ inventory_hostname }}
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  annotations:
+    bmac.agent-install.openshift.io/allow-provisioned-host-management: ""
+  labels:
+    resources.clcm.openshift.io/resourcePoolName: {{ ocloud_resourcepool_name }}
+    interfacelabel.clcm.openshift.io/boot-interface: {{ sno_nic_interface }}
+    resourceselector.clcm.openshift.io/server-id: {{ inventory_hostname }}
+  name: {{ inventory_hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+spec:
+  automatedCleaningMode: disabled
+{% if hostvars[inventory_hostname]['hv_ip'] | ansible.utils.ipv6 %}
+  bmc:
+    address: redfish-virtualmedia+http://[{{ hostvars[inventory_hostname]['hv_ip'] }}]:9000/redfish/v1/Systems/{{ hostvars[inventory_hostname]['domain_uuid'] }}
+    credentialsName: bmc-secret-{{ inventory_hostname }}
+    disableCertificateVerification: true
+{% else %}
+  bmc:
+    address: redfish-virtualmedia+http://{{ hostvars[inventory_hostname]['hv_ip'] }}:9000/redfish/v1/Systems/{{ hostvars[inventory_hostname]['domain_uuid'] }}
+    credentialsName: bmc-secret-{{ inventory_hostname }}
+    disableCertificateVerification: true
+{% endif %}
+  bootMACAddress: {{ hostvars[inventory_hostname]['mac_address'] }}
+  bootMode: UEFI
+  online: false
+  preprovisioningNetworkDataName: network-data-{{ inventory_hostname }}

@@ -9,6 +9,8 @@ create_ai_clusterinstances: true
 create_ai_manifests: false
 create_ibi_clusterinstances: true
 create_ibi_manifests: false
+create_ocloud_ai_manifests: false
+create_ocloud_ibi_manifests: false
 
 # sushy emulator bmc username/password
 bmc_username_base64: "{{ 'redhat' | b64encode }}"
@@ -67,3 +69,18 @@ ibi_clusterinstance_cluster_templates_ns: open-cluster-management
 ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-search-obs
 ibi_clusterinstance_node_templates_ns: open-cluster-management
 ibi_clusterinstance_node_templates: ibi-node-templates-v1
+
+# O-Cloud Inventory and ProvisioningRequest defaults
+ocloud_resourcepool_name: resourcepool-lab
+# OCP version, extracted from cluster_image_set - 4.22.16
+ocloud_clustertemplate_ocp_version: "{{ cluster_image_set | regex_replace('^openshift-', '') }}"
+# Clustertemplate name convention - sno-ran-du
+ocloud_clustertemplate_name: sno-ran-du
+# Clustertemplate version convention - v4-22-16
+ocloud_clustertemplate_version: "v{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}"
+# The revision for the clustertemplate version.
+ocloud_clustertemplate_revision: "v1"
+
+ocloud_hardware_profile_name: hw-profile-lab
+ocloud_hardware_mgmt_enabled: false
+ocloud_site_name: site-lab

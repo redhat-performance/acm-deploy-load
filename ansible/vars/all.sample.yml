@@ -18,6 +18,8 @@ registry_password: registry
 setup_core_ztp: false
 # Setup ZTP Ran DU Policies
 setup_ran_du_ztp: false
+# Setup O-Cloud Manager ZTP
+setup_ocloud_ztp: false
 
 # ZTP DU Policies
 setup_ztp_sno_policy: true
@@ -98,6 +100,25 @@ mce_enable_ibio: false
 setup_ocloud_manager: false
 # cs-redhat-operator-index-v4-22 = disconnected setup, redhat-operators = connected setup
 ocloud_manager_source: cs-redhat-operator-index-v4-22
+
+########################################################
+# O-Cloud Manager ZTP Configuration
+########################################################
+# Note: OCP version folder is derived from cluster_image_set (e.g., openshift-4.22.1 → version_4_22_1)
+# Set cluster_image_set to match your target OCP version
+cluster_image_set: openshift-4.22.16
+
+ocloud_location_name: location-lab
+ocloud_site_name: site-lab
+ocloud_resourcepool_name: resourcepool-lab
+ocloud_hardware_profile_name: hw-profile-lab
+# Clustertemplate name convention - sno-ran-du
+ocloud_clustertemplate_name: sno-ran-du
+# Clustertemplate version convention - v4-22-16 and determined from cluster_image_set
+# ocloud_clustertemplate_version: v4-22-16
+ocloud_hardware_mgmt_enabled: false
+# Base domain shared across all SNOs in this environment
+ocloud_base_domain: example.lab.redhat.com
 
 # AAP deploy/configure vars
 # Place the license file in the base directory of the cloned acm-deploy-load repo, Example:

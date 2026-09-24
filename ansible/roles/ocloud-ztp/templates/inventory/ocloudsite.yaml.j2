@@ -1,0 +1,15 @@
+---
+# OCloudSite CR - defines a logical site at a location
+# Referenced by ResourcePool.spec.oCloudSiteName
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: OCloudSite
+metadata:
+  name: {{ ocloud_site_name }}
+  namespace: oran-o2ims
+spec:
+  # Must match an existing Location's metadata.name
+  globalLocationName: {{ ocloud_location_name }}
+  description: {{ ocloud_site_description }}
+  extensions:
+    environment: "lab"
+    managed-by: "team-infra"

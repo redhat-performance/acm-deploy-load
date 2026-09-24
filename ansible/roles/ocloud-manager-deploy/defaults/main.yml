@@ -1,5 +1,5 @@
 ---
-# o-cloud-manager-deploy default vars
+# ocloud-manager-deploy default vars
 
 ocloud_manager_channel: stable
 ocloud_manager_namespace: oran-o2ims
