@@ -1,0 +1,62 @@
+---
+# spokes-workload-deployment tasks - Deploy workload on managed spoke clusters
+
+- name: Validate required variables
+  assert:
+    that:
+      - container_images_file | length > 0
+      - container_images_file is file
+      - groups.get('managed_clusters', []) | length > 0
+    fail_msg: "container_images_file must be set to a valid file path, and managed_clusters group must exist"
+
+- name: Read container image names from file
+  slurp:
+    src: "{{ container_images_file }}"
+  register: images_file_content
+
+- name: Build fully qualified image references
+  set_fact:
+    container_images: "{{ container_images | default([]) + [image_reference] }}"
+  vars:
+    registry_prefix: "{{ container_image_registry }}{% if container_registry_port %}:{{ container_registry_port }}{% endif %}"
+    image_reference: "{{ registry_prefix }}/{{ container_registry_namespace }}/{{ item | trim }}:{{ container_image_tag }}"
+  loop: "{{ images_file_content['content'] | b64decode | split('\n') }}"
+  when: item | trim | length > 0
+
+- name: Initialize deployment results
+  set_fact:
+    deployment_results: []
+
+- name: Deploy workload to each spoke cluster
+  include_tasks: deploy_load.yml
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  loop_control:
+    loop_var: spoke_cluster_name
+
+- name: Display deployment summary
+  block:
+    - name: Display deployment summary header
+      debug:
+        msg: |
+          ============================================
+          Workload Deployment Summary
+          ============================================
+
+    - name: Display deployment results
+      debug:
+        msg: |
+          Cluster: {{ item.cluster }}
+          Status: {{ item.status }}
+          Replicas: {{ item.replicas }}
+          Timestamp: {{ item.timestamp }}
+      loop: "{{ deployment_results }}"
+
+    - name: Display deployment summary footer
+      debug:
+        msg: |
+          ============================================
+          Total clusters processed: {{ deployment_results | length }}
+          Successfully deployed: {{ deployment_results | selectattr('status', 'equalto', 'SUCCESS') | length }}
+          Failed: {{ deployment_results | selectattr('status', 'equalto', 'FAILED') | length }}
+          ============================================
+  when: deployment_results | length > 0

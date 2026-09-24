@@ -1,0 +1,14 @@
+---
+# defaults for spokes-workload-deployment role
+
+workload_namespace: "workload"
+workload_deployment_name: "workload-deployment"
+container_images_file: ""
+container_image_registry: "quay.io"
+container_registry_port: ""
+container_registry_namespace: "operator-containers"
+container_image_tag: "latest"
+container_cpu_request: "10m"
+container_cpu_limit: "10m"
+container_memory_request: "128Mi"
+container_memory_limit: "128Mi"
