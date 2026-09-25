@@ -1,0 +1,55 @@
+---
+# o-cloud-ztp default vars
+
+# Inventory
+ocloud_location_name: location-lab
+ocloud_location_description: "Lab facility"
+ocloud_site_name: site-local-lab
+ocloud_site_description: "Lab site"
+ocloud_resource_pool_name: lab-server-pool
+ocloud_resource_pool_description: "Lab server pool"
+ocloud_hardware_profile_name: lab-hw-profile
+ocloud_hw_mgmt_enabled: false
+
+# ClusterTemplate
+ocloud_cluster_template_name: sno-ran-du
+ocloud_cluster_template_version: v4-22-1
+ocloud_cluster_template_release: "4.22"
+ocloud_cluster_template_ns: "sno-ran-du-v4-22-1"
+
+# Policy
+ocloud_policy_ns: "ztp-sno-ran-du-v4-22-1"
+
+# Paths
+ocloud_provisioningrequest_source: "{{ hv_vm_manifests_directory }}/sno/ocloud-provisioningrequest"
+
+# Cluster application batching
+ocloud_cluster_applications_count: 40
+ocloud_provisioningrequests_per_application: 100
+
+# Git repo paths
+ztp_gitops_repo_dir: /root/rhacm-ztp/gitops
+ztp_gitops_repo_url: http://localhost:3000/student/ztp-repository.git
+ztp_source_crs_path: "{{ 'telco-ran/configuration/source-crs' if ztp_repo_type == 'telco-reference' else 'ztp/source-crs' }}"
+
+# BMC credentials (from sno-create-manifests)
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"
+
+# Pull secret
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
+
+# Cluster image set
+cluster_image_set: openshift-4.22.1
+
+# SSH key
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
+# NIC interface
+sno_nic_interface: enp1s0
+
+# Template refs (inherited from sno-create-manifests)
+ai_clusterinstance_cluster_templates_ns: open-cluster-management
+ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search-obs
+ai_clusterinstance_node_templates_ns: open-cluster-management
+ai_clusterinstance_node_templates: ai-node-templates-v1

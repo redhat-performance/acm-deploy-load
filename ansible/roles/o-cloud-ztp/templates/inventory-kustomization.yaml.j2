@@ -1,0 +1,12 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- location.yaml
+- ocloud-site.yaml
+- resource-pool.yaml
+{% if ocloud_hw_mgmt_enabled %}
+- hardware-profile.yaml
+{% endif %}
+- {{ ocloud_resource_pool_name }}/

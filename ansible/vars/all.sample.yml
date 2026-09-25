@@ -18,6 +18,8 @@ registry_password: registry
 setup_core_ztp: false
 # Setup ZTP Ran DU Policies
 setup_ran_du_ztp: false
+# Setup O-Cloud Manager ZTP
+setup_ocloud_ztp: false
 
 # ZTP DU Policies
 setup_ztp_sno_policy: true
@@ -98,6 +100,15 @@ mce_enable_ibio: false
 setup_ocloud_manager: false
 # cs-redhat-operator-index-v4-22 = disconnected setup, redhat-operators = connected setup
 ocloud_manager_source: cs-redhat-operator-index-v4-22
+
+# O-Cloud Manager ZTP Configuration
+ocloud_location_name: location-lab
+ocloud_site_name: site-local-lab
+ocloud_resource_pool_name: lab-server-pool
+ocloud_hardware_profile_name: lab-hw-profile
+ocloud_cluster_template_name: sno-ran-du
+ocloud_cluster_template_version: v4-22-1
+ocloud_hw_mgmt_enabled: false
 
 # AAP deploy/configure vars
 # Place the license file in the base directory of the cloned acm-deploy-load repo, Example:

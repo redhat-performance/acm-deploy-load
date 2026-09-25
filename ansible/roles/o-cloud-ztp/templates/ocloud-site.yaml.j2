@@ -1,0 +1,10 @@
+---
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: OCloudSite
+metadata:
+  name: {{ ocloud_site_name }}
+spec:
+  description: {{ ocloud_site_description }}
+  locationRef: {{ ocloud_location_name }}
+  resourcePoolRefs:
+  - {{ ocloud_resource_pool_name }}

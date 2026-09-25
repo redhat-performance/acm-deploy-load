@@ -1,0 +1,32 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clusterinstance-defaults
+  namespace: {{ ocloud_cluster_template_ns }}
+data:
+  clusterInstanceParameters: |
+    clusterType: SNO
+    clusterImageSetNameRef: {{ cluster_image_set }}
+    networkType: OVNKubernetes
+    clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+    serviceNetwork:
+    - cidr: 172.30.0.0/16
+    nodeGroups:
+    - name: master
+      interfaces:
+      - name: {{ sno_nic_interface }}
+        label: {{ sno_nic_interface }}
+    templateRefs:
+    - name: {{ ai_clusterinstance_cluster_templates }}
+      namespace: {{ ai_clusterinstance_cluster_templates_ns }}
+    - name: {{ ai_clusterinstance_node_templates }}
+      namespace: {{ ai_clusterinstance_node_templates_ns }}
+    extraLabels:
+      ManagedCluster:
+        cluster-version: "{{ ocloud_cluster_template_version }}"
+        common: "true"
+        du-profile: "{{ ocloud_cluster_template_release }}"
+        group-du-sno: ""

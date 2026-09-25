@@ -1,0 +1,25 @@
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ item }}
+  namespace: {{ ocloud_resource_pool_name }}
+  labels:
+    resources.clcm.openshift.io/resourcePoolName: {{ ocloud_resource_pool_name }}
+    interfacelabel.clcm.openshift.io/{{ sno_nic_interface }}: {{ sno_nic_interface }}
+spec:
+{% if hostvars[item]['hv_ip'] | ansible.utils.ipv6 %}
+  bmc:
+    address: redfish-virtualmedia+http://[{{ hostvars[item]['hv_ip'] }}]:9000/redfish/v1/Systems/{{ hostvars[item]['domain_uuid'] }}
+    credentialsName: {{ item }}-bmc-secret
+    disableCertificateVerification: true
+{% else %}
+  bmc:
+    address: redfish-virtualmedia+http://{{ hostvars[item]['hv_ip'] }}:9000/redfish/v1/Systems/{{ hostvars[item]['domain_uuid'] }}
+    credentialsName: {{ item }}-bmc-secret
+    disableCertificateVerification: true
+{% endif %}
+  bootMACAddress: {{ hostvars[item]['mac_address'] }}
+  bootMode: UEFI
+  online: false
+  automatedCleaningMode: disabled

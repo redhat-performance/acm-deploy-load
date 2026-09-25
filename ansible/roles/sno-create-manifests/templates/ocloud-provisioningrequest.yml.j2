@@ -1,0 +1,91 @@
+---
+apiVersion: clcm.openshift.io/v1alpha1
+kind: ProvisioningRequest
+metadata:
+  name: {{ inventory_hostname | to_uuid }}
+spec:
+  name: "{{ inventory_hostname }}-provisioning"
+  description: "Provisioning request for SNO cluster {{ inventory_hostname }}"
+  templateName: {{ ocloud_cluster_template_name }}
+  templateVersion: {{ ocloud_cluster_template_version }}
+  templateParameters:
+    nodeClusterName: {{ inventory_hostname }}
+    oCloudSiteId: {{ ocloud_site_name }}
+    # hwMgmtParameters allows overriding hardware management defaults.
+    hwMgmtParameters:
+      # Override the hardware provisioning timeout (optional)
+      # hardwareProvisioningTimeout: "120m"
+      nodeGroupData:
+        - name: master
+{% if ocloud_hw_mgmt_enabled %}
+          hwProfile: {{ ocloud_hardware_profile_name }}
+{% endif %}
+          # Additional resource selector criteria (optional, merged with hwMgmtDefaults selectors)
+          # resourceSelector:
+          #   resourceselector.clcm.openshift.io/server-rack: "rack-1"
+    policyTemplateParameters:
+      # Hardware-specific values for per-cluster ConfigMap hub template lookups
+      cpu-isolated: "2-31"
+      cpu-reserved: "0-1"
+      hugepages-default: "1G"
+      hugepages-count: "16"
+      hugepages-size: "1G"
+      sriov-network-vlan-1: "114"
+      sriov-network-vlan-2: "111"
+    clusterInstanceParameters:
+      additionalNTPSources:
+        - {{ hostvars[inventory_hostname]['hv_ip'] }}
+      baseDomain: {{ hostvars[inventory_hostname]['base_domain'] }}
+      clusterName: {{ inventory_hostname }}
+      # extraAnnotations:
+      #   AgentClusterInstall:
+      #     extra-annotation-key: extra-annotation-value
+      extraLabels:
+        ManagedCluster:
+          cluster-version: "{{ ocloud_cluster_template_version }}"
+          common: "true"
+          du-profile: "{{ ocloud_cluster_template_release }}"
+          group-du-sno: ""
+          sites: {{ inventory_hostname }}
+      machineNetwork:
+        - cidr: {{ hostvars[inventory_hostname]['machine_network'] }}
+      nodeGroups:
+        - name: master
+          # extraAnnotations:
+          #   BareMetalHost:
+          #     extra-annotation-key: extra-annotation-value
+          # extraLabels:
+          #   BareMetalHost:
+          #     extra-label-key: extra-label-value
+          nodeLabels:
+            node-role.kubernetes.io/master: ""
+          nodeNetwork:
+            config:
+              dns-resolver:
+                config:
+                  server:
+                    - {{ hostvars[inventory_hostname]['hv_ip'] }}
+              routes:
+                config:
+                  - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                    next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+                    next-hop-interface: {{ sno_nic_interface }}
+                    table-id: 254
+          nodes:
+            - hostName: {{ inventory_hostname }}
+              nodeNetwork:
+                interfaces:
+                  - name: {{ sno_nic_interface }}
+{% if hostvars[inventory_hostname].ip | ansible.utils.ipv4 %}
+                    addresses:
+                      ipv4:
+                        - {{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}
+{% else %}
+                    addresses:
+                      ipv6:
+                        - {{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}
+{% endif %}
+      serviceNetwork:
+      - cidr: {{ "fd02::/112" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "172.30.0.0/16" }}
+      sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
+

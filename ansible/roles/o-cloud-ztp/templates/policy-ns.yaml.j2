@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ ocloud_policy_ns }}
+  labels:
+    name: {{ ocloud_policy_ns }}
+---
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSetBinding
+metadata:
+  name: default
+  namespace: {{ ocloud_policy_ns }}
+spec:
+  clusterSet: default

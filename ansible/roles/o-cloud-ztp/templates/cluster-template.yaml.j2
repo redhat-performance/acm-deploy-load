@@ -1,0 +1,71 @@
+---
+apiVersion: clustertemplates.clcm.openshift.io/v1alpha1
+kind: ClusterTemplate
+metadata:
+  name: {{ ocloud_cluster_template_name }}.{{ ocloud_cluster_template_version }}
+  namespace: {{ ocloud_cluster_template_ns }}
+spec:
+  release: "{{ ocloud_cluster_template_release }}"
+  templateDefaults:
+    clusterInstanceDefaults: clusterinstance-defaults
+    policyTemplateDefaults: policytemplate-defaults
+  templateParameterSchema:
+    description: Schema for ProvisioningRequest template parameters
+    type: object
+    properties:
+      nodeClusterName:
+        type: string
+        description: Name of the cluster
+      oCloudSiteId:
+        type: string
+        description: O-Cloud site identifier
+      clusterInstanceParameters:
+        type: object
+        description: ClusterInstance-specific parameters
+        properties:
+          clusterName:
+            type: string
+          baseDomain:
+            type: string
+          machineNetwork:
+            type: array
+            items:
+              type: object
+              properties:
+                cidr:
+                  type: string
+          additionalNTPSources:
+            type: array
+            items:
+              type: string
+          nodes:
+            type: array
+            items:
+              type: object
+              properties:
+                hostName:
+                  type: string
+                bmcAddress:
+                  type: string
+                bootMACAddress:
+                  type: string
+                nodeNetwork:
+                  type: object
+      policyTemplateParameters:
+        type: object
+        description: Policy template parameters (hardware-specific)
+        properties:
+          cpu-isolated:
+            type: string
+          cpu-reserved:
+            type: string
+          hugepages-default:
+            type: string
+          hugepages-count:
+            type: string
+          hugepages-size:
+            type: string
+    required:
+    - nodeClusterName
+    - oCloudSiteId
+    - clusterInstanceParameters

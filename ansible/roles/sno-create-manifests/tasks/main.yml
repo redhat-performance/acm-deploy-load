@@ -2,7 +2,7 @@
 # sno-create-manifests tasks
 
 - name: Create directories for hv-vm SNO manifests on bastion
-  file:
+  ansible.builtin.file:
     path: "{{ item.dir }}"
     state: directory
   delegate_to: "{{ groups['bastion'][0] }}"
@@ -21,9 +21,11 @@
     enabled: "{{ create_ibi_clusterinstances }}"
   - dir: "{{ hv_vm_manifests_directory }}/sno/ibi-manifest"
     enabled: "{{ create_ibi_manifests }}"
+  - dir: "{{ hv_vm_manifests_directory }}/sno/ocloud-provisioningrequest"
+    enabled: "{{ create_ocloud_provisioningrequests }}"
 
 - name: Set pull-secret for bastion registry
-  set_fact:
+  ansible.builtin.set_fact:
     pull_secret: "{{ disconnected_pull_secret }}"
   delegate_to: "{{ groups['bastion'][0] }}"
   run_once: true
@@ -33,7 +35,7 @@
   - rhacm_disconnected_registry | length > 1
 
 - name: Template a manifest per hv-vm on bastion as a SNO
-  template:
+  ansible.builtin.template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
   delegate_to: "{{ groups['bastion'][0] }}"
@@ -60,3 +62,8 @@
   - src: ibi-manifest.yml.j2
     dest: "{{ hv_vm_manifests_directory }}/sno/ibi-manifest/{{ inventory_hostname }}-manifest.yml"
     enabled: "{{ create_ibi_manifests }}"
+
+  # O-Cloud ProvisioningRequest
+  - src: ocloud-provisioningrequest.yml.j2
+    dest: "{{ hv_vm_manifests_directory }}/sno/ocloud-provisioningrequest/{{ inventory_hostname }}-provisioningrequest.yml"
+    enabled: "{{ create_ocloud_provisioningrequests }}"

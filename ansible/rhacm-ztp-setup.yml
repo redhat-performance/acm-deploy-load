@@ -17,6 +17,8 @@
   roles:
   - rhacm-ztp-setup
   - role: telco-core-ztp
-    when: setup_core_ztp
+    when: setup_core_ztp | default(false)
   - role: telco-ran-du-ztp
-    when: setup_ran_du_ztp
+    when: setup_ran_du_ztp | default(false)
+  - role: o-cloud-ztp
+    when: setup_ocloud_ztp | default(false)

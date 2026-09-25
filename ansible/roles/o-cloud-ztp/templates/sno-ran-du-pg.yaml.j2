@@ -1,0 +1,113 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: sno-ran-du
+  namespace: {{ ocloud_policy_ns }}
+  annotations:
+    clustertemplates.clcm.openshift.io/templates: "{{ ocloud_cluster_template_name }}.{{ ocloud_cluster_template_version }}"
+spec:
+  bindingRules:
+    cluster-version: "{{ ocloud_cluster_template_version }}"
+  remediationAction: enforce
+  orderPolicies: true
+  sourceFiles:
+    # Operator subscriptions
+    - fileName: sriov-operator/SriovSubscription.yaml
+      policyName: "subscriptions-policy"
+    - fileName: sriov-operator/SriovSubscriptionNS.yaml
+      policyName: "subscriptions-policy"
+    - fileName: sriov-operator/SriovSubscriptionOperGroup.yaml
+      policyName: "subscriptions-policy"
+    - fileName: sriov-operator/SriovOperatorStatus.yaml
+      policyName: "subscriptions-policy"
+    - fileName: ptp-operator/PtpSubscription.yaml
+      policyName: "subscriptions-policy"
+    - fileName: ptp-operator/PtpSubscriptionNS.yaml
+      policyName: "subscriptions-policy"
+    - fileName: ptp-operator/PtpSubscriptionOperGroup.yaml
+      policyName: "subscriptions-policy"
+    - fileName: ptp-operator/PtpOperatorStatus.yaml
+      policyName: "subscriptions-policy"
+    - fileName: cluster-logging/ClusterLogNS.yaml
+      policyName: "subscriptions-policy"
+    - fileName: cluster-logging/ClusterLogOperGroup.yaml
+      policyName: "subscriptions-policy"
+    - fileName: cluster-logging/ClusterLogSubscription.yaml
+      policyName: "subscriptions-policy"
+    - fileName: cluster-logging/ClusterLogOperatorStatus.yaml
+      policyName: "subscriptions-policy"
+    - fileName: storage/StorageNS.yaml
+      policyName: "subscriptions-policy"
+    - fileName: storage/StorageOperGroup.yaml
+      policyName: "subscriptions-policy"
+    - fileName: storage/StorageSubscription.yaml
+      policyName: "subscriptions-policy"
+    - fileName: storage/StorageOperatorStatus.yaml
+      policyName: "subscriptions-policy"
+
+    # Performance and tuning configuration with hub template lookups
+    - fileName: performance-tuning/PerformanceProfile.yaml
+      policyName: "config-policy"
+      metadata:
+        name: openshift-node-performance-profile
+      spec:
+        cpu:
+          isolated: {% raw %}'{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cpu-isolated" hub}}'{% endraw %}
+          reserved: {% raw %}'{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "cpu-reserved" hub}}'{% endraw %}
+        hugepages:
+          defaultHugepagesSize: {% raw %}'{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-default" hub}}'{% endraw %}
+          pages:
+            - size: {% raw %}'{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-size" hub}}'{% endraw %}
+              count: {% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "hugepages-count" | toInt hub}}{% endraw %}
+        realTimeKernel:
+          enabled: true
+
+    # SRIOV configuration
+    - fileName: sriov-operator/SriovOperatorConfigForSNO.yaml
+      policyName: "sriov-config-policy"
+      complianceType: musthave
+    - fileName: sriov-operator/configuration/SriovNetwork.yaml
+      policyName: "sriov-config-policy"
+      metadata:
+        name: sriov-nw-du-mh
+      spec:
+        resourceName: du_mh
+        networkNamespace: openshift-sriov-network-operator
+        vlan: 140
+    - fileName: sriov-operator/configuration/SriovNetworkNodePolicy.yaml
+      policyName: "sriov-config-policy"
+      metadata:
+        name: sriov-nnp-du-mh
+      spec:
+        deviceType: netdevice
+        isRdma: false
+        nicSelector:
+          pfNames: ["ens7f0"]
+        numVfs: 8
+        priority: 10
+        resourceName: du_mh
+
+    # PTP configuration
+    - fileName: ptp-operator/configuration/PtpConfigSlave.yaml
+      policyName: "ptp-config-policy"
+      metadata:
+        name: "du-ptp-slave"
+      spec:
+        profile:
+        - name: "slave"
+          interface: "ens5f0"
+          ptp4lOpts: "-2 -s --summary_interval -4"
+          phc2sysOpts: "-a -r -n 24"
+
+    # Tuned configuration
+    - fileName: performance-tuning/TunedPerformancePatch.yaml
+      policyName: "config-policy"
+      metadata:
+        name: performance-patch
+
+    # Cluster validator
+    - fileName: validatorCRs/informDuValidator.yaml
+      policyName: "du-validator-policy"
+      metadata:
+        name: du-validator

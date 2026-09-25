@@ -1,0 +1,11 @@
+---
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: ResourcePool
+metadata:
+  name: {{ ocloud_resource_pool_name }}
+spec:
+  description: {{ ocloud_resource_pool_description }}
+  namespace: {{ ocloud_resource_pool_name }}
+{% if ocloud_hw_mgmt_enabled %}
+  hardwareProfileRef: {{ ocloud_hardware_profile_name }}
+{% endif %}

@@ -1,0 +1,9 @@
+---
+apiVersion: ocloud.openshift.io/v1alpha1
+kind: Location
+metadata:
+  name: {{ ocloud_location_name }}
+spec:
+  description: {{ ocloud_location_description }}
+  siteRefs:
+  - {{ ocloud_site_name }}

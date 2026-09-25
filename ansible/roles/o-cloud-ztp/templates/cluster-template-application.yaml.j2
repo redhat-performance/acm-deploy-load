@@ -1,0 +1,20 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ocloud-cluster-template
+  namespace: openshift-gitops
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+  project: ztp
+  source:
+    path: {{ ztp_argocd_base_path }}/cluster-templates/{{ ocloud_cluster_template_ns }}
+    repoURL: {{ ztp_gitops_repo_url }}
+    targetRevision: main
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
