@@ -27,7 +27,7 @@
   block:
     - name: Get CRS secret from first spoke namespace
       shell: |
-        oc get secret {{ rox_crs_secret_name }} -n {{ groups['managed_clusters'][0] }} \
+        KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret {{ rox_crs_secret_name }} -n {{ groups['managed_clusters'][0] }} \
           -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d
       register: first_spoke_crs
       changed_when: false
@@ -38,7 +38,7 @@
         set -e
         first_crs="{{ first_spoke_crs.stdout }}"
         for cluster in {{ groups['managed_clusters'] | join(' ') }}; do
-          current_crs=$(oc get secret {{ rox_crs_secret_name }} -n $cluster \
+          current_crs=$(KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret {{ rox_crs_secret_name }} -n $cluster \
             -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d || echo "MISSING")
           if [ "$current_crs" != "$first_crs" ]; then
             exit 1
@@ -104,7 +104,7 @@
     - name: Update CRS secret in all spoke namespaces
       shell: |
         set -e
-        oc create secret generic {{ rox_crs_secret_name }} \
+        KUBECONFIG={{ hub_cluster_kubeconfig }} oc create secret generic {{ rox_crs_secret_name }} \
           --from-literal=admin-crs.yml='{{ crs_content['content'] | b64decode }}' \
           -n {{ item }} \
           --dry-run=client -o yaml | oc apply -f -

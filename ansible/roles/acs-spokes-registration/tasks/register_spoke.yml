@@ -3,7 +3,7 @@
 
 - name: Get managed cluster kubeconfig
   shell: |
-    oc get secret -n {{ managed_cluster_name }} {{ managed_cluster_name }}-admin-kubeconfig \
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ managed_cluster_name }} {{ managed_cluster_name }}-admin-kubeconfig \
       -o jsonpath='{.data.kubeconfig}' | base64 -d
   register: spoke_kubeconfig
   changed_when: false
