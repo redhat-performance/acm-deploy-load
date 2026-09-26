@@ -1,0 +1,40 @@
+---
+# acs-spokes-sensor-cleanup tasks - Delete ACS sensors from managed clusters
+
+- name: Initialize sensor cleanup results
+  set_fact:
+    sensor_cleanup_results: []
+
+- name: Delete sensor from each managed cluster
+  include_tasks: delete_spoke_sensor.yml
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  loop_control:
+    loop_var: managed_cluster_name
+  when: groups.get('managed_clusters', []) | length > 0
+
+- name: Print sensor cleanup summary
+  block:
+    - name: Display sensor cleanup summary header
+      debug:
+        msg: |
+          ============================================
+          ACS Sensor Cleanup Summary
+          ============================================
+
+    - name: Display sensor cleanup results
+      debug:
+        msg: |
+          Cluster: {{ item.cluster }}
+          Status: {{ item.status }}
+          Timestamp: {{ item.timestamp }}
+      loop: "{{ sensor_cleanup_results }}"
+
+    - name: Display sensor cleanup summary footer
+      debug:
+        msg: |
+          ============================================
+          Total clusters processed: {{ sensor_cleanup_results | length }}
+          Successfully cleaned up: {{ sensor_cleanup_results | selectattr('status', 'equalto', 'SUCCESS') | length }}
+          Skipped (no sensor found): {{ sensor_cleanup_results | selectattr('status', 'equalto', 'SKIPPED') | length }}
+          ============================================
+  when: sensor_cleanup_results | length > 0

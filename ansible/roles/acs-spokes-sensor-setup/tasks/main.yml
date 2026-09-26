@@ -1,0 +1,46 @@
+---
+# acs-spokes-sensor-setup tasks - Generate and deploy ACS sensors to managed clusters
+
+- name: Validate required variables
+  assert:
+    that:
+      - rox_api_token | length > 0
+      - rox_central_address | length > 0
+    fail_msg: "Required variables not set: rox_api_token, rox_central_address"
+
+- name: Initialize sensor setup results
+  set_fact:
+    sensor_setup_results: []
+
+- name: Setup sensor on each managed cluster
+  include_tasks: setup_spoke_sensor.yml
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  loop_control:
+    loop_var: managed_cluster_name
+  when: groups.get('managed_clusters', []) | length > 0
+
+- name: Print sensor setup summary
+  block:
+    - name: Display sensor setup summary header
+      debug:
+        msg: |
+          ============================================
+          ACS Sensor Setup Summary
+          ============================================
+
+    - name: Display sensor setup results
+      debug:
+        msg: |
+          Cluster: {{ item.cluster }}
+          Status: {{ item.status }}
+          Timestamp: {{ item.timestamp }}
+      loop: "{{ sensor_setup_results }}"
+
+    - name: Display sensor setup summary footer
+      debug:
+        msg: |
+          ============================================
+          Total clusters processed: {{ sensor_setup_results | length }}
+          Successfully configured: {{ sensor_setup_results | selectattr('status', 'equalto', 'SUCCESS') | length }}
+          ============================================
+  when: sensor_setup_results | length > 0

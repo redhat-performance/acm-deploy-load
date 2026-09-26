@@ -1,0 +1,32 @@
+---
+# Playbook to Setup ACS on ACM Managed Clusters
+# Note: This playbook assumes you have a stackrox Token API in env var ROX_API_TOKEN to interact with ACS Central via roxctl
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-secure-spokes.yml --skip-tags refresh-vulns
+#
+- name: Prepare spokes for registring against Central and setup ACS collectors
+  hosts: bastion
+  connection: local
+  gather_facts: true
+  vars_files:
+  - vars/all.yml
+  vars:
+    rox_api_token: "{{ lookup('env', 'ROX_API_TOKEN') }}"
+    rox_central_address: "{{ lookup('env', 'ROX_CENTRAL_ADDRESS') }}"
+    rh_registry_io_username: "{{ lookup('env', 'RH_REGISTRY_IO_USERNAME') }}"
+    rh_registry_io_password: "{{ lookup('env', 'RH_REGISTRY_IO_PASSWORD') }}"
+  roles:
+    - role: refresh-vulnerabilities-definition
+      tags:
+        - refresh-vulns
+    - role: acs-spokes-registration
+      vars:
+        acs_spokes_registration_action: register
+      tags:
+        - registration
+    - role: acs-spokes-sensor-setup
+      tags:
+        - sensor-setup
