@@ -2,6 +2,8 @@
 # Deploy workload to a single spoke cluster
 
 - name: Get kubeconfig for spoke {{ spoke_cluster_name }}
+  environment:
+    KUBECONFIG: "KUBECONFIG={{ hub_cluster_kubeconfig }} "
   shell: |
     oc get secret -n {{ spoke_cluster_name }} {{ spoke_cluster_name }}-admin-kubeconfig \
       -o jsonpath='{.data.kubeconfig}' | base64 -d
@@ -22,13 +24,13 @@
     mode: '0600'
 
 - name: Get number of worker nodes in spoke cluster (excluding infra)
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   shell: |
     oc get nodes -l node-role.kubernetes.io/worker=,node-role.kubernetes.io/infra!= --kubeconfig={{ spoke_kubeconfig_file.path }} -o json | \
       jq '.items | length'
   register: worker_count_result
   changed_when: false
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
 
 - name: Set replica count based on worker nodes
   set_fact:
@@ -56,11 +58,11 @@
     index_var: item_index
 
 - name: Create workload namespace on spoke
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   shell: |
     oc create namespace {{ workload_namespace }} --dry-run=client -o yaml | \
       oc apply -f -
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   changed_when: false
   register: namespace_result
 
@@ -99,12 +101,12 @@
             containers: "{{ containers_list }}"
 
 - name: Apply deployment to spoke cluster
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   shell: |
     cat << 'MANIFEST' | oc apply -f -
     {{ deployment_manifest | to_nice_yaml }}
     MANIFEST
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   register: deployment_apply_result
   changed_when: deployment_apply_result.stdout is search('(created|configured)')
   failed_when: deployment_apply_result.rc != 0
