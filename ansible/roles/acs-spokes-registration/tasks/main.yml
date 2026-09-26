@@ -4,12 +4,12 @@
 - name: Validate environment and variables
   block:
     - name: Check if roxctl is available
-      command: which roxctl
+      ansible.builtin.command: which roxctl
       register: roxctl_check
       changed_when: false
 
     - name: Assert required variables and tools
-      assert:
+      ansible.builtin.assert:
         that:
           - acs_spokes_registration_action in ['register', 'unregister']
           - rox_api_token | length > 0
@@ -26,7 +26,7 @@
     - groups.get('managed_clusters', []) | length > 0
   block:
     - name: Get CRS secret from first spoke namespace
-      shell: |
+      ansible.builtin.shell: |
         KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret {{ rox_crs_secret_name }} -n {{ groups['managed_clusters'][0] }} \
           -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d
       register: first_spoke_crs
@@ -34,7 +34,7 @@
       failed_when: false
 
     - name: Check if all spokes have matching CRS
-      shell: |
+      ansible.builtin.shell: |
         set -e
         first_crs="{{ first_spoke_crs.stdout }}"
         for cluster in {{ groups['managed_clusters'] | join(' ') }}; do
@@ -51,7 +51,7 @@
       when: first_spoke_crs.stdout | length > 0
 
     - name: Set crs_needs_regeneration flag
-      set_fact:
+      ansible.builtin.set_fact:
         crs_needs_regeneration: "{{ (first_spoke_crs.stdout | length == 0) or (crs_check_result.rc == 1) }}"
 
 - name: Generate Cluster Registration Secret
@@ -60,7 +60,7 @@
     - crs_needs_regeneration | default(false)
   block:
     - name: Revoke existing CRS if present
-      shell: |
+      ansible.builtin.shell: |
         roxctl central crs revoke {{ rox_crs_secret_name }} \
           {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
           -e {{ rox_central_address }}
@@ -71,13 +71,13 @@
       failed_when: false
 
     - name: Create temporary work directory
-      file:
+      ansible.builtin.file:
         path: "{{ rox_crs_work_dir }}"
         state: directory
         mode: '0755'
 
     - name: Generate CRS with roxctl
-      shell: |
+      ansible.builtin.shell: |
         set -e
         cd {{ rox_crs_work_dir }}
         roxctl central crs generate \
@@ -92,17 +92,17 @@
       changed_when: true
 
     - name: Display CRS generation output
-      debug:
+      ansible.builtin.debug:
         msg: "{{ crs_generate_result.stdout }}"
       when: crs_generate_result.stdout | length > 0
 
     - name: Read generated CRS content
-      slurp:
+      ansible.builtin.slurp:
         src: "{{ rox_crs_work_dir }}/admin-crs.yml"
       register: crs_content
 
     - name: Update CRS secret in all spoke namespaces
-      shell: |
+      ansible.builtin.shell: |
         set -e
         KUBECONFIG={{ hub_cluster_kubeconfig }} oc create secret generic {{ rox_crs_secret_name }} \
           --from-literal=admin-crs.yml='{{ crs_content['content'] | b64decode }}' \
@@ -112,12 +112,12 @@
       changed_when: true
 
     - name: Clean up work directory
-      file:
+      ansible.builtin.file:
         path: "{{ rox_crs_work_dir }}"
         state: absent
 
 - name: Register each managed cluster with ACS Central
-  include_tasks: register_spoke.yml
+  ansible.builtin.include_tasks: register_spoke.yml
   loop: "{{ groups.get('managed_clusters', []) }}"
   loop_control:
     loop_var: managed_cluster_name
@@ -126,12 +126,12 @@
     - groups.get('managed_clusters', []) | length > 0
 
 - name: Initialize unregister results
-  set_fact:
+  ansible.builtin.set_fact:
     cluster_unregister_results: []
   when: acs_spokes_registration_action == 'unregister'
 
 - name: Unregister each managed cluster from ACS Central
-  include_tasks: unregister_spoke.yml
+  ansible.builtin.include_tasks: unregister_spoke.yml
   loop: "{{ groups.get('managed_clusters', []) }}"
   loop_control:
     loop_var: managed_cluster_name
@@ -142,14 +142,14 @@
 - name: Print cluster unregister summary
   block:
     - name: Display unregister summary header
-      debug:
+      ansible.builtin.debug:
         msg: |
           ============================================
           ACS Cluster Unregister Summary
           ============================================
 
     - name: Display unregister results
-      debug:
+      ansible.builtin.debug:
         msg: |
           Cluster: {{ item.cluster }}
           Status: {{ item.status }}
@@ -157,7 +157,7 @@
       loop: "{{ cluster_unregister_results }}"
 
     - name: Display unregister summary footer
-      debug:
+      ansible.builtin.debug:
         msg: |
           ============================================
           Total clusters processed: {{ cluster_unregister_results | length }}
