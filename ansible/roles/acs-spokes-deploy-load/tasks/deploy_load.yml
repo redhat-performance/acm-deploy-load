@@ -66,46 +66,16 @@
   changed_when: false
   register: namespace_result
 
-- name: Template deployment manifest
+- name: Render deployment manifest from template
   set_fact:
-    deployment_manifest:
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: "{{ workload_deployment_name }}"
-        namespace: "{{ workload_namespace }}"
-        labels:
-          app: "{{ workload_deployment_name }}"
-      spec:
-        replicas: "{{ replica_count | int }}"
-        selector:
-          matchLabels:
-            app: "{{ workload_deployment_name }}"
-        template:
-          metadata:
-            labels:
-              app: "{{ workload_deployment_name }}"
-          spec:
-            nodeSelector:
-              node-role.kubernetes.io/worker: ""
-            affinity:
-              podAntiAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  - labelSelector:
-                      matchExpressions:
-                        - key: app
-                          operator: In
-                          values:
-                            - "{{ workload_deployment_name }}"
-                    topologyKey: "kubernetes.io/hostname"
-            containers: "{{ containers_list }}"
+    deployment_manifest: "{{ lookup('template', 'deployment.j2') }}"
 
 - name: Apply deployment to spoke cluster
   environment:
     KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   shell: |
     cat << 'MANIFEST' | oc apply -f -
-    {{ deployment_manifest | to_nice_yaml }}
+    {{ deployment_manifest }}
     MANIFEST
   register: deployment_apply_result
   changed_when: deployment_apply_result.stdout is search('(created|configured)')
