@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ workload_deployment_name }}
+  namespace: {{ workload_namespace }}
+  labels:
+    app: {{ workload_deployment_name }}
+spec:
+  replicas: {{ replica_count | int }}
+  selector:
+    matchLabels:
+      app: {{ workload_deployment_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ workload_deployment_name }}
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ workload_deployment_name }}
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+{% for container in containers_list %}
+      - name: {{ container.name }}
+        image: {{ container.image }}
+        imagePullPolicy: {{ container.imagePullPolicy }}
+        resources:
+          requests:
+            cpu: {{ container.resources.requests.cpu }}
+            memory: {{ container.resources.requests.memory }}
+          limits:
+            cpu: {{ container.resources.limits.cpu }}
+            memory: {{ container.resources.limits.memory }}
+        securityContext:
+          privileged: {{ container.securityContext.privileged }}
+{% endfor %}
