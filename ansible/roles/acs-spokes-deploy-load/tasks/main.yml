@@ -18,7 +18,7 @@
   set_fact:
     container_images: "{{ container_images | default([]) + [image_reference] }}"
   vars:
-    registry_prefix: "{{ container_image_registry }}{% if container_registry_port %}:{{ container_registry_port }}{% endif %}"
+    registry_prefix: "{{ container_image_registry_host }}{% if container_image_registry_port %}:{{ container_image_registry_port }}{% endif %}"
     image_reference: "{{ registry_prefix }}/{{ container_registry_namespace }}/{{ item | trim }}:{{ container_image_tag }}"
   loop: "{{ images_file_content['content'] | b64decode | split('\n') }}"
   when: item | trim | length > 0
