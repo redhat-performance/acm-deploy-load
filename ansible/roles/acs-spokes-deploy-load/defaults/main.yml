@@ -1,6 +1,7 @@
 ---
 # defaults for spokes-workload-deployment role
 
+hub_cluster_kubeconfig: "/root/mno/kubeconfig"
 workload_namespace: "workload"
 workload_deployment_name: "workload-deployment"
 container_images_file: ""
