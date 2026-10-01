@@ -26,6 +26,8 @@
   loop:
   - src: o-cloud-manager-operator.yaml.j2
     dest: "{{ install_directory }}/o-cloud-manager-deploy/o-cloud-manager-operator.yaml"
+  - src: o-cloud-manager-serviceaccount.yaml.j2
+    dest: "{{ install_directory }}/o-cloud-manager-deploy/o-cloud-manager-serviceaccount.yaml"
 
 - name: Apply O-Cloud Manager Operator manifest
   ansible.builtin.shell: |
@@ -54,3 +56,8 @@
   delay: 2
   register: ocloud_pods_not_ready
   until: ocloud_pods_not_ready.stdout == ""
+
+- name: Apply O-Cloud Manager ServiceAccount manifest
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/o-cloud-manager-deploy/o-cloud-manager-serviceaccount.yaml
+  when: ocloud_manager_test_serviceaccount | bool

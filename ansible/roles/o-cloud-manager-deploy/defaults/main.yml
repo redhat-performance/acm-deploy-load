@@ -3,3 +3,11 @@
 
 ocloud_manager_channel: stable
 ocloud_manager_namespace: oran-o2ims
+
+# Create test service account for O-Cloud Manager to interact with ocloud API
+# Example:
+# export MY_TOKEN=$(oc create token test-client -n oran-o2ims --duration=24h)
+# export ORAN_HOST=$(oc get routes -n oran-o2ims -o jsonpath='{.items[0].spec.host}')
+# curl -ks -H "Authorization: Bearer ${MY_TOKEN}" https://${ORAN_HOST}/o2ims-infrastructureInventory/v2/resourcePools | jq '.'
+# ...
+ocloud_manager_test_serviceaccount: true
