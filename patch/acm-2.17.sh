@@ -15,10 +15,10 @@ echo "Sleep 10"
 sleep 10
 echo "Applying ACM search-v2-operator indexer resources bump"
 oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/resources", "value": {"limits": {"memory": "4Gi"}, "requests": {"memory": "128Mi", "cpu": "25m"}}}]'
-echo "Applying ACM search-v2-operator indexer replicaCount"
-oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/replicaCount", "value": 2}]'
 echo "Applying ACM search-v2-operator indexer envVar"
 oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/envVar", "value": [{"name": "REQUEST_LIMIT", "value": "100"}]}]'
+echo "Applying ACM search-v2-operator indexer replicaCount"
+oc patch search -n open-cluster-management search-v2-operator --type json -p '[{"op": "add", "path": "/spec/deployments/indexer/replicaCount", "value": 2}]'
 echo "Sleep 10"
 sleep 10
 echo "Applying ACM search-v2-operator queryapi resources bump"
