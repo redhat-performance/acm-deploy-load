@@ -136,6 +136,7 @@ Imports (manages) previously deployed clusters into ACM in batches on an interva
 | `analyze-agentclusterinstalls.py` | AI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
 | `analyze-imageclusterinstalls.py` | IBI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
 | `analyze-clusterinstances.py` | ClusterInstance resource timing analysis |
+| `analyze-provisioningrequests.py` | [ProvisioningRequest end-to-end timing analysis](docs/analyze-provisioningrequests.md) (O-Cloud Manager) |
 | `analyze-clustergroupupgrades.py` | CGU/TALM completion timing for ZTP install |
 | `analyze-acm-deploy-time.py` | Deployment duration metrics and peak concurrency from monitoring data |
 | `analyze-ansiblejobs.py` | AAP AnsibleJob timing analysis |

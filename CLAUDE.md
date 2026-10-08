@@ -42,6 +42,7 @@ acm-deploy-load/                        # All Python scripts
 ├── analyze-imageclusterinstalls.py      # ICI per-cluster install timing stats (IBI)
 ├── analyze-agentclusterinstalls.py      # ACI per-cluster install timing stats (AI)
 ├── analyze-clusterinstances.py          # ClusterInstance provisioning timing stats
+├── analyze-provisioningrequests.py      # ProvisioningRequest end-to-end timing stats (O-Cloud)
 ├── analyze-clustergroupupgrades.py      # CGU per-cluster policy timing stats
 ├── analyze-imagebasedgroupupgrades.py   # IBGU analysis
 ├── analyze-imagebasedupgrades.py        # IBU analysis
@@ -95,7 +96,7 @@ results/                                 # Timestamped test output directories (
 
 ## OCP Resources Monitored
 
-`AgentClusterInstall`, `ImageClusterInstall`, `ClusterInstance`, `ClusterGroupUpgrade`, `ImageClusterGroupUpgrade`, `ClusterVersion`, `Policy`/`PolicyTemplate`, `AnsibleJob`, `MultiClusterHub`, `MultiClusterEngine`, `MultiClusterObservability`
+`AgentClusterInstall`, `ImageClusterInstall`, `ClusterInstance`, `ProvisioningRequest`, `ClusterGroupUpgrade`, `ImageClusterGroupUpgrade`, `ClusterVersion`, `Policy`/`PolicyTemplate`, `AnsibleJob`, `MultiClusterHub`, `MultiClusterEngine`, `MultiClusterObservability`
 
 ## Skill Maintenance
 
@@ -113,6 +114,7 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (plaintext percentiles) |
 | `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (plaintext percentiles) |
 | `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (plaintext percentiles, two stat blocks) |
+| `acm-deploy-load/analyze-provisioningrequests.py` | PR `.stats` file format (plaintext percentiles, five stat blocks) |
 | `acm-deploy-load/analyze-clustergroupupgrades.py` | CGU `.stats` file format (header + plaintext percentiles) |
 | `acm-deploy-load/graph-acm-compare.py` | `GRAPH_DEFS` and `DEPLOY_DEFS` graph definitions, comparison graph naming (`comparison-{metric}.png`), cluster deploy graph types |
 | `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |

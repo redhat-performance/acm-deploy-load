@@ -22,6 +22,9 @@ Example: `20260623-044312-ibi-clusterinstance-gitops-400cpa-500b-1800i-odf-ibi-e
 | `clustergroupupgrades-ztp-install-{TS}.csv` | CGU timing detail | CSV |
 | `agentclusterinstalls-{TS}.stats` | AI per-cluster install timing (AI methods only) | Plaintext stats |
 | `agentclusterinstalls-{TS}.csv` | AI per-cluster timing detail | CSV |
+| `provisioningrequests-{TS}.stats` | ProvisioningRequest end-to-end timing (O-Cloud) | Plaintext stats |
+| `provisioningrequests-{TS}.csv` | ProvisioningRequest per-cluster timing detail | CSV |
+| `provisioningrequests-{TS}.json` | ProvisioningRequest raw data | JSON |
 | `cluster-{TS}.png` | Cluster state graph | PNG |
 | `policy-{TS}.png` | Policy state graph | PNG |
 | `share-{TS}.png`, `share2-{TS}.png` | Share graphs | PNG |
@@ -180,6 +183,34 @@ Max: 1239.0
 ```
 
 Use the "Total Duration" block for the ClusterInstance end-to-end provisioning time.
+
+The ProvisioningRequest stats file contains five stat blocks (all for fulfilled PRs):
+
+```
+Total Duration Stats on ProvisioningRequests in fulfilled
+Count: 161
+Min: 1960.0
+Average: 2680.3
+50 percentile: 2640.0
+95 percentile: 3114.0
+99 percentile: 3625.8
+Max: 15311.0
+O-Cloud Preprocessing Stats (creationTimestamp to ClusterInstanceProcessed) on fulfilled ProvisioningRequests
+Count: 161
+...
+Hardware Provisioning Stats (NodeAllocationRequestRendered to HardwareProvisioned) on fulfilled ProvisioningRequests
+Count: 161
+...
+Cluster Provisioning Stats (ClusterInstanceProcessed to ClusterProvisioned) on fulfilled ProvisioningRequests
+Count: 161
+...
+Configuration Applied Stats (ClusterProvisioned to ConfigurationApplied) on fulfilled ProvisioningRequests
+Count: 161
+...
+```
+
+Use the "Total Duration" block for end-to-end ProvisioningRequest time. The
+"Hardware Provisioning" block is critical for bare metal environments.
 
 ## deploy-time File Format
 
