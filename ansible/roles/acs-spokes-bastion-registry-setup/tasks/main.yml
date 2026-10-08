@@ -1,0 +1,80 @@
+---
+- name: Check if bastion registry setup is enabled
+  ansible.builtin.debug:
+    msg: "Bastion registry setup is disabled (acs_spoke_use_bastion_registry=false)"
+  when: not acs_spoke_use_bastion_registry
+
+- name: Validate bastion registry configuration
+  ansible.builtin.assert:
+    that:
+      - bastion_registry_host != ""
+      - bastion_registry_port is defined
+      - bastion_registry_port | int > 0
+    fail_msg: "bastion_registry_host must be set and bastion_registry_port must be a valid port number when acs_spoke_use_bastion_registry=true"
+  when: acs_spoke_use_bastion_registry
+
+- name: Bastion registry setup
+  when: acs_spoke_use_bastion_registry
+  block:
+    - name: Create cert directory
+      ansible.builtin.file:
+        path: "{{ bastion_registry_cert_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Capture bastion registry TLS certificate
+      ansible.builtin.shell: |
+        openssl s_client -showcerts -connect {{ bastion_registry_host }}:{{ bastion_registry_port }} </dev/null 2>/dev/null | \
+        openssl x509 -outform PEM > {{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }}
+      register: cert_capture_result
+      changed_when: false
+
+    - name: Verify certificate was captured
+      ansible.builtin.stat:
+        path: "{{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }}"
+      register: cert_file_stat
+      failed_when: not cert_file_stat.stat.exists
+
+    - name: Push test image to bastion registry
+      block:
+        - name: Pull test image locally
+          ansible.builtin.command: |
+            podman pull {{ bastion_registry_test_image_source }}
+          changed_when: false
+
+        - name: Tag test image for bastion registry
+          ansible.builtin.command: |
+            podman tag {{ bastion_registry_test_image_source }} \
+              {{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }}
+          changed_when: false
+
+        - name: Login to bastion registry with podman
+          ansible.builtin.command: |
+            podman login -u {{ bastion_registry_username }} -p {{ bastion_registry_password }} \
+              {{ bastion_registry_host }}:{{ bastion_registry_port }}
+          changed_when: false
+          no_log: true
+
+        - name: Push test image to bastion registry
+          ansible.builtin.command: |
+            podman push {{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }}
+          changed_when: false
+
+      rescue:
+        - name: Log image push failure but continue
+          ansible.builtin.debug:
+            msg: "Warning: Failed to push test image to bastion registry, test pods may fail but registry setup will continue"
+
+    - name: Process each managed cluster
+      ansible.builtin.include_tasks: configure-spoke.yml
+      loop: "{{ groups['managed_clusters'] }}"
+      loop_control:
+        loop_var: spoke_name
+
+    - name: Display setup summary
+      ansible.builtin.debug:
+        msg:
+          - "🚀 Bastion registry setup completed"
+          - "➜  Total clusters processed: {{ groups['managed_clusters'] | length }}"
+          - "➜  Successfully configured: {{ successfully_configured | default(0) }}"
+

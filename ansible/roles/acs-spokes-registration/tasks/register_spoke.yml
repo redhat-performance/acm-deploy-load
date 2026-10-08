@@ -1,0 +1,84 @@
+---
+# Register a single managed cluster (spoke) with ACS Central
+
+- name: Get managed cluster kubeconfig
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret -n {{ managed_cluster_name }} {{ managed_cluster_name }}-admin-kubeconfig \
+      -o jsonpath='{.data.kubeconfig}' | base64 -d
+  register: spoke_kubeconfig
+  changed_when: false
+  failed_when: spoke_kubeconfig.rc != 0
+
+- name: Create temporary kubeconfig file for spoke
+  ansible.builtin.tempfile:
+    state: file
+    suffix: .kubeconfig
+  register: spoke_kubeconfig_file
+
+- name: Write kubeconfig to temporary file
+  ansible.builtin.copy:
+    content: "{{ spoke_kubeconfig.stdout }}"
+    dest: "{{ spoke_kubeconfig_file.path }}"
+    mode: '0600'
+
+- name: Create stackrox namespace on spoke
+  ansible.builtin.shell: |
+    set -e
+    oc create namespace stackrox --dry-run=client -o yaml | oc apply -f -
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+  changed_when: "'created' in namespace_result.stdout"
+  register: namespace_result
+
+- name: Create stackrox docker-registry secret on spoke
+  ansible.builtin.shell: |
+    set -e
+    oc create secret docker-registry stackrox \
+      --docker-server=registry.redhat.io \
+      --docker-username="{{ rh_registry_io_username }}" \
+      --docker-password="{{ rh_registry_io_password }}" \
+      -n stackrox \
+      --dry-run=client -o yaml | oc apply -f -
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+  changed_when: "'created' in stackrox_secret_result.stdout"
+  register: stackrox_secret_result
+
+- name: Create collector-stackrox docker-registry secret on spoke
+  ansible.builtin.shell: |
+    set -e
+    oc create secret docker-registry collector-stackrox \
+      --docker-server=registry.redhat.io/advanced-cluster-security \
+      --docker-username="{{ rh_registry_io_username }}" \
+      --docker-password="{{ rh_registry_io_password }}" \
+      -n stackrox \
+      --dry-run=client -o yaml | oc apply -f -
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+  changed_when: "'created' in collector_secret_result.stdout"
+  register: collector_secret_result
+
+- name: Get CRS secret from hub namespace
+  ansible.builtin.shell: |
+    oc get secret {{ rox_crs_secret_name }} -n {{ managed_cluster_name }} \
+      -o jsonpath='{.data.admin-crs\.yml}' | base64 -d
+  register: spoke_crs_secret
+  changed_when: false
+
+- name: Apply CRS to register spoke with Central
+  ansible.builtin.shell: |
+    set -e
+    oc apply -f - 2>&1 <<<'{{ spoke_crs_secret.stdout }}'
+  environment:
+    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+  register: crs_apply_result
+  changed_when: crs_apply_result.stdout is search('(created|configured)')
+
+- name: Clean up temporary kubeconfig file
+  ansible.builtin.file:
+    path: "{{ spoke_kubeconfig_file.path }}"
+    state: absent
+
+- name: Display spoke registration result
+  ansible.builtin.debug:
+    msg: "Registered managed cluster '{{ managed_cluster_name }}' with ACS Central"

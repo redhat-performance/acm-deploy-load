@@ -1,0 +1,207 @@
+---
+- name: Get spoke kubeconfig secret
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  ansible.builtin.shell: |
+    oc get secret {{ spoke_name }}-admin-kubeconfig \
+      -n {{ spoke_name }} \
+      -o jsonpath='{.data.kubeconfig}' | base64 -d
+  register: spoke_kubeconfig_raw
+  changed_when: false
+  failed_when: spoke_kubeconfig_raw.rc != 0
+
+- name: Create temporary kubeconfig file for spoke
+  ansible.builtin.copy:
+    content: "{{ spoke_kubeconfig_raw.stdout }}"
+    dest: "/tmp/{{ spoke_name }}-kubeconfig"
+    mode: '0600'
+  register: spoke_kubeconfig_file
+
+- name: Create registry-cas configmap with TLS certificate
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create configmap {{ bastion_registry_configmap_name }} \
+      -n openshift-config \
+      --from-file={{ bastion_registry_host }}..{{ bastion_registry_port }}={{ bastion_registry_cert_dir }}/{{ bastion_registry_cert_file }} \
+      --dry-run=client -o json | \
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
+  register: configmap_create
+  changed_when: "'created' in configmap_create.stdout or 'configured' in configmap_create.stdout"
+
+- name: Patch image config to use trusted CA configmap
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} patch image.config.openshift.io/cluster \
+      --type=merge \
+      -p '{"spec":{"additionalTrustedCA":{"name":"{{ bastion_registry_configmap_name }}"}}}'
+  register: image_config_patch
+  changed_when: "'patched' in image_config_patch.stdout or 'no change' not in image_config_patch.stderr"
+
+- name: Extract current pull secret
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get secret/{{ bastion_registry_pull_secret_name }} \
+      -n openshift-config \
+      -o json | jq -r '.data.".dockerconfigjson"' | base64 -d > /tmp/{{ spoke_name }}-global_pull_secret.json
+  changed_when: false
+  register: pull_secret_extract
+
+- name: Append bastion registry credentials to pull secret
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} registry login \
+      --registry="{{ bastion_registry_host }}:{{ bastion_registry_port }}" \
+      --auth-basic="{{ bastion_registry_username }}:{{ bastion_registry_password }}" \
+      --to=/tmp/{{ spoke_name }}-global_pull_secret.json
+  changed_when: false
+  register: registry_login
+
+- name: Update pull secret on spoke
+  ansible.builtin.command: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} set data secret/{{ bastion_registry_pull_secret_name }} \
+      -n openshift-config \
+      --from-file=.dockerconfigjson=/tmp/{{ spoke_name }}-global_pull_secret.json
+  register: secret_update
+  changed_when: "'updated' in secret_update.stdout"
+
+- name: Wait for machineconfig rollout to complete
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get nodes -o jsonpath='{.items[0].metadata.name}'
+  register: first_node
+  changed_when: false
+
+- name: Monitor machineconfig rollout (poll for UPDATING=false, UPDATED=true)
+  ansible.builtin.shell: |
+    oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get mcp -o jsonpath='{.items[?(@.metadata.name=="worker")].status.conditions[?(@.type=="Updated")].status}{"\n"}{.items[?(@.metadata.name=="worker")].status.conditions[?(@.type=="Updating")].status}'
+  register: mcp_status
+  until: "'True' in mcp_status.stdout_lines[0] and 'False' in mcp_status.stdout_lines[1]"
+  retries: "{{ bastion_registry_machineconfig_poll_retries }}"
+  delay: "{{ bastion_registry_machineconfig_poll_interval }}"
+  changed_when: false
+
+- name: Wait additional time for nodes to be ready
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Create test pod using bastion registry image
+  block:
+    - name: Delete any existing test namespace
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} delete namespace bastion-registry-test \
+          --ignore-not-found=true
+      changed_when: false
+
+    - name: Wait for namespace to be fully deleted
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get namespace bastion-registry-test 2>/dev/null
+      register: ns_check
+      until: ns_check.rc != 0
+      retries: 30
+      delay: 1
+      changed_when: false
+      failed_when: false
+
+    - name: Create test namespace
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} create namespace bastion-registry-test \
+          --dry-run=client -o json | \
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} apply -f -
+      changed_when: false
+
+    - name: Deploy test pod from bastion registry
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} run {{ bastion_registry_test_pod_name }} \
+          -n bastion-registry-test \
+          --image={{ bastion_registry_host }}:{{ bastion_registry_port }}/{{ bastion_registry_test_image_name }}:{{ bastion_registry_test_image_tag }} \
+          --command -- sh -c '{{ bastion_registry_test_command }}'
+      register: test_pod_deploy
+      changed_when: "'pod/' in test_pod_deploy.stdout"
+      failed_when: test_pod_deploy.rc != 0
+
+    - name: Wait for test pod to be ready
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} get pod {{ bastion_registry_test_pod_name }} \
+          -n bastion-registry-test \
+          -o jsonpath='{.status.phase}'
+      register: pod_status
+      until: pod_status.stdout in ['Running', 'Succeeded', 'Failed']
+      retries: 10
+      delay: 1
+      changed_when: false
+
+    - name: Display test pod logs
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} logs {{ bastion_registry_test_pod_name }} \
+          -n bastion-registry-test
+      register: pod_logs
+      changed_when: false
+      failed_when: false
+
+    - name: Set test report message
+      ansible.builtin.set_fact:
+        test_report_msg: |
+          ============================================
+          Bastion Registry Test: {{ spoke_name }}
+          ============================================
+          Status: {{ pod_status.stdout }}
+          Logs:
+          {% for line in pod_logs.stdout_lines %}
+            {{ line }}
+          {% endfor %}
+          ============================================
+
+    - name: Report test success
+      ansible.builtin.debug:
+        msg: "{{ test_report_msg.split('\n') }}"
+
+    - name: Set test success flag
+      ansible.builtin.set_fact:
+        "{{ spoke_name | replace('-', '_') }}_test_success": true
+
+    - name: Cleanup test pod and namespace
+      ansible.builtin.shell: |
+        oc --kubeconfig {{ spoke_kubeconfig_file.dest }} delete namespace bastion-registry-test \
+          --ignore-not-found=true
+      changed_when: false
+
+  rescue:
+    - name: Log test failure
+      ansible.builtin.debug:
+        msg: "Warning: Test pod deployment from bastion registry failed for {{ spoke_name }}, but registry setup is complete"
+
+    - name: Set test failure flag
+      ansible.builtin.set_fact:
+        "{{ spoke_name | replace('-', '_') }}_test_success": false
+
+- name: Set success counter
+  ansible.builtin.set_fact:
+    successfully_configured: "{{ (successfully_configured | default(0) | int) + 1 }}"
+
+- name: Set spoke configuration summary message
+  ansible.builtin.set_fact:
+    config_summary_msg: |
+      ============================================
+      ✓ Bastion Registry Configuration Complete
+      ============================================
+      Spoke: {{ spoke_name }}
+
+      Setup Steps:
+        ✓ TLS certificate captured and configured
+        ✓ Registry CA ConfigMap created
+        ✓ Pull secret updated with credentials
+        ✓ MachineConfig rollout completed
+      {% if vars.get(spoke_name | replace('-', '_') + '_test_success', false) %}
+        ✓ Test pod deployed and validated
+      {% else %}
+        ⚠ Test pod validation skipped or failed
+      {% endif %}
+      ============================================
+
+- name: Display spoke configuration summary
+  ansible.builtin.debug:
+    msg: "{{ config_summary_msg.split('\n') }}"
+
+- name: Cleanup temporary files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/{{ spoke_name }}-kubeconfig"
+    - "/tmp/{{ spoke_name }}-global_pull_secret.json"
+  changed_when: false

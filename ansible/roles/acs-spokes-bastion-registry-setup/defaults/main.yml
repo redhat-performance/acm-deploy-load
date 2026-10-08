@@ -1,0 +1,25 @@
+---
+# defaults for acs-spokes-bastion-registry-setup role
+
+acs_spoke_use_bastion_registry: false
+bastion_registry_host: ""
+bastion_registry_port: 5000
+bastion_registry_username: "registry"
+bastion_registry_password: "registry"
+
+# Test image source and command
+bastion_registry_test_image_source: "quay.io/openshift/origin-cli:latest"
+bastion_registry_test_image_name: "test-bastion-registry"
+bastion_registry_test_image_tag: "latest"
+bastion_registry_test_pod_name: "bastion-registry-test"
+bastion_registry_test_command: "for i in {1..10}; do echo Bastion registry test iteration $i; sleep 1; done"
+
+# Paths and directories
+bastion_registry_cert_dir: "/tmp/bastion-registry-certs"
+bastion_registry_cert_file: "quay-ca.crt"
+bastion_registry_configmap_name: "registry-cas"
+bastion_registry_pull_secret_name: "pull-secret"
+
+# Polling parameters for machineconfig rollout
+bastion_registry_machineconfig_poll_interval: 10
+bastion_registry_machineconfig_poll_retries: 30

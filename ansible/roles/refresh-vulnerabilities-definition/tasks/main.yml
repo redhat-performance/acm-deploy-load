@@ -1,0 +1,81 @@
+---
+# refresh-vulnerabilities-definition tasks - Download and upload ACS vulnerability definitions
+
+- name: Validate required variables
+  assert:
+    that:
+      - rox_api_token | length > 0
+    fail_msg: "ROX_API_TOKEN environment variable or rox_api_token must be set"
+
+- name: Evaluate ROX_CENTRAL_ADDRESS from cluster if not provided
+  block:
+    - name: Get central route from cluster
+      shell: |
+        oc get route central -n rhacs-operator -o jsonpath='{.spec.host}'
+      register: central_route
+      changed_when: false
+
+    - name: Set rox_central_address from route
+      set_fact:
+        rox_central_address: "https://{{ central_route.stdout }}"
+  when: rox_central_address | length == 0
+
+- name: Validate ROX_CENTRAL_ADDRESS is set
+  assert:
+    that:
+      - rox_central_address | length > 0
+    fail_msg: "ROX_CENTRAL_ADDRESS could not be determined from cluster route or variable"
+
+- name: Create work directory for scanner database
+  file:
+    path: "{{ work_directory }}"
+    state: directory
+    mode: '0755'
+
+- name: Download vulnerability definitions from Central
+  shell: |
+    set -e
+    cd {{ work_directory }}
+    roxctl scanner download-db \
+      --scanner-db-file {{ scanner_db_file }} \
+      -e {{ rox_central_address }} \
+      {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %} \
+      --force
+  environment:
+    ROX_API_TOKEN: "{{ rox_api_token }}"
+  register: download_result
+  changed_when: true
+
+- name: Display download output
+  debug:
+    msg: "{{ download_result.stdout }}"
+  when: download_result.stdout | length > 0
+
+- name: Verify scanner database file was created
+  stat:
+    path: "{{ work_directory }}/{{ scanner_db_file }}"
+  register: scanner_db_stat
+  failed_when: not scanner_db_stat.stat.exists
+
+- name: Upload vulnerability definitions to Central
+  shell: |
+    set -e
+    cd {{ work_directory }}
+    roxctl scanner upload-db \
+      -e {{ rox_central_address }} \
+      --scanner-db-file {{ scanner_db_file }} \
+      {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %}
+  environment:
+    ROX_API_TOKEN: "{{ rox_api_token }}"
+  register: upload_result
+  changed_when: true
+
+- name: Display upload output
+  debug:
+    msg: "{{ upload_result.stdout }}"
+  when: upload_result.stdout | length > 0
+
+- name: Clean up work directory
+  file:
+    path: "{{ work_directory }}"
+    state: absent

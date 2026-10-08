@@ -28,6 +28,7 @@ The `[hv]` and `[hv_vm]` groups are only needed by manifest generation and IBI p
 | `bastion` | All playbooks | The bastion machine where playbooks run and services are hosted |
 | `hv` | `ibi-prepare-snos.yml` | Hypervisor nodes that host VMs |
 | `hv_vm` | `sno-manifests.yml`, `telco-core-manifests.yml`, `ibi-prepare-snos.yml` | Individual VMs hosted on hypervisors (targets for SNO/MNO deployment) |
+| `managed_clusters` | `acs-secure-spokes.yml`, `acs-spokes-sensor-cleanup.yml` | ACM managed cluster names (spokes) to register with ACS Central or perform cleanup on |
 
 > [!TIP]
 > The `sno-manifests.yml` and `ibi-prepare-snos.yml` playbooks benefit from `--forks 10` for parallel execution across VMs.
@@ -55,6 +56,8 @@ Playbook variables are set in vars files under `ansible/vars/`. Copy the sample 
 | - | - |
 | `aap-2-6-deploy.yml` | Deploy and configure AAP 2.6 specifically |
 | `aap-deploy.yml` | Deploy and configure Ansible Automation Platform with ACM integration |
+| `acs-secure-spokes.yml` | Register managed clusters with ACS Central and deploy sensors |
+| `acs-spokes-sensor-cleanup.yml` | Delete sensors from managed clusters and unregister from ACS Central |
 | `ibi-prepare-snos.yml` | Create IBI prep ISO, build disk file, and distribute to hypervisors |
 | `ibu-prepare-seed-cluster.yml` | Unmanage a seed cluster and generate a seed image for IBI/IBU |
 | `mce-deploy.yml` | Deploy MCE standalone with assisted-installer and ClusterImageSets |
@@ -71,6 +74,50 @@ Playbook variables are set in vars files under `ansible/vars/`. Copy the sample 
 | `telco-core-manifests.yml` | Generate Telco Core MNO cluster manifests |
 
 ## Playbook Details
+
+### acs-secure-spokes.yml
+
+**Target**: bastion (localhost)
+
+**Groups**: `managed_clusters` (list of spoke cluster names)
+
+**Roles executed** (in order):
+1. `refresh-vulnerabilities-definition` (optional, tagged `refresh-vulns`) - Downloads and uploads vulnerability definitions to ACS Central
+2. `acs-spokes-registration` - Generates CRS, registers spokes, creates namespaces and image pull secrets
+3. `acs-spokes-sensor-setup` - Generates and deploys ACS sensors to each spoke
+
+**Environment variables required**:
+- `ROX_API_TOKEN` - ACS Central API token
+- `ROX_CENTRAL_ADDRESS` - ACS Central URL
+- `RH_REGISTRY_IO_USERNAME` - Red Hat registry username (for image pulls)
+- `RH_REGISTRY_IO_PASSWORD` - Red Hat registry password
+
+**Options**:
+- `--tags refresh-vulns` - Only refresh vulnerability definitions, skip registration and sensor setup
+- `-e force_sensor_regeneration=true` - Force deletion and regeneration of existing sensors
+
+See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usage.
+
+### acs-spokes-sensor-cleanup.yml
+
+**Target**: bastion (localhost)
+
+**Groups**: `managed_clusters` (list of spoke cluster names)
+
+**Roles executed** (in order):
+1. `acs-spokes-sensor-cleanup` (tagged `sensor-cleanup`) - Deletes sensors from spokes
+2. `acs-spokes-registration` (tagged `registration`, action: `unregister`) - Unregisters spokes from ACS Central
+
+**Environment variables required**:
+- `ROX_API_TOKEN` - ACS Central API token (required for unregister role only)
+- `ROX_CENTRAL_ADDRESS` - ACS Central URL (required for unregister role only)
+
+**Options**:
+- `--skip-tags registration` - Only delete sensors, skip unregister
+- `--skip-tags sensor-cleanup` - Only unregister clusters, skip sensor deletion
+- `-e cleanup_sensor_generation_after_delete=true` - Remove sensor generation directories after deletion
+
+See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usage.
 
 ### ibi-prepare-snos.yml
 

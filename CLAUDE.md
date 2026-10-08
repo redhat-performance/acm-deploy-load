@@ -77,7 +77,7 @@ scripts/
 ├── post-ztp-upgrade-data-collection.sh  # Post-ZTP upgrade data collection
 └── post-ztp-gen-day1-csv.sh             # Generate day-1 per-cluster CSV
 ansible/
-├── roles/                               # 39 roles (ACM, MCE, IBI, IBU, AAP, ZTP, telco-core, O-Cloud Manager, etc.)
+├── roles/                               # 40 roles (ACM, MCE, IBI, IBU, AAP, ZTP, telco-core, O-Cloud Manager, ACS, etc.)
 └── vars/                                # Sample variable files for all cluster types
 results/                                 # Timestamped test output directories (excluded from git)
 .claude/skills/

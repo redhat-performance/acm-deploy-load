@@ -1,0 +1,5 @@
+---
+# defaults for acs-spokes-sensor-cleanup role
+
+sensor_work_dir: "/root/secured_clusters"
+cleanup_sensor_generation_after_delete: false
