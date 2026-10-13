@@ -46,6 +46,31 @@ def assemble_stats(the_list, seconds=True):
   return "{} :: {} :: {} :: {} :: {} :: {}".format(stats_min, stats_avg, stats_p50, stats_p95, stats_p99, stats_max)
 
 
+def write_stats_block(stats_file, label, durations):
+  stats_count = len(durations)
+  stats_min = 0
+  stats_avg = 0
+  stats_50p = 0
+  stats_95p = 0
+  stats_99p = 0
+  stats_max = 0
+  if stats_count > 0:
+    stats_min = np.min(durations)
+    stats_avg = round(np.mean(durations), 1)
+    stats_50p = round(np.percentile(durations, 50), 1)
+    stats_95p = round(np.percentile(durations, 95), 1)
+    stats_99p = round(np.percentile(durations, 99), 1)
+    stats_max = np.max(durations)
+  log_write(stats_file, label)
+  log_write(stats_file, "Count: {}".format(stats_count))
+  log_write(stats_file, "Min: {}".format(stats_min))
+  log_write(stats_file, "Average: {}".format(stats_avg))
+  log_write(stats_file, "50 percentile: {}".format(stats_50p))
+  log_write(stats_file, "95 percentile: {}".format(stats_95p))
+  log_write(stats_file, "99 percentile: {}".format(stats_99p))
+  log_write(stats_file, "Max: {}".format(stats_max))
+
+
 def generate_deploy_load_report(start_time, end_time, deploy_start_time, deploy_end_time, wait_cluster_start_time,
     wait_cluster_end_time, wait_du_profile_start_time, wait_du_profile_end_time, wait_playbook_start_time,
     wait_playbook_end_time, soak_start_time, available_clusters, monitor_data, cliargs, versions, total_intervals, report_dir):

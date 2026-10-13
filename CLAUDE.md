@@ -41,6 +41,7 @@ acm-deploy-load/                        # All Python scripts
 ├── analyze-acm-deploy-time.py           # Generates deploy-time-* file (durations, peak concurrency)
 ├── analyze-imageclusterinstalls.py      # ICI per-cluster install timing stats (IBI)
 ├── analyze-agentclusterinstalls.py      # ACI per-cluster install timing stats (AI)
+├── analyze-baremetalhosts.py            # BMH lifecycle timing stats (inspect/IBI/AI)
 ├── analyze-clusterinstances.py          # ClusterInstance provisioning timing stats
 ├── analyze-provisioningrequests.py      # ProvisioningRequest end-to-end timing stats (O-Cloud)
 ├── analyze-clustergroupupgrades.py      # CGU per-cluster policy timing stats

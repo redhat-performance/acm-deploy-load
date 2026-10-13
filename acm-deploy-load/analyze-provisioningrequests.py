@@ -21,9 +21,8 @@ from datetime import datetime
 from datetime import timedelta
 import json
 from utils.command import command
-from utils.output import log_write
+from utils.output import log_write, write_stats_block
 import logging
-import numpy as np
 import os
 import sys
 import time
@@ -32,31 +31,6 @@ import time
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
 logger = logging.getLogger("acm-deploy-load")
 logging.Formatter.converter = time.gmtime
-
-
-def write_stats_block(stats_file, label, durations):
-  stats_count = len(durations)
-  stats_min = 0
-  stats_avg = 0
-  stats_50p = 0
-  stats_95p = 0
-  stats_99p = 0
-  stats_max = 0
-  if stats_count > 0:
-    stats_min = np.min(durations)
-    stats_avg = round(np.mean(durations), 1)
-    stats_50p = round(np.percentile(durations, 50), 1)
-    stats_95p = round(np.percentile(durations, 95), 1)
-    stats_99p = round(np.percentile(durations, 99), 1)
-    stats_max = np.max(durations)
-  log_write(stats_file, label)
-  log_write(stats_file, "Count: {}".format(stats_count))
-  log_write(stats_file, "Min: {}".format(stats_min))
-  log_write(stats_file, "Average: {}".format(stats_avg))
-  log_write(stats_file, "50 percentile: {}".format(stats_50p))
-  log_write(stats_file, "95 percentile: {}".format(stats_95p))
-  log_write(stats_file, "99 percentile: {}".format(stats_99p))
-  log_write(stats_file, "Max: {}".format(stats_max))
 
 
 def main():

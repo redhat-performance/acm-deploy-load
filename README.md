@@ -133,6 +133,7 @@ Imports (manages) previously deployed clusters into ACM in batches on an interva
 | Script | Description |
 | - | - |
 | `analyze-prometheus.py` | Query Prometheus/Thanos for hub resource consumption metrics and generate time-series graphs |
+| `analyze-baremetalhosts.py` | [BareMetalHost lifecycle timing analysis](docs/analyze-baremetalhosts.md) (inspect/IBI/AI) |
 | `analyze-agentclusterinstalls.py` | AI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
 | `analyze-imageclusterinstalls.py` | IBI cluster install timing — count, min/avg/max, 50/95/99 percentiles |
 | `analyze-clusterinstances.py` | ClusterInstance resource timing analysis |
