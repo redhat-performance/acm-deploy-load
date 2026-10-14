@@ -33,7 +33,7 @@ for CLUSTER in ${CLUSTERS}; do
   HUB_JOINED=$(oc get managedcluster "${CLUSTER}" \
     -o jsonpath='{.status.conditions[?(@.type=="ManagedClusterJoined")].status}' 2>/dev/null || echo "Unknown")
 
-  if [[ "${HUB_AVAIL}" != "True" \vert{}\vert{} "${HUB_JOINED}" != "True" ]]; then
+  if [[ "${HUB_AVAIL}" != "True" || "${HUB_JOINED}" != "True" ]]; then
     echo "[WARN] Hub reports cluster '${CLUSTER}' is degraded or offline:"
     echo "       Joined:    ${HUB_JOINED}"
     echo "       Available: ${HUB_AVAIL}"
