@@ -83,3 +83,9 @@ for CLUSTER in ${CLUSTERS}; do
 
   if [[ -z "${POD_OUTPUT}" ]]; then
     echo "No pods found or namespace 'workload' does not exist"
+  else
+    echo "${POD_OUTPUT}" | awk -F'\t' '{printf "%-50s %s\n", $1, $2}'
+  fi
+
+  echo ""
+done
