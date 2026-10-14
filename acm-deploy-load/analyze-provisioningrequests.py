@@ -17,11 +17,11 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 from utils.command import command
 from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration
 import logging
 import os
 import sys
@@ -105,13 +105,9 @@ def main():
   for item in pr_data["items"]:
     pr_name = item["metadata"]["name"]
     ct_raw = item.get("metadata", {}).get("creationTimestamp", "")
-    if ct_raw == "":
-      logger.warning("PR: {}, missing creationTimestamp, skipping".format(pr_name))
-      continue
-    try:
-      pr_creationTimestamp = datetime.strptime(ct_raw, "%Y-%m-%dT%H:%M:%SZ")
-    except ValueError:
-      logger.warning("PR: {}, malformed creationTimestamp '{}', skipping".format(pr_name, ct_raw))
+    pr_creationTimestamp = parse_ts(ct_raw)
+    if pr_creationTimestamp == "":
+      logger.warning("PR: {}, missing or invalid creationTimestamp '{}', skipping".format(pr_name, ct_raw))
       continue
 
     # Determine cluster name
@@ -140,12 +136,11 @@ def main():
     if "status" in item and "conditions" in item["status"]:
       for condition in item["status"]["conditions"]:
         if "type" in condition and "status" in condition:
-          ltt = condition.get("lastTransitionTime", "")
-          if condition["status"] != "True" or ltt == "":
+          if condition["status"] != "True":
             continue
-          try:
-            parsed_ts = datetime.strptime(ltt, "%Y-%m-%dT%H:%M:%SZ")
-          except ValueError:
+          ltt = condition.get("lastTransitionTime", "")
+          parsed_ts = parse_ts(ltt)
+          if parsed_ts == "":
             logger.warning("PR: {}, malformed lastTransitionTime '{}' in condition {}".format(
                 pr_name, ltt, condition["type"]))
             continue
@@ -175,46 +170,16 @@ def main():
     logger.info("{}, {}, {}, {}".format(pr_name, pr_cluster_name, pr_status, pr_creationTimestamp))
 
     # Compute interval durations
-    if pr_validated_ts != "":
-      pr_ct_prv_duration = (pr_validated_ts - pr_creationTimestamp).total_seconds()
-    else:
-      pr_ct_prv_duration = 0
-    if pr_validated_ts != "" and pr_ci_rendered_ts != "":
-      pr_prv_cir_duration = (pr_ci_rendered_ts - pr_validated_ts).total_seconds()
-    else:
-      pr_prv_cir_duration = 0
-    if pr_ci_rendered_ts != "" and pr_resources_created_ts != "":
-      pr_cir_crc_duration = (pr_resources_created_ts - pr_ci_rendered_ts).total_seconds()
-    else:
-      pr_cir_crc_duration = 0
-    if pr_resources_created_ts != "" and pr_nar_rendered_ts != "":
-      pr_crc_nar_duration = (pr_nar_rendered_ts - pr_resources_created_ts).total_seconds()
-    else:
-      pr_crc_nar_duration = 0
-    if pr_nar_rendered_ts != "" and pr_hw_provisioned_ts != "":
-      pr_nar_hp_duration = (pr_hw_provisioned_ts - pr_nar_rendered_ts).total_seconds()
-    else:
-      pr_nar_hp_duration = 0
-    if pr_hw_provisioned_ts != "" and pr_hw_config_applied_ts != "":
-      pr_hp_hnca_duration = (pr_hw_config_applied_ts - pr_hw_provisioned_ts).total_seconds()
-    else:
-      pr_hp_hnca_duration = 0
-    if pr_hw_config_applied_ts != "" and pr_ci_processed_ts != "":
-      pr_hnca_cip_duration = (pr_ci_processed_ts - pr_hw_config_applied_ts).total_seconds()
-    else:
-      pr_hnca_cip_duration = 0
-    if pr_ci_processed_ts != "" and pr_cluster_provisioned_ts != "":
-      pr_cip_cp_duration = (pr_cluster_provisioned_ts - pr_ci_processed_ts).total_seconds()
-    else:
-      pr_cip_cp_duration = 0
-    if pr_cluster_provisioned_ts != "" and pr_config_applied_ts != "":
-      pr_cp_ca_duration = (pr_config_applied_ts - pr_cluster_provisioned_ts).total_seconds()
-    else:
-      pr_cp_ca_duration = 0
-    if pr_config_applied_ts != "":
-      total_duration = (pr_config_applied_ts - pr_creationTimestamp).total_seconds()
-    else:
-      total_duration = 0
+    pr_ct_prv_duration = compute_duration(pr_validated_ts, pr_creationTimestamp)
+    pr_prv_cir_duration = compute_duration(pr_ci_rendered_ts, pr_validated_ts)
+    pr_cir_crc_duration = compute_duration(pr_resources_created_ts, pr_ci_rendered_ts)
+    pr_crc_nar_duration = compute_duration(pr_nar_rendered_ts, pr_resources_created_ts)
+    pr_nar_hp_duration = compute_duration(pr_hw_provisioned_ts, pr_nar_rendered_ts)
+    pr_hp_hnca_duration = compute_duration(pr_hw_config_applied_ts, pr_hw_provisioned_ts)
+    pr_hnca_cip_duration = compute_duration(pr_ci_processed_ts, pr_hw_config_applied_ts)
+    pr_cip_cp_duration = compute_duration(pr_cluster_provisioned_ts, pr_ci_processed_ts)
+    pr_cp_ca_duration = compute_duration(pr_config_applied_ts, pr_cluster_provisioned_ts)
+    total_duration = compute_duration(pr_config_applied_ts, pr_creationTimestamp)
 
     if fleet_earliest_creation is None or pr_creationTimestamp < fleet_earliest_creation:
       fleet_earliest_creation = pr_creationTimestamp
@@ -224,10 +189,9 @@ def main():
 
     if pr_status == "fulfilled" and total_duration > 0:
       pr_total_durations.append(total_duration)
-    if pr_ci_processed_ts != "" and pr_validated_ts != "":
-      preprocessing_duration = (pr_ci_processed_ts - pr_creationTimestamp).total_seconds()
-      if pr_status == "fulfilled" and preprocessing_duration > 0:
-        pr_preprocessing_durations.append(preprocessing_duration)
+    preprocessing_duration = compute_duration(pr_ci_processed_ts, pr_creationTimestamp)
+    if pr_status == "fulfilled" and preprocessing_duration > 0:
+      pr_preprocessing_durations.append(preprocessing_duration)
     if pr_nar_hp_duration > 0 and pr_status == "fulfilled":
       pr_hw_provisioning_durations.append(pr_nar_hp_duration)
     if pr_cip_cp_duration > 0 and pr_status == "fulfilled":
@@ -250,14 +214,15 @@ def main():
   logger.info("Writing Stats: {}".format(pr_stats_file))
 
   with open(pr_stats_file, "w") as stats_file:
-    if fleet_earliest_creation is not None and fleet_latest_fulfilled is not None:
-      fleet_duration = (fleet_latest_fulfilled - fleet_earliest_creation).total_seconds()
-      log_write(stats_file, "Fleet Provisioning Summary")
+    log_write(stats_file, "Fleet Provisioning Summary")
+    if fleet_earliest_creation is not None:
       log_write(stats_file, "Earliest creationTimestamp: {}".format(fleet_earliest_creation))
+    if fleet_earliest_creation is not None and fleet_latest_fulfilled is not None:
       log_write(stats_file, "Latest fulfilled ConfigurationApplied: {}".format(fleet_latest_fulfilled))
+      fleet_duration = compute_duration(fleet_latest_fulfilled, fleet_earliest_creation)
       log_write(stats_file, "Fleet Duration: {}s :: {}".format(fleet_duration, timedelta(seconds=fleet_duration)))
-      log_write(stats_file, "Total ProvisioningRequests: {}".format(len(pr_data["items"])))
-      log_write(stats_file, "Fulfilled: {}".format(len(pr_total_durations)))
+    log_write(stats_file, "Total ProvisioningRequests: {}".format(len(pr_data["items"])))
+    log_write(stats_file, "Fulfilled: {}".format(len(pr_total_durations)))
     write_stats_block(stats_file,
         "Total Duration Stats on ProvisioningRequests in fulfilled", pr_total_durations)
     write_stats_block(stats_file,

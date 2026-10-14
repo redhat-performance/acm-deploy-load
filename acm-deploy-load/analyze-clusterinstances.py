@@ -17,12 +17,12 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from utils.command import command
-from utils.output import log_write
+from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration
 import logging
-import numpy as np
 import os
 import sys
 import time
@@ -52,8 +52,7 @@ def main():
   raw_data_file = "{}/clusterinstances-{}.json".format(cliargs.results_directory, ts)
   if cliargs.offline_process:
     if cliargs.raw_data_file == "":
-      # Detect last raw data file
-      dir_scan = sorted([ f.path for f in os.scandir(cliargs.results_directory) if f.is_file() and "clusterinstances" in f.path and "json" in f.path ])
+      dir_scan = sorted([ f.path for f in os.scandir(cliargs.results_directory) if f.is_file() and f.name.startswith("clusterinstances-") and f.name.endswith(".json") ])
       if len(dir_scan) == 0:
         logger.error("No previous offline file found. Exiting")
         sys.exit(1)
@@ -88,10 +87,21 @@ def main():
 
   ci_instancevalidated_durations = []
   ci_provisioned_durations = []
+  fleet_earliest_creation = None
+  fleet_latest_provisioned = None
+  total_count = 0
+
   for item in ci_data["items"]:
     ci_name = item["metadata"]["name"]
+    total_count += 1
+
     ci_status = "unknown"
-    ci_creationTimestamp = datetime.strptime(item["metadata"]["creationTimestamp"], "%Y-%m-%dT%H:%M:%SZ")
+    ct_raw = item.get("metadata", {}).get("creationTimestamp", "")
+    ci_creationTimestamp = parse_ts(ct_raw)
+    if ci_creationTimestamp == "":
+      logger.warning("CI: {}, missing or invalid creationTimestamp '{}', skipping".format(ci_name, ct_raw))
+      continue
+
     ci_instancevalidated_ts = ""
     ci_renderedtemplates_ts = ""
     ci_renderedtemplatesvalidated_ts = ""
@@ -102,51 +112,44 @@ def main():
       for condition in item["status"]["conditions"]:
         if "type" in condition and "status" in condition:
           if condition["type"] == "ClusterInstanceValidated" and condition["status"] == "True":
-            ci_instancevalidated_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
+            ci_instancevalidated_ts = parse_ts(condition.get("lastTransitionTime", ""))
           elif condition["type"] == "RenderedTemplates" and condition["status"] == "True":
-            ci_renderedtemplates_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
+            ci_renderedtemplates_ts = parse_ts(condition.get("lastTransitionTime", ""))
           elif condition["type"] == "RenderedTemplatesValidated" and condition["status"] == "True":
-            ci_renderedtemplatesvalidated_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
+            ci_renderedtemplatesvalidated_ts = parse_ts(condition.get("lastTransitionTime", ""))
           elif condition["type"] == "RenderedTemplatesApplied" and condition["status"] == "True":
-            ci_renderedtemplatesapplied_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
+            ci_renderedtemplatesapplied_ts = parse_ts(condition.get("lastTransitionTime", ""))
           elif condition["type"] == "Provisioned" and condition["status"] == "True":
-            ci_provisioned_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
+            ci_provisioned_ts = parse_ts(condition.get("lastTransitionTime", ""))
             ci_status = "Provisioned"
         else:
-          logger.warning("ICI: {}, 'type' or 'status' missing in condition: {}".format(ici_name, condition))
+          logger.warning("CI: {}, 'type' or 'status' missing in condition: {}".format(ci_name, condition))
     else:
-      logger.warning("status or conditions not found in imageclusterinstall object: {}".format(item))
+      logger.warning("status or conditions not found in clusterinstance object: {}".format(ci_name))
+
+    ci_ct_iv_duration = compute_duration(ci_instancevalidated_ts, ci_creationTimestamp)
+    ci_iv_rt_duration = compute_duration(ci_renderedtemplates_ts, ci_instancevalidated_ts)
+    ci_rt_rtv_duration = compute_duration(ci_renderedtemplatesvalidated_ts, ci_renderedtemplates_ts)
+    ci_rtv_rta_duration = compute_duration(ci_renderedtemplatesapplied_ts, ci_renderedtemplatesvalidated_ts)
+    ci_rta_p_duration = compute_duration(ci_provisioned_ts, ci_renderedtemplatesapplied_ts)
+    total_duration = compute_duration(ci_provisioned_ts, ci_creationTimestamp)
+
+    # Fleet tracking
+    if fleet_earliest_creation is None or ci_creationTimestamp < fleet_earliest_creation:
+      fleet_earliest_creation = ci_creationTimestamp
+
+    if ci_instancevalidated_ts != "" and ci_ct_iv_duration > 0:
+      ci_instancevalidated_durations.append(ci_ct_iv_duration)
+
+    if ci_status == "Provisioned" and ci_provisioned_ts != "":
+      if fleet_latest_provisioned is None or ci_provisioned_ts > fleet_latest_provisioned:
+        fleet_latest_provisioned = ci_provisioned_ts
+      if total_duration > 0:
+        ci_provisioned_durations.append(total_duration)
 
     logger.info("{}, {}, {}, {}, {}, {}, {}, {}".format(
         ci_name, ci_status, ci_creationTimestamp, ci_instancevalidated_ts, ci_renderedtemplates_ts,
         ci_renderedtemplatesvalidated_ts, ci_renderedtemplatesapplied_ts, ci_provisioned_ts))
-
-    ci_ct_iv_duration = (ci_instancevalidated_ts - ci_creationTimestamp).total_seconds()
-    ci_iv_rt_duration = (ci_renderedtemplates_ts - ci_instancevalidated_ts).total_seconds()
-    if ci_renderedtemplatesvalidated_ts != "":
-      ci_rt_rtv_duration = (ci_renderedtemplatesvalidated_ts - ci_renderedtemplates_ts).total_seconds()
-    else:
-      ci_rt_rtv_duration = 0
-    if ci_renderedtemplatesvalidated_ts != "" and ci_renderedtemplatesapplied_ts != "":
-      ci_rtv_rta_duration = (ci_renderedtemplatesapplied_ts - ci_renderedtemplatesvalidated_ts).total_seconds()
-    else:
-      ci_rtv_rta_duration = 0
-    if ci_renderedtemplatesapplied_ts != "" and ci_provisioned_ts != "":
-      ci_rta_p_duration = (ci_provisioned_ts - ci_renderedtemplatesapplied_ts).total_seconds()
-    else:
-      ci_rta_p_duration = 0
-    if ci_provisioned_ts != "":
-      total_duration = (ci_provisioned_ts - ci_creationTimestamp).total_seconds()
-    else:
-      total_duration = 0
-
-    ci_instancevalidated_durations.append(ci_ct_iv_duration)
-    if ci_status == "Provisioned":
-      ci_provisioned_durations.append(total_duration)
-
-    # logger.info("Durations: {}, {}, {}, {}, {}, {}".format(
-    #     ci_ct_iv_duration, ci_iv_rt_duration, ci_rt_rtv_duration, ci_rtv_rta_duration,
-    #     ci_rta_p_duration, total_duration))
 
     with open(ci_csv_file, "a") as csv_file:
       csv_file.write(
@@ -159,51 +162,20 @@ def main():
   logger.info("Writing Stats: {}".format(ci_stats_file))
 
   with open(ci_stats_file, "w") as stats_file:
-    stats_count = len(ci_instancevalidated_durations)
-    stats_min = 0
-    stats_avg = 0
-    stats_50p = 0
-    stats_95p = 0
-    stats_99p = 0
-    stats_max = 0
-    if stats_count > 0:
-      stats_min = np.min(ci_instancevalidated_durations)
-      stats_avg = round(np.mean(ci_instancevalidated_durations), 1)
-      stats_50p = round(np.percentile(ci_instancevalidated_durations, 50), 1)
-      stats_95p = round(np.percentile(ci_instancevalidated_durations, 95), 1)
-      stats_99p = round(np.percentile(ci_instancevalidated_durations, 99), 1)
-      stats_max = np.max(ci_instancevalidated_durations)
-    log_write(stats_file, "Stats on ClusterInstances CRs with CreationTimeStamp until InstanceValidated Timestamp")
-    log_write(stats_file, "Count: {}".format(stats_count))
-    log_write(stats_file, "Min: {}".format(stats_min))
-    log_write(stats_file, "Average: {}".format(stats_avg))
-    log_write(stats_file, "50 percentile: {}".format(stats_50p))
-    log_write(stats_file, "95 percentile: {}".format(stats_95p))
-    log_write(stats_file, "99 percentile: {}".format(stats_99p))
-    log_write(stats_file, "Max: {}".format(stats_max))
-
-    stats_count = len(ci_provisioned_durations)
-    stats_min = 0
-    stats_avg = 0
-    stats_50p = 0
-    stats_95p = 0
-    stats_99p = 0
-    stats_max = 0
-    if stats_count > 0:
-      stats_min = np.min(ci_provisioned_durations)
-      stats_avg = round(np.mean(ci_provisioned_durations), 1)
-      stats_50p = round(np.percentile(ci_provisioned_durations, 50), 1)
-      stats_95p = round(np.percentile(ci_provisioned_durations, 95), 1)
-      stats_99p = round(np.percentile(ci_provisioned_durations, 99), 1)
-      stats_max = np.max(ci_provisioned_durations)
-    log_write(stats_file, "Total Duration Stats only on ClusterInstances CRs in Provisioned")
-    log_write(stats_file, "Count: {}".format(stats_count))
-    log_write(stats_file, "Min: {}".format(stats_min))
-    log_write(stats_file, "Average: {}".format(stats_avg))
-    log_write(stats_file, "50 percentile: {}".format(stats_50p))
-    log_write(stats_file, "95 percentile: {}".format(stats_95p))
-    log_write(stats_file, "99 percentile: {}".format(stats_99p))
-    log_write(stats_file, "Max: {}".format(stats_max))
+    log_write(stats_file, "Fleet ClusterInstance Summary")
+    if fleet_earliest_creation is not None:
+      log_write(stats_file, "Earliest creationTimestamp: {}".format(fleet_earliest_creation))
+    if fleet_earliest_creation is not None and fleet_latest_provisioned is not None:
+      log_write(stats_file, "Latest Provisioned: {}".format(fleet_latest_provisioned))
+      fleet_duration = (fleet_latest_provisioned - fleet_earliest_creation).total_seconds()
+      log_write(stats_file, "Fleet Duration: {}s :: {}".format(fleet_duration, timedelta(seconds=fleet_duration)))
+    log_write(stats_file, "Total ClusterInstances: {}".format(total_count))
+    log_write(stats_file, "Provisioned: {}".format(len(ci_provisioned_durations)))
+    write_stats_block(stats_file,
+        "Stats on ClusterInstances CRs with CreationTimeStamp until InstanceValidated Timestamp",
+        ci_instancevalidated_durations)
+    write_stats_block(stats_file,
+        "Total Duration Stats only on ClusterInstances CRs in Provisioned", ci_provisioned_durations)
 
   end_time = time.time()
   logger.info("Took {}s".format(round(end_time - start_time, 1)))

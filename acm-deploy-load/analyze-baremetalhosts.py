@@ -18,11 +18,11 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 from utils.command import command
 from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration
 import logging
 import os
 import sys
@@ -32,21 +32,6 @@ import time
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
 logger = logging.getLogger("acm-deploy-load")
 logging.Formatter.converter = time.gmtime
-
-
-def parse_ts(ts_value):
-  if ts_value is None or ts_value == "":
-    return ""
-  try:
-    return datetime.strptime(ts_value, "%Y-%m-%dT%H:%M:%SZ")
-  except ValueError:
-    return ""
-
-
-def compute_duration(end_ts, start_ts):
-  if end_ts != "" and start_ts != "":
-    return (end_ts - start_ts).total_seconds()
-  return 0
 
 
 def main():
