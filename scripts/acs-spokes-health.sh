@@ -82,4 +82,4 @@ for CLUSTER in ${CLUSTERS}; do
   POD_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}' 2>/dev/null | awk '{print $1 "\t" NF-1}')
 
   if [[ -z "${POD_OUTPUT}" ]]; then
-    echo "No pods found or namespace 'workload' does not exist
+    echo "No pods found or namespace 'workload' does not exist"
