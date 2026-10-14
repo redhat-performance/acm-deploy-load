@@ -67,6 +67,7 @@ acm-deploy-load/                        # All Python scripts
     ├── common_ocp.py                    # OCP utilities: namespace lists, Prometheus token, Thanos routing
     ├── output.py                        # Report card generation (report.txt), CSV/stats formatting
     ├── ztp_monitor.py                   # Background thread sampling cluster install state every N seconds
+    ├── time_utils.py                    # Shared timestamp parsing and duration helpers
     └── talm.py                          # Detects TALM minor version
 scripts/
 ├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa
@@ -112,11 +113,13 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/acm-telco-core-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-batch-{N}`, `phase3-soak-baseline`), result directory naming, batch phase structure |
 | `acm-deploy-load/utils/output.py` | `report.txt` format and report card title (`acm-deploy-load Report Card`, `acm-telco-core-load Report Card`) |
 | `acm-deploy-load/analyze-acm-deploy-time.py` | `deploy-time-*` file format (durations, peak concurrency) |
-| `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (plaintext percentiles) |
-| `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (plaintext percentiles) |
-| `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (plaintext percentiles, two stat blocks) |
-| `acm-deploy-load/analyze-provisioningrequests.py` | PR `.stats` file format (plaintext percentiles, five stat blocks) |
+| `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (fleet summary header + plaintext percentiles) |
+| `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (fleet summary header + plaintext percentiles) |
+| `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (fleet summary header + plaintext percentiles, two stat blocks) |
+| `acm-deploy-load/analyze-provisioningrequests.py` | PR `.stats` file format (fleet summary header + plaintext percentiles, five stat blocks) |
+| `acm-deploy-load/analyze-baremetalhosts.py` | BMH `.stats` file format (fleet summary header + plaintext percentiles, scenario-dependent stat blocks) |
 | `acm-deploy-load/analyze-clustergroupupgrades.py` | CGU `.stats` file format (header + plaintext percentiles) |
+| `acm-deploy-load/utils/time_utils.py` | Timestamp parsing tolerance, zero-second durations counted as real measurements |
 | `acm-deploy-load/graph-acm-compare.py` | `GRAPH_DEFS` and `DEPLOY_DEFS` graph definitions, comparison graph naming (`comparison-{metric}.png`), cluster deploy graph types |
 | `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |
 | `scripts/acm-telco-core-load.sh` | Full-test Prometheus analysis prefix (`acm-telco-load-hub`) |

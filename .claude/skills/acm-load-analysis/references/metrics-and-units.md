@@ -234,5 +234,17 @@ Parse by looking for the lines containing percentile values:
 | CGU policy time | `clustergroupupgrades-ztp-install-{TS}.stats` | seconds |
 | CI total duration | `clusterinstances-{TS}.stats` | seconds |
 | ACI install time | `agentclusterinstalls-{TS}.stats` | seconds |
+| PR end-to-end time | `provisioningrequests-{TS}.stats` | seconds |
+| BMH lifecycle time | `baremetalhosts-{TS}.stats` | seconds |
+| Fleet Duration (all except CGU) | same file, header line | seconds |
 
 Extract: Count, p50, p95, p99, Max. Ignore Average/Min.
+
+Every file except CGU opens with a fleet summary header. When at least one
+resource reached the completed state that header carries a `Fleet Duration`
+line in `{seconds}s :: {H:MM:SS}` form; when nothing completed, the line is
+absent — treat it as optional, not guaranteed. Fleet Duration is wall-clock
+across the whole fleet, not a per-cluster duration — never compare it against
+the stat blocks below it. CGU reports its own equivalents (`Duration between
+creation and completedAt`) in a different header format. See
+result-directory-layout.md for the per-resource header labels.

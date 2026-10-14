@@ -18,11 +18,11 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 from utils.command import command
 from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration, has_duration
 import logging
 import os
 import sys
@@ -32,21 +32,6 @@ import time
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
 logger = logging.getLogger("acm-deploy-load")
 logging.Formatter.converter = time.gmtime
-
-
-def parse_ts(ts_value):
-  if ts_value is None or ts_value == "":
-    return ""
-  try:
-    return datetime.strptime(ts_value, "%Y-%m-%dT%H:%M:%SZ")
-  except ValueError:
-    return ""
-
-
-def compute_duration(end_ts, start_ts):
-  if end_ts != "" and start_ts != "":
-    return (end_ts - start_ts).total_seconds()
-  return 0
 
 
 def main():
@@ -61,8 +46,12 @@ def main():
                     help="Set raw json data file for offline processing. Empty finds last file")
   parser.add_argument("-s", "--skip-namespaces", type=str, default="openshift-machine-api",
                     help="Comma-separated namespaces to skip (e.g. hub nodes). Empty string to skip none")
+  parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
   parser.add_argument("results_directory", type=str, help="The location to place analyzed data")
   cliargs = parser.parse_args()
+
+  if cliargs.debug:
+    logger.setLevel(logging.DEBUG)
 
   logger.info("Analyze baremetalhosts")
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -218,22 +207,23 @@ def main():
       if fleet_latest_completion is None or completion_ts > fleet_latest_completion:
         fleet_latest_completion = completion_ts
 
-    # Collect durations for stats
-    if register_duration > 0:
+    # Collect durations for stats, including durations of 0 where both timestamps are present,
+    # those are operations completing within timestamp granularity
+    if has_duration(register_end, register_start) and register_duration >= 0:
       register_durations.append(register_duration)
-    if inspect_duration > 0:
+    if has_duration(inspect_end, inspect_start) and inspect_duration >= 0:
       inspect_durations.append(inspect_duration)
     ct_inspected = compute_duration(inspect_end, bmh_ct)
-    if ct_inspected > 0:
+    if has_duration(inspect_end, bmh_ct) and ct_inspected >= 0:
       ct_inspected_durations.append(ct_inspected)
-    if scenario == "ai" and provisioning_state == "provisioned" and provision_duration > 0:
+    if scenario == "ai" and provisioning_state == "provisioned" and has_duration(provision_end, provision_start) and provision_duration >= 0:
       ai_provision_durations.append(provision_duration)
-    if scenario == "ai" and provisioning_state == "provisioned" and total_duration > 0:
+    if scenario == "ai" and provisioning_state == "provisioned" and has_duration(provision_end, bmh_ct) and total_duration >= 0:
       ai_total_durations.append(total_duration)
-    if scenario == "ibi" and provisioning_state == "externally provisioned" and total_duration > 0:
+    if scenario == "ibi" and provisioning_state == "externally provisioned" and has_duration(provisioned_ltt, bmh_ct) and total_duration >= 0:
       ibi_total_durations.append(total_duration)
 
-    logger.info("{}/{}, {}, {}, {}".format(bmh_namespace, bmh_name, scenario, provisioning_state, bmh_ct))
+    logger.debug("{}/{}, {}, {}, {}".format(bmh_namespace, bmh_name, scenario, provisioning_state, bmh_ct))
 
     with open(bmh_csv_file, "a") as csv_file:
       csv_file.write(

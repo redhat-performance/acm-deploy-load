@@ -17,12 +17,12 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from utils.command import command
-from utils.output import log_write
+from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration, has_duration
 import logging
-import numpy as np
 import os
 import sys
 import time
@@ -43,8 +43,12 @@ def main():
                       help="Uses previously stored raw data")
   parser.add_argument("-r", "--raw-data-file", type=str, default="",
                     help="Set raw json data file for offline processing. Empty finds last file")
+  parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
   parser.add_argument("results_directory", type=str, help="The location to place analyzed data")
   cliargs = parser.parse_args()
+
+  if cliargs.debug:
+    logger.setLevel(logging.DEBUG)
 
   logger.info("Analyze imageclusterinstalls")
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -52,8 +56,7 @@ def main():
   raw_data_file = "{}/imageclusterinstalls-{}.json".format(cliargs.results_directory, ts)
   if cliargs.offline_process:
     if cliargs.raw_data_file == "":
-      # # Detect last raw data file
-      dir_scan = sorted([ f.path for f in os.scandir(cliargs.results_directory) if f.is_file() and "imageclusterinstalls" in f.path and "json" in f.path ])
+      dir_scan = sorted([ f.path for f in os.scandir(cliargs.results_directory) if f.is_file() and f.name.startswith("imageclusterinstalls-") and f.name.endswith(".json") ])
       if len(dir_scan) == 0:
         logger.error("No previous offline file found. Exiting")
         sys.exit(1)
@@ -85,36 +88,55 @@ def main():
         "total_duration\n")
 
   ici_installcompleted_values = []
+  fleet_earliest_creation = None
+  fleet_latest_completion = None
+  total_count = 0
+
   for item in ici_data["items"]:
     ici_name = item["metadata"]["name"]
+    total_count += 1
+
     ici_status = "unknown"
-    ici_creationTimestamp = datetime.strptime(item["metadata"]["creationTimestamp"], "%Y-%m-%dT%H:%M:%SZ")
-    ici_boot_ts = datetime.strptime(item["status"]["bootTime"], "%Y-%m-%dT%H:%M:%SZ")
+    ct_raw = item.get("metadata", {}).get("creationTimestamp", "")
+    ici_creationTimestamp = parse_ts(ct_raw)
+    if ici_creationTimestamp == "":
+      logger.warning("ICI: {}, missing or invalid creationTimestamp '{}', skipping".format(ici_name, ct_raw))
+      continue
+
+    # Fleet start tracks all hosts with a valid creationTimestamp, even those skipped for missing bootTime
+    if fleet_earliest_creation is None or ici_creationTimestamp < fleet_earliest_creation:
+      fleet_earliest_creation = ici_creationTimestamp
+
+    boot_raw = item.get("status", {}).get("bootTime", "")
+    ici_boot_ts = parse_ts(boot_raw)
+    if ici_boot_ts == "":
+      logger.warning("ICI: {}, missing or invalid bootTime '{}', skipping".format(ici_name, boot_raw))
+      continue
+
     ici_requirements_met_ts = ""
     ici_completed_ts = ""
-    ici_ct_boot_duration = 0
-    ici_boot_rm_duration = 0
-    ici_rm_completed_duration = 0
-    ici_total_duration = 0
-    for condition in item["status"]["conditions"]:
-      if condition["type"] == "RequirementsMet" and condition["status"] == "True":
-        ici_requirements_met_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
-      elif condition["type"] == "Completed" and condition["status"] == "True":
-        ici_completed_ts = datetime.strptime(condition["lastTransitionTime"], "%Y-%m-%dT%H:%M:%SZ")
-        ici_status = condition["reason"]
+    for condition in item.get("status", {}).get("conditions", []):
+      if condition.get("type") == "RequirementsMet" and condition.get("status") == "True":
+        ici_requirements_met_ts = parse_ts(condition.get("lastTransitionTime", ""))
+      elif condition.get("type") == "Completed" and condition.get("status") == "True":
+        ici_completed_ts = parse_ts(condition.get("lastTransitionTime", ""))
+        ici_status = condition.get("reason", "unknown")
         break
 
-    ici_ct_boot_duration = (ici_boot_ts - ici_creationTimestamp).total_seconds()
-    if ici_requirements_met_ts != "":
-      ici_boot_rm_duration = (ici_requirements_met_ts - ici_boot_ts).total_seconds()
-      if ici_completed_ts != "":
-        ici_rm_completed_duration = (ici_completed_ts - ici_requirements_met_ts).total_seconds()
+    ici_ct_boot_duration = compute_duration(ici_boot_ts, ici_creationTimestamp)
+    ici_boot_rm_duration = compute_duration(ici_requirements_met_ts, ici_boot_ts)
+    ici_rm_completed_duration = compute_duration(ici_completed_ts, ici_requirements_met_ts)
+    ici_total_duration = compute_duration(ici_completed_ts, ici_creationTimestamp)
 
-    if ici_status == "ClusterInstallationSucceeded":
-      ici_total_duration = (ici_completed_ts - ici_creationTimestamp).total_seconds()
-      # Exclude values of 0
-      if ici_total_duration > 0:
+    if ici_status == "ClusterInstallationSucceeded" and ici_completed_ts != "":
+      if fleet_latest_completion is None or ici_completed_ts > fleet_latest_completion:
+        fleet_latest_completion = ici_completed_ts
+      # Include durations of 0, those are installs completing within timestamp granularity
+      if has_duration(ici_completed_ts, ici_creationTimestamp) and ici_total_duration >= 0:
         ici_installcompleted_values.append(ici_total_duration)
+
+    logger.debug("{}, {}, {}, {}, {}, {}".format(ici_name, ici_status, ici_creationTimestamp,
+        ici_boot_ts, ici_requirements_met_ts, ici_completed_ts))
 
     with open(ici_csv_file, "a") as csv_file:
       csv_file.write(
@@ -123,30 +145,19 @@ def main():
           ici_boot_rm_duration, ici_rm_completed_duration, ici_total_duration))
 
   logger.info("Writing Stats: {}".format(ici_stats_file))
-  stats_count = len(ici_installcompleted_values)
-  stats_min = 0
-  stats_avg = 0
-  stats_50p = 0
-  stats_95p = 0
-  stats_99p = 0
-  stats_max = 0
-  if stats_count > 0:
-    stats_min = np.min(ici_installcompleted_values)
-    stats_avg = round(np.mean(ici_installcompleted_values), 1)
-    stats_50p = round(np.percentile(ici_installcompleted_values, 50), 1)
-    stats_95p = round(np.percentile(ici_installcompleted_values, 95), 1)
-    stats_99p = round(np.percentile(ici_installcompleted_values, 99), 1)
-    stats_max = np.max(ici_installcompleted_values)
 
   with open(ici_stats_file, "w") as stats_file:
-    log_write(stats_file, "Stats only on ImageClusterInstalls CRs in ClusterInstallationSucceeded")
-    log_write(stats_file, "Count: {}".format(stats_count))
-    log_write(stats_file, "Min: {}".format(stats_min))
-    log_write(stats_file, "Average: {}".format(stats_avg))
-    log_write(stats_file, "50 percentile: {}".format(stats_50p))
-    log_write(stats_file, "95 percentile: {}".format(stats_95p))
-    log_write(stats_file, "99 percentile: {}".format(stats_99p))
-    log_write(stats_file, "Max: {}".format(stats_max))
+    log_write(stats_file, "Fleet ImageClusterInstall Summary")
+    if fleet_earliest_creation is not None:
+      log_write(stats_file, "Earliest creationTimestamp: {}".format(fleet_earliest_creation))
+    if fleet_earliest_creation is not None and fleet_latest_completion is not None:
+      log_write(stats_file, "Latest completion: {}".format(fleet_latest_completion))
+      fleet_duration = (fleet_latest_completion - fleet_earliest_creation).total_seconds()
+      log_write(stats_file, "Fleet Duration: {}s :: {}".format(fleet_duration, timedelta(seconds=fleet_duration)))
+    log_write(stats_file, "Total ImageClusterInstalls: {}".format(total_count))
+    log_write(stats_file, "ClusterInstallationSucceeded: {}".format(len(ici_installcompleted_values)))
+    write_stats_block(stats_file,
+        "Stats only on ImageClusterInstalls CRs in ClusterInstallationSucceeded", ici_installcompleted_values)
 
   end_time = time.time()
   logger.info("Took {}s".format(round(end_time - start_time, 1)))

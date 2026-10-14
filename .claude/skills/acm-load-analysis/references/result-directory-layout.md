@@ -22,9 +22,13 @@ Example: `20260623-044312-ibi-clusterinstance-gitops-400cpa-500b-1800i-odf-ibi-e
 | `clustergroupupgrades-ztp-install-{TS}.csv` | CGU timing detail | CSV |
 | `agentclusterinstalls-{TS}.stats` | AI per-cluster install timing (AI methods only) | Plaintext stats |
 | `agentclusterinstalls-{TS}.csv` | AI per-cluster timing detail | CSV |
+| `agentclusterinstalls-{TS}.json` | AI per-cluster raw data | JSON |
 | `provisioningrequests-{TS}.stats` | ProvisioningRequest end-to-end timing (O-Cloud) | Plaintext stats |
 | `provisioningrequests-{TS}.csv` | ProvisioningRequest per-cluster timing detail | CSV |
 | `provisioningrequests-{TS}.json` | ProvisioningRequest raw data | JSON |
+| `baremetalhosts-{TS}.stats` | BMH lifecycle timing (inspect/IBI/AI scenarios) | Plaintext stats |
+| `baremetalhosts-{TS}.csv` | BMH per-host timing detail | CSV |
+| `baremetalhosts-{TS}.json` | BMH raw data | JSON |
 | `cluster-{TS}.png` | Cluster state graph | PNG |
 | `policy-{TS}.png` | Policy state graph | PNG |
 | `share-{TS}.png`, `share2-{TS}.png` | Share graphs | PNG |
@@ -121,11 +125,13 @@ Same structure as acm-deploy-load with these additions/differences:
 
 ## Workload Timing Stats File Format
 
-The `.stats` files at the result top level (ICI, CGU, CI, ACI) use a **plaintext
-format**, NOT the pandas describe format used by Prometheus stats. Example:
+The `.stats` files at the result top level (ICI, CGU, CI, ACI, PR, BMH) use a
+**plaintext format**, NOT the pandas describe format used by Prometheus stats.
+
+Every file is one or more **stat blocks**, each a label line followed by seven
+fixed `Label: value` lines:
 
 ```
-Stats only on ImageClusterInstalls CRs in ClusterInstallationSucceeded
 Count: 324
 Min: 390.0
 Average: 675.0
@@ -134,6 +140,46 @@ Average: 675.0
 99 percentile: 802.5
 Max: 1083.0
 ```
+
+Except for CGU, each file opens with a **fleet summary header** before the first
+stat block. The ICI file:
+
+```
+Fleet ImageClusterInstall Summary
+Earliest creationTimestamp: 2026-06-23 05:43:20
+Latest completion: 2026-06-23 06:04:21
+Fleet Duration: 1261.0s :: 0:21:01
+Total ImageClusterInstalls: 324
+ClusterInstallationSucceeded: 324
+Stats only on ImageClusterInstalls CRs in ClusterInstallationSucceeded
+Count: 324
+...
+```
+
+Header lines are conditional: `Latest completion` and `Fleet Duration` are
+omitted when nothing in the fleet reached the completed state, so parse by line
+prefix rather than by line number.
+
+**Fleet Duration** is wall-clock across the whole fleet (earliest creation to
+latest completion). It is NOT comparable to the per-cluster stat blocks below
+it, which are per-CR durations — use Fleet Duration for total campaign time and
+the stat blocks for per-cluster timing.
+
+Header labels differ per resource:
+
+| File | Summary line | Completion line | Count lines |
+|---|---|---|---|
+| `imageclusterinstalls-{TS}.stats` | `Fleet ImageClusterInstall Summary` | `Latest completion` | `Total ImageClusterInstalls`, `ClusterInstallationSucceeded` |
+| `agentclusterinstalls-{TS}.stats` | `Fleet AgentClusterInstall Summary` | `Latest completion` | `Total AgentClusterInstalls`, `Skipped (local-cluster, local-agent-cluster-cluster-install)`, `InstallationCompleted` |
+| `clusterinstances-{TS}.stats` | `Fleet ClusterInstance Summary` | `Latest Provisioned` | `Total ClusterInstances`, `Provisioned` |
+| `provisioningrequests-{TS}.stats` | `Fleet Provisioning Summary` | `Latest fulfilled ConfigurationApplied` | `Total ProvisioningRequests`, `Fulfilled` |
+| `baremetalhosts-{TS}.stats` | `Fleet BareMetalHost Summary` | `Latest completion` | `Total BareMetalHosts`, `Skipped (hub namespaces)`, `Inspect-only`, `IBI`, `AI` |
+
+A `Total` count includes CRs that were dropped from the stat blocks for missing
+or unparseable timestamps, so `Total` may exceed the rows in the matching
+`.csv`. A `Min: 0.0` is a real measurement, not a missing value — transitions
+that complete inside one second are counted, since Kubernetes timestamps are
+second granularity.
 
 The CGU stats file has additional header lines:
 
@@ -164,6 +210,12 @@ The ClusterInstance stats file contains two stat blocks: one for CreationTimesta
 until InstanceValidated, and one for Total Duration (Provisioned):
 
 ```
+Fleet ClusterInstance Summary
+Earliest creationTimestamp: 2026-06-23 05:43:20
+Latest Provisioned: 2026-06-23 06:04:21
+Fleet Duration: 1261.0s :: 0:21:01
+Total ClusterInstances: 324
+Provisioned: 324
 Stats on ClusterInstances CRs with CreationTimeStamp until InstanceValidated Timestamp
 Count: 324
 Min: 0.0
@@ -187,6 +239,12 @@ Use the "Total Duration" block for the ClusterInstance end-to-end provisioning t
 The ProvisioningRequest stats file contains five stat blocks (all for fulfilled PRs):
 
 ```
+Fleet Provisioning Summary
+Earliest creationTimestamp: 2026-06-23 05:43:20
+Latest fulfilled ConfigurationApplied: 2026-06-23 06:28:31
+Fleet Duration: 2711.0s :: 0:45:11
+Total ProvisioningRequests: 161
+Fulfilled: 161
 Total Duration Stats on ProvisioningRequests in fulfilled
 Count: 161
 Min: 1960.0
@@ -211,6 +269,61 @@ Count: 161
 
 Use the "Total Duration" block for end-to-end ProvisioningRequest time. The
 "Hardware Provisioning" block is critical for bare metal environments.
+
+The BareMetalHost stats file contains three always-present stat blocks, plus
+scenario-dependent blocks. AI-provisioned hosts add **two** blocks
+(`Provisioning Duration Stats (AI)` and `Total Duration Stats (AI)`);
+externally provisioned hosts add **one** (`Total Duration Stats (IBI)`). A
+given file therefore holds:
+
+| Blocks | Scenario |
+|---|---|
+| 3 | neither AI nor IBI hosts found (inspect-only) |
+| 4 | IBI hosts only |
+| 5 | AI hosts only |
+| 6 | both AI and IBI hosts |
+
+An always-present block is still emitted when its duration list is empty — it
+reads `Count: 0` with every statistic 0. Do not treat a zeroed block as a
+missing block, and do not infer the scenario from block count alone; read the
+`Inspect-only` / `IBI` / `AI` header counts.
+
+An IBI-only run (the common case for IBI SNO deployments) produces four blocks:
+
+```
+Fleet BareMetalHost Summary
+Earliest creationTimestamp: 2026-06-23 05:43:20
+Latest completion: 2026-06-23 06:04:21
+Fleet Duration: 1261.0s :: 0:21:01
+Total BareMetalHosts: 324
+Skipped (hub namespaces): 3
+Inspect-only: 0
+IBI: 324
+AI: 0
+Registration Duration Stats on BareMetalHosts
+Count: 324
+...
+Inspection Duration Stats on BareMetalHosts
+Count: 0
+...
+Creation to Inspected Duration Stats on BareMetalHosts
+Count: 0
+...
+Total Duration Stats (IBI) on BareMetalHosts (creationTimestamp to Provisioned condition)
+Count: 324
+...
+```
+
+When AI hosts are present, these two blocks appear after
+`Creation to Inspected Duration Stats` and before any IBI block:
+
+```
+Provisioning Duration Stats (AI) on BareMetalHosts
+Total Duration Stats (AI) on BareMetalHosts (creationTimestamp to provision.end)
+```
+
+Pick the total-duration block matching the scenario counts in the header: `AI`
+hosts end at `provision.end`, `IBI` hosts at the `Provisioned` condition.
 
 ## deploy-time File Format
 

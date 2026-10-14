@@ -17,12 +17,13 @@
 #  limitations under the License.
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from utils.command import command
-from utils.output import log_write
+from utils.output import log_write, write_stats_block
+from utils.time_utils import parse_ts, compute_duration, has_duration
 import logging
-import numpy as np
+import os
 import sys
 import time
 
@@ -38,83 +39,119 @@ def main():
   parser = argparse.ArgumentParser(
       description="Analyze AgentClusterInstalls data",
       prog="analyze-agentclusterinstalls.py", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument("-o", "--offline-process", action="store_true", default=False,
+                      help="Uses previously stored raw data")
+  parser.add_argument("-r", "--raw-data-file", type=str, default="",
+                    help="Set raw json data file for offline processing. Empty finds last file")
+  parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
   parser.add_argument("results_directory", type=str, help="The location to place analyzed data")
   cliargs = parser.parse_args()
 
+  if cliargs.debug:
+    logger.setLevel(logging.DEBUG)
+
   logger.info("Analyze agentclusterinstalls")
   ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+  raw_data_file = "{}/agentclusterinstalls-{}.json".format(cliargs.results_directory, ts)
+  if cliargs.offline_process:
+    if cliargs.raw_data_file == "":
+      dir_scan = sorted([ f.path for f in os.scandir(cliargs.results_directory) if f.is_file() and f.name.startswith("agentclusterinstalls-") and f.name.endswith(".json") ])
+      if len(dir_scan) == 0:
+        logger.error("No previous offline file found. Exiting")
+        sys.exit(1)
+      raw_data_file = dir_scan[-1]
+    else:
+      raw_data_file = cliargs.raw_data_file
+    logger.info("Reading raw data from: {}".format(raw_data_file))
+  else:
+    logger.info("Storing raw data file at: {}".format(raw_data_file))
+
   aci_csv_file = "{}/agentclusterinstalls-{}.csv".format(cliargs.results_directory, ts)
   aci_stats_file = "{}/agentclusterinstalls-{}.stats".format(cliargs.results_directory, ts)
 
-  oc_cmd = ["oc", "get", "agentclusterinstalls", "-A", "-o", "json"]
-  rc, output = command(oc_cmd, False, retries=3, no_log=True)
-  if rc != 0:
-    logger.error("analyze-agentclusterinstalls, oc get agentclusterinstalls rc: {}".format(rc))
-    sys.exit(1)
-  aci_data = json.loads(output)
+  if not cliargs.offline_process:
+    oc_cmd = ["oc", "get", "agentclusterinstalls", "-A", "-o", "json"]
+    rc, output = command(oc_cmd, False, retries=3, no_log=True)
+    if rc != 0:
+      logger.error("analyze-agentclusterinstalls, oc get agentclusterinstalls rc: {}".format(rc))
+      sys.exit(1)
+    with open(raw_data_file, "w") as aci_data_file:
+      aci_data_file.write(output)
+  with open(raw_data_file, "r") as aci_file_data:
+    aci_data = json.load(aci_file_data)
 
   logger.info("Writing CSV: {}".format(aci_csv_file))
   with open(aci_csv_file, "w") as csv_file:
     csv_file.write("name,status,creationTimestamp,completed.lastTransitionTime,duration\n")
 
   aci_installcompleted_values = []
+  fleet_earliest_creation = None
+  fleet_latest_completion = None
+  total_count = 0
+  skipped_count = 0
+
   for item in aci_data["items"]:
     aci_name = item["metadata"]["name"]
     if aci_name == "local-agent-cluster-cluster-install":
       logger.info("analyze-agentclusterinstalls, Skipping local-agent-cluster-cluster-install")
+      skipped_count += 1
       continue
     if aci_name == "local-cluster":
       logger.info("analyze-agentclusterinstalls, Skipping local-cluster")
+      skipped_count += 1
       continue
+
+    total_count += 1
+
     aci_status = "unknown"
-    aci_creationTimestamp = item["metadata"]["creationTimestamp"]
+    ct_raw = item.get("metadata", {}).get("creationTimestamp", "")
+    aci_creationTimestamp = parse_ts(ct_raw)
+    if aci_creationTimestamp == "":
+      logger.warning("ACI: {}, missing or invalid creationTimestamp '{}', skipping".format(aci_name, ct_raw))
+      continue
+
     aci_completed_ltt = ""
-    aci_duration = 0
-    for condition in item["status"]["conditions"]:
-      if condition["type"] == "Completed":
-        if condition["status"] == "True":
-          aci_completed_ltt = condition["lastTransitionTime"]
-        aci_status = condition["reason"]
+    for condition in item.get("status", {}).get("conditions", []):
+      if condition.get("type") == "Completed":
+        if condition.get("status") == "True":
+          aci_completed_ltt = parse_ts(condition.get("lastTransitionTime", ""))
+        aci_status = condition.get("reason", "unknown")
         break
 
-    if aci_status == "InstallationCompleted":
-      start = datetime.strptime(aci_creationTimestamp, "%Y-%m-%dT%H:%M:%SZ")
-      end = datetime.strptime(aci_completed_ltt, "%Y-%m-%dT%H:%M:%SZ")
-      aci_duration = (end - start).total_seconds()
-      # Exclude values of 0
-      if aci_duration > 0:
+    aci_duration = compute_duration(aci_completed_ltt, aci_creationTimestamp)
+
+    # Fleet tracking
+    if fleet_earliest_creation is None or aci_creationTimestamp < fleet_earliest_creation:
+      fleet_earliest_creation = aci_creationTimestamp
+
+    if aci_status == "InstallationCompleted" and aci_completed_ltt != "":
+      if fleet_latest_completion is None or aci_completed_ltt > fleet_latest_completion:
+        fleet_latest_completion = aci_completed_ltt
+      # Include durations of 0, those are installs completing within timestamp granularity
+      if has_duration(aci_completed_ltt, aci_creationTimestamp) and aci_duration >= 0:
         aci_installcompleted_values.append(aci_duration)
 
-    # logger.info("{},{},{},{},{}".format(aci_name, aci_status, aci_creationTimestamp, aci_completed_ltt, aci_duration))
+    logger.debug("{}, {}, {}, {}, {}".format(aci_name, aci_status, aci_creationTimestamp, aci_completed_ltt, aci_duration))
 
     with open(aci_csv_file, "a") as csv_file:
       csv_file.write("{},{},{},{},{}\n".format(aci_name, aci_status, aci_creationTimestamp, aci_completed_ltt, aci_duration))
 
   logger.info("Writing Stats: {}".format(aci_stats_file))
-  stats_count = len(aci_installcompleted_values)
-  stats_min = 0
-  stats_avg = 0
-  stats_50p = 0
-  stats_95p = 0
-  stats_99p = 0
-  stats_max = 0
-  if stats_count > 0:
-    stats_min = np.min(aci_installcompleted_values)
-    stats_avg = round(np.mean(aci_installcompleted_values), 1)
-    stats_50p = round(np.percentile(aci_installcompleted_values, 50), 1)
-    stats_95p = round(np.percentile(aci_installcompleted_values, 95), 1)
-    stats_99p = round(np.percentile(aci_installcompleted_values, 99), 1)
-    stats_max = np.max(aci_installcompleted_values)
 
   with open(aci_stats_file, "w") as stats_file:
-    log_write(stats_file, "Stats only on AgentClusterInstall CRs in InstallationCompleted")
-    log_write(stats_file, "Count: {}".format(stats_count))
-    log_write(stats_file, "Min: {}".format(stats_min))
-    log_write(stats_file, "Average: {}".format(stats_avg))
-    log_write(stats_file, "50 percentile: {}".format(stats_50p))
-    log_write(stats_file, "95 percentile: {}".format(stats_95p))
-    log_write(stats_file, "99 percentile: {}".format(stats_99p))
-    log_write(stats_file, "Max: {}".format(stats_max))
+    log_write(stats_file, "Fleet AgentClusterInstall Summary")
+    if fleet_earliest_creation is not None:
+      log_write(stats_file, "Earliest creationTimestamp: {}".format(fleet_earliest_creation))
+    if fleet_earliest_creation is not None and fleet_latest_completion is not None:
+      log_write(stats_file, "Latest completion: {}".format(fleet_latest_completion))
+      fleet_duration = (fleet_latest_completion - fleet_earliest_creation).total_seconds()
+      log_write(stats_file, "Fleet Duration: {}s :: {}".format(fleet_duration, timedelta(seconds=fleet_duration)))
+    log_write(stats_file, "Total AgentClusterInstalls: {}".format(total_count))
+    log_write(stats_file, "Skipped (local-cluster, local-agent-cluster-cluster-install): {}".format(skipped_count))
+    log_write(stats_file, "InstallationCompleted: {}".format(len(aci_installcompleted_values)))
+    write_stats_block(stats_file,
+        "Stats only on AgentClusterInstall CRs in InstallationCompleted", aci_installcompleted_values)
 
   end_time = time.time()
   logger.info("Took {}s".format(round(end_time - start_time, 1)))

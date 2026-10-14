@@ -73,6 +73,17 @@ List the result directory to find what data is present:
 - `clusterinstances-*.stats` — ClusterInstance provisioning timing
 - `clustergroupupgrades-*.stats` — CGU per-cluster policy timing
 - `agentclusterinstalls-*.stats` — AI per-cluster install timing
+- `provisioningrequests-*.stats` — ProvisioningRequest end-to-end timing (O-Cloud)
+- `baremetalhosts-*.stats` — BMH lifecycle timing (inspect/IBI/AI)
+
+Every `.stats` file above except `clustergroupupgrades-*.stats` opens with a
+fleet summary header (`Fleet ... Summary`) ahead of the stat blocks. CGU has its
+own distinct header, and `deploy-time-*` is not a stats file at all — it has its
+own format. Within the fleet header, `Latest completion` and `Fleet Duration`
+are emitted only when at least one resource reached the completed state, so a
+run where nothing finished has neither line. Match on line prefixes rather than
+assuming a fixed header. See `references/result-directory-layout.md` before
+parsing any of these.
 
 **Other data**:
 - `monitor_data.csv` — time-series workload state (1-minute intervals)
@@ -143,6 +154,11 @@ From workload stats files (these are plaintext, NOT pandas format — read
 - CGU per-cluster: p50, p95, p99, max (seconds)
 - ClusterInstance total duration: p50, p95, p99, max (seconds)
 - ACI per-cluster (if AI method): p50, p95, p99, max (seconds)
+- ProvisioningRequest end-to-end (if O-Cloud): p50, p95, p99, max (seconds) —
+  read the "Total Duration" block; the other four blocks are per-stage
+- BareMetalHost lifecycle (if BMH data present): p50, p95, p99, max (seconds) —
+  read the total-duration block matching the scenario counts in the header
+  (AI hosts end at `provision.end`, IBI hosts at the `Provisioned` condition)
 
 #### 4c. Hub Cluster Resource Consumption
 From the Prometheus analysis directory (phase directories, or full-test analysis:
@@ -487,8 +503,8 @@ table format standards, and examples.
   before attempting to read Ceph stats. Ceph stats will NOT exist in phase directories
   unless ODF was installed on the hub cluster.
 
-- **Workload timing stats format.** The ICI, CGU, CI, and ACI `.stats` files at the
-  result top level use a plaintext format (not pandas describe output). Read
+- **Workload timing stats format.** The ICI, CGU, CI, ACI, PR, and BMH `.stats` files
+  at the result top level use a plaintext format (not pandas describe output). Read
   `references/result-directory-layout.md` for the exact format.
 
 - **No statistic fallbacks.** If the required statistic for a metric (P95 for
