@@ -10,7 +10,7 @@
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/rhacm-downstream-deploy.yml -e ztp_repo_type=cnf-features-deploy
 #
 
-- name: Setup downstream RHACM Mirror
+- name: Install downstream RHACM
   hosts: bastion
   vars_files:
   - vars/all.yml
@@ -18,20 +18,6 @@
     wait_for_machineconfigpool_update: false
   roles:
   - rhacm-hub-mirror
-
-# Konflux builds no longer require this workaround
-- name: Fix ipv6/disconnected nodes /etc/containers/registries.conf for tag mirroring
-  hosts: fix_icsp_nodes
-  vars_files:
-  - vars/all.yml
-  roles:
-  - icsp-enable-tag-mirror
-
-- name: Install downstream RHACM
-  hosts: bastion
-  vars_files:
-  - vars/all.yml
-  roles:
   - rhacm-downstream-deploy
   - rhacm-search-configure
   - role: rhacm-observability
