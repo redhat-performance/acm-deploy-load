@@ -1,0 +1,17 @@
+# Sample container images file for spokes-workload-deployment
+# One image name per line. Image names should be the repo/image portion only.
+# The registry and tag will be added based on variables.
+#
+# Example with default registry (quay.io) and tag (latest):
+# nginx
+# redis
+# postgres
+#
+# Will resolve to (container_image_registry defaults to quay.io):
+# quay.io/nginx:latest
+# quay.io/redis:latest
+# quay.io/postgres:latest
+
+nginx
+redis
+postgres
