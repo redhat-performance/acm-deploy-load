@@ -1,0 +1,27 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: {{ rhacm_acs_placement_name }}
+  namespace: {{ rhacm_acs_policy_namespace }}
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchLabels:
+            {{ rhacm_acs_managed_cluster_label }}: "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-rhacs-secured-cluster
+  namespace: {{ rhacm_acs_policy_namespace }}
+placementRef:
+  name: {{ rhacm_acs_placement_name }}
+  kind: Placement
+  apiGroup: cluster.open-cluster-management.io
+subjects:
+  - name: {{ rhacm_acs_policy_name }}
+    kind: Policy
+    apiGroup: policy.open-cluster-management.io
+

@@ -1,0 +1,21 @@
+---
+# Deploy RHACS secured-cluster services to ACM managed clusters through an ACM policy.
+# ROX_API_TOKEN and ROX_CENTRAL_ADDRESS must be set in the environment.
+- name: Secure ACM managed clusters with the RHACS Operator policy
+  hosts: bastion
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/all.yml
+  vars:
+    rox_api_token: "{{ lookup('env', 'ROX_API_TOKEN') }}"
+    rox_central_address: "{{ lookup('env', 'ROX_CENTRAL_ADDRESS') }}"
+  roles:
+    - role: refresh-vulnerabilities-definition
+      tags: [refresh-vulns]
+    - role: acs-spokes-bastion-registry-setup
+      vars:
+        bastion_registry_host: "{{ ansible_host | default(inventory_hostname) }}"
+      tags: [bastion-registry]
+    - role: rhacm-acs-secured-cluster
+      tags: [rhacm-acs-secured-cluster]

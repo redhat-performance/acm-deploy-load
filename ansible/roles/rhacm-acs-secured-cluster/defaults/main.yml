@@ -1,0 +1,22 @@
+---
+rhacm_acs_policy_namespace: open-cluster-management-policies
+rhacm_acs_policy_name: policy-rhacs-secured-cluster
+rhacm_acs_placement_name: placement-rhacs-secured-cluster
+# Applied only to managed clusters listed in the inventory's managed_clusters
+# group; this prevents the hub and unrelated spokes from receiving RHACS.
+rhacm_acs_managed_cluster_label: acm-deploy-load.io/rhacs-secured
+rox_api_token: ""
+rox_central_address: ""
+rox_crs_valid_for: "720h"
+rox_crs_secret_name: admin-crs
+roxctl_insecure: true
+# Override this for a non-default Central gRPC endpoint.
+rhacm_acs_central_endpoint: "{{ rox_central_address | regex_replace('^https?://', '') | regex_replace('/.*$', '') }}:443"
+rhacm_acs_namespace: stackrox
+rhacm_acs_secured_cluster_name: stackrox-secured-cluster-services
+rhacm_acs_operator_channel: stable
+rhacm_acs_operator_source: redhat-operators
+rhacm_acs_operator_source_namespace: openshift-marketplace
+# Retain the rendered policy.yaml and placement.yaml temporary directory for
+# inspection or troubleshooting. The path is printed when this is enabled.
+rhacm_acs_keep_policy_manifests: false

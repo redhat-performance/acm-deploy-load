@@ -1,0 +1,86 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: {{ rhacm_acs_policy_name }}
+  namespace: {{ rhacm_acs_policy_namespace }}
+spec:
+  disabled: false
+  remediationAction: enforce
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-namespace
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: {{ rhacm_acs_namespace }}
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-operator-subscription
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: rhacs-operator
+                  namespace: openshift-operators
+                spec:
+                  channel: {{ rhacm_acs_operator_channel }}
+                  name: rhacs-operator
+                  source: {{ rhacm_acs_operator_source }}
+                  sourceNamespace: {{ rhacm_acs_operator_source_namespace }}
+    # CRS is a custom resource consumed by the RHACS Operator, not a Secret.
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-cluster-registration-secret
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+{{ rhacm_acs_crs | indent(16, true) }}
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-secured-cluster
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: platform.stackrox.io/v1alpha1
+                kind: SecuredCluster
+                metadata:
+                  name: {{ rhacm_acs_secured_cluster_name }}
+                  namespace: {{ rhacm_acs_namespace }}
+                spec:
+                  clusterName: '{{ "{{ hub fromClusterClaim \"name\" hub }}" }}'
+                  centralEndpoint: {{ rhacm_acs_central_endpoint | quote }}
+                  scannerV4:
+                    scannerComponent: AutoSense
+                  admissionControl:
+                    enforcement: Enabled
+                  perNode:
+                    collector:
+                      collection: CORE_BPF
+                    taintToleration: TolerateTaints
