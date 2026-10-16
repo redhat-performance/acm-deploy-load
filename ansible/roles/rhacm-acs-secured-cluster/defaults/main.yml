@@ -15,7 +15,7 @@ rhacm_acs_central_endpoint: "{{ rox_central_address | regex_replace('^https?://'
 rhacm_acs_namespace: stackrox
 rhacm_acs_secured_cluster_name: stackrox-secured-cluster-services
 rhacm_acs_operator_channel: stable
-rhacm_acs_operator_source: redhat-operators
+rhacm_acs_operator_source: redhat-operators-disconnected
 rhacm_acs_operator_source_namespace: openshift-marketplace
 # Retain the rendered policy.yaml and placement.yaml temporary directory for
 # inspection or troubleshooting. The path is printed when this is enabled.
