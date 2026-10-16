@@ -1,15 +1,23 @@
 ---
-apiVersion: cluster.open-cluster-management.io/v1beta1
-kind: Placement
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
 metadata:
-  name: {{ rhacm_acs_placement_name }}
+  name: {{ rhacm_acs_placement_rule_name }}
   namespace: {{ rhacm_acs_policy_namespace }}
 spec:
-  predicates:
-    - requiredClusterSelector:
-        labelSelector:
-          matchLabels:
-            {{ rhacm_acs_managed_cluster_label }}: "true"
+  clusterConditions:
+    - status: "True"
+      type: OK
+  clusterSelector:
+    matchExpressions:
+      - key: {{ rhacm_acs_managed_cluster_label }}
+        operator: In
+        values:
+          - "true"
+      - key: vendor
+        operator: In
+        values:
+          - OpenShift
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
@@ -17,8 +25,8 @@ metadata:
   name: binding-rhacs-secured-cluster
   namespace: {{ rhacm_acs_policy_namespace }}
 placementRef:
-  name: {{ rhacm_acs_placement_name }}
-  kind: Placement
+  name: {{ rhacm_acs_placement_rule_name }}
+  kind: PlacementRule
   apiGroup: cluster.open-cluster-management.io
 subjects:
   - name: {{ rhacm_acs_policy_name }}
