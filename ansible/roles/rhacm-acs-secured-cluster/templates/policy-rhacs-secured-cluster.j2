@@ -23,6 +23,42 @@ spec:
                 kind: Namespace
                 metadata:
                   name: {{ rhacm_acs_namespace }}
+    # Ensure the namespace used for the RHACS Operator exists.
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-operator-namespace
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: rhacs-operator
+    # Create an OperatorGroup scoped to the RHACS Operator namespace.
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: rhacs-operator-group
+        spec:
+          remediationAction: enforce
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1
+                kind: OperatorGroup
+                metadata:
+                  name: rhacs-operator-group
+                  namespace: rhacs-operator
+                spec:
+                  targetNamespaces:
+                    - rhacs-operator
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
@@ -38,7 +74,7 @@ spec:
                 kind: Subscription
                 metadata:
                   name: rhacs-operator
-                  namespace: openshift-operators
+                  namespace: rhacs-operator
                 spec:
                   channel: {{ rhacm_acs_operator_channel }}
                   name: rhacs-operator
