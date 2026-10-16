@@ -37,6 +37,7 @@ setup_ztp_searchcollector_enabled: true
 
 # Install ACM/ZTP vars
 is_konflux_build: false
+is_art_build: true
 # Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
 rhacm_build:
 # Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'

@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: cs-acm-art-catalog
+  namespace: openshift-marketplace
+spec:
+  image: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/redhat-user-workloads/ocp-art-tenant/art-fbc:{{ rhacm_build }}
+  sourceType: grpc
