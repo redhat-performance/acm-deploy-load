@@ -109,7 +109,7 @@ spec:
                   name: {{ rhacm_acs_secured_cluster_name }}
                   namespace: {{ rhacm_acs_namespace }}
                 spec:
-                  clusterName: '{{ "{{ hub fromClusterClaim \"name\" hub }}" }}'
+                  clusterName: '{{ fromClusterClaim "name" }}'
                   centralEndpoint: {{ rhacm_acs_central_endpoint | quote }}
                   scannerV4:
                     scannerComponent: AutoSense
