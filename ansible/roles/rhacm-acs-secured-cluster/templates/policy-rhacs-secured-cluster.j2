@@ -39,7 +39,7 @@ spec:
                 kind: Namespace
                 metadata:
                   name: rhacs-operator
-    # Create an OperatorGroup scoped to the RHACS Operator namespace.
+    # Create an OperatorGroup for AllNamespaces (empty targetNamespaces)
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
@@ -57,8 +57,7 @@ spec:
                   name: rhacs-operator-group
                   namespace: rhacs-operator
                 spec:
-                  targetNamespaces:
-                    - rhacs-operator
+                  targetNamespaces: []
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
