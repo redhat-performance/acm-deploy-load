@@ -116,6 +116,11 @@ spec:
                   centralEndpoint: {{ rhacm_acs_central_endpoint | quote }}
                   scannerV4:
                     scannerComponent: AutoSense
+                  sensor:
+                    customize:
+                      envVars:
+                        - name: ROX_AUTOGENERATE_GLOBAL_PULLSEC_REGISTRIES
+                          value: "false"
                   admissionControl:
                     enforcement: Enabled
                   perNode:
