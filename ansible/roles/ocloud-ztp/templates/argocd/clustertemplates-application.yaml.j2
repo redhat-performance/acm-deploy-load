@@ -19,6 +19,8 @@ spec:
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
+    - PrunePropagationPolicy=background
+    - RespectIgnoreDifferences=true
   ignoreDifferences:
   - group: metal3.io
     jsonPointers:
