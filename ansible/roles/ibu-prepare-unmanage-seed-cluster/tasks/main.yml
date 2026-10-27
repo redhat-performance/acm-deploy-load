@@ -35,38 +35,77 @@
     dest: "{{ seedcluster_kubeconfig }}"
     remote_src: true
 
-- name: Get cluster application with seed cluster
+# Detect whether this cluster was provisioned via O-Cloud ProvisioningRequest
+- name: Find ProvisioningRequest for {{ seed_cluster }}
   shell: |
-    grep -l "{{ seed_cluster }}" /root/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/cluster/ztp-clusters-*/kustomization.yaml
-  register: seed_cluster_kustomization
+    set -o pipefail
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get provisioningrequests.clcm.openshift.io \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.templateParameters.clusterInstanceParameters.clusterName}{"\n"}{end}' | \
+      awk -v cluster="{{ seed_cluster }}" '$2 == cluster {print $1}'
+  register: seed_cluster_pr
+  changed_when: false
+  failed_when:
+  - seed_cluster_pr.rc != 0
+  - '"the server doesn''t have a resource type" not in seed_cluster_pr.stderr'
 
-- name: Set cluster application containing the seed cluster
+- name: Set ocloud detection facts
   set_fact:
-    seed_cluster_application: "{{ seed_cluster_kustomization.stdout.split('/')[-2] }}"
+    seed_cluster_is_ocloud: "{{ seed_cluster_pr.stdout | length > 0 }}"
+    seed_cluster_pr_name: "{{ seed_cluster_pr.stdout | trim }}"
 
-- name: Comment {{ seed_cluster }} in cluster applications - {{ seed_cluster_kustomization.stdout }}
-  replace:
-    path: "{{ seed_cluster_kustomization.stdout }}"
-    replace: "{{ item.replace }}"
-    regexp: "{{ item.regexp }}"
-  loop:
-  - replace: "#- ./{{ seed_cluster }}-siteconfig.yml"
-    regexp: "^- ./{{ seed_cluster }}-siteconfig.yml"
-  - replace: "#- ./{{ seed_cluster }}-resources.yml"
-    regexp: "^- ./{{ seed_cluster }}-resources.yml"
-  - replace: "#- ./{{ seed_cluster }}-clusterinstance.yml"
-    regexp: "^- ./{{ seed_cluster }}-clusterinstance.yml"
+- name: Display ocloud detection result
+  debug:
+    msg: >-
+      {{ seed_cluster }} is {{ 'an O-Cloud cluster (PR: ' + seed_cluster_pr_name + ')' if seed_cluster_is_ocloud else 'a GitOps cluster' }}
 
-- name: Commit and push the above changes to {{ ztp_repo_name }}
-  shell: |
-    cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
-    git add {{ ztp_argocd_base_path }}/cluster/ {{ ztp_argocd_base_path }}/cluster-applications/
-    git commit -a -m "Remove seed cluster {{ seed_cluster }} from cluster application - {{ seed_cluster_application }}"
-    git push origin-gogs
+# O-Cloud unmanage path: annotate to skip cleanup then delete the ProvisioningRequest
+- name: OCloud - Unmanage {{ seed_cluster }}
+  when: seed_cluster_is_ocloud
+  block:
+  - name: OCloud - Annotate ProvisioningRequest {{ seed_cluster_pr_name }} to skip cleanup
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc annotate provisioningrequests.clcm.openshift.io {{ seed_cluster_pr_name }} clcm.openshift.io/skip-cleanup=""
 
-- name: Trigger cluster application {{ seed_cluster_application }} for refresh
-  shell: |
-    KUBECONFIG={{ hub_cluster_kubeconfig }} oc annotate applications.argoproj.io -n openshift-gitops {{ seed_cluster_application }} argocd.argoproj.io/refresh=normal
+  - name: OCloud - Delete ProvisioningRequest {{ seed_cluster_pr_name }}
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc delete provisioningrequests.clcm.openshift.io {{ seed_cluster_pr_name }}
+
+# GitOps unmanage path: comment out the cluster in kustomization and push
+- name: GitOps - Unmanage {{ seed_cluster }}
+  when: not seed_cluster_is_ocloud
+  block:
+  - name: GitOps - Get cluster application containing {{ seed_cluster }}
+    shell: |
+      grep -l "{{ seed_cluster }}" /root/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/cluster/ztp-clusters-*/kustomization.yaml
+    register: seed_cluster_kustomization
+
+  - name: GitOps - Set cluster application fact
+    set_fact:
+      seed_cluster_application: "{{ seed_cluster_kustomization.stdout.split('/')[-2] }}"
+
+  - name: GitOps - Comment {{ seed_cluster }} out of kustomization {{ seed_cluster_kustomization.stdout }}
+    replace:
+      path: "{{ seed_cluster_kustomization.stdout }}"
+      replace: "{{ item.replace }}"
+      regexp: "{{ item.regexp }}"
+    loop:
+    - replace: '#\1'
+      regexp: "^(?!#)(- (\\./)?{{ seed_cluster }}-siteconfig\\.ya?ml.*)$"
+    - replace: '#\1'
+      regexp: "^(?!#)(- (\\./)?{{ seed_cluster }}-resources\\.ya?ml.*)$"
+    - replace: '#\1'
+      regexp: "^(?!#)(- (\\./)?{{ seed_cluster }}-clusterinstance\\.ya?ml.*)$"
+
+  - name: GitOps - Commit and push changes to {{ ztp_repo_name }}
+    shell: |
+      cd {{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}
+      git add {{ ztp_argocd_base_path }}/cluster/ {{ ztp_argocd_base_path }}/cluster-applications/
+      git commit -a -m "Remove seed cluster {{ seed_cluster }} from cluster application - {{ seed_cluster_application }}"
+      git push origin-gogs
+
+  - name: GitOps - Trigger ArgoCD refresh for {{ seed_cluster_application }}
+    shell: |
+      KUBECONFIG={{ hub_cluster_kubeconfig }} oc annotate applications.argoproj.io -n openshift-gitops {{ seed_cluster_application }} argocd.argoproj.io/refresh=normal
 
 # ignore_errors because we want the namespace to not exist
 - name: Wait until cluster is no longer managed
