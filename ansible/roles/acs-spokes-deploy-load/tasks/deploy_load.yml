@@ -27,10 +27,16 @@
   environment:
     KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
   shell: |
+    set -o pipefail
     oc get nodes -l node-role.kubernetes.io/worker=,node-role.kubernetes.io/infra!= --kubeconfig={{ spoke_kubeconfig_file.path }} -o json | \
       jq '.items | length'
   register: worker_count_result
   changed_when: false
+  args:
+    executable: /bin/bash
+  failed_when: >-
+    worker_count_result.rc != 0 or
+    (worker_count_result.stdout | trim | length == 0)
 
 - name: Set replica count based on worker nodes
   set_fact:
