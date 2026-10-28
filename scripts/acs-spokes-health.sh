@@ -6,6 +6,9 @@
 # Optional: Path where kubeconfig files are stored (defaults to current directory)
 KUBECONFIG_DIR="${KUBECONFIG_DIR:-.}"
 
+# Optional: Namespace containing the workload pods (defaults to workload)
+WORKLOAD_NAMESPACE="${WORKLOAD_NAMESPACE:-workload}"
+
 # 1. Dynamically retrieve all managed clusters from ACM (excluding local-cluster)
 echo "Querying ACM Hub for managed clusters..."
 CLUSTERS=$(oc get managedclusters -o jsonpath='{range .items[?(@.metadata.name!="local-cluster")]}{.metadata.name}{"\n"}{end}')
@@ -109,11 +112,11 @@ for CLUSTER in ${CLUSTERS}; do
 
   # Workload Pod Container Counting
   echo ""
-  echo "--- Workload Pod Container Counts (Namespace: workload) ---"
+  echo "--- Workload Pod Container Counts (Namespace: ${WORKLOAD_NAMESPACE}) ---"
   printf "%-50s %s\n" "POD NAME" "CONTAINER COUNT"
   printf "%-50s %s\n" "--------------------------------------------------" "---------------"
 
-  if ! POD_QUERY_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods --request-timeout=5s \
+  if ! POD_QUERY_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n "${WORKLOAD_NAMESPACE}" get pods --request-timeout=5s \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'); then
     echo "[ERROR] Could not query workload pods for '${CLUSTER}'."
     if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
@@ -131,7 +134,7 @@ for CLUSTER in ${CLUSTERS}; do
   fi
 
   if [[ -z "${POD_OUTPUT}" ]]; then
-    echo "No pods found or namespace 'workload' does not exist"
+    echo "No pods found or namespace '${WORKLOAD_NAMESPACE}' does not exist"
   else
     echo "${POD_OUTPUT}" | awk -F'\t' '{printf "%-50s %s\n", $1, $2}'
   fi
