@@ -17,70 +17,75 @@
     suffix: .kubeconfig
   register: spoke_kubeconfig_file
 
-- name: Write kubeconfig to temporary file
-  copy:
-    content: "{{ spoke_kubeconfig.stdout }}"
-    dest: "{{ spoke_kubeconfig_file.path }}"
-    mode: '0600'
+- name: Deploy workload using temporary spoke kubeconfig
+  block:
+    - name: Write kubeconfig to temporary file
+      copy:
+        content: "{{ spoke_kubeconfig.stdout }}"
+        dest: "{{ spoke_kubeconfig_file.path }}"
+        mode: '0600'
 
-- name: Get number of worker nodes in spoke cluster (excluding infra)
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
-  shell: |
-    set -o pipefail
-    oc get nodes -l node-role.kubernetes.io/worker=,node-role.kubernetes.io/infra!= --kubeconfig={{ spoke_kubeconfig_file.path }} -o json | \
-      jq '.items | length'
-  register: worker_count_result
-  changed_when: false
-  args:
-    executable: /bin/bash
-  failed_when: >-
-    worker_count_result.rc != 0 or
-    (worker_count_result.stdout | trim | length == 0)
+    - name: Get number of worker nodes in spoke cluster (excluding infra)
+      environment:
+        KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+      shell: |
+        set -o pipefail
+        oc get nodes -l node-role.kubernetes.io/worker=,node-role.kubernetes.io/infra!= --kubeconfig={{ spoke_kubeconfig_file.path }} -o json | \
+          jq '.items | length'
+      register: worker_count_result
+      changed_when: false
+      args:
+        executable: /bin/bash
+      failed_when: >-
+        worker_count_result.rc != 0 or
+        (worker_count_result.stdout | trim | length == 0)
 
-- name: Set replica count based on worker nodes
-  set_fact:
-    replica_count: "{{ worker_count_result.stdout | int }}"
+    - name: Set replica count based on worker nodes
+      set_fact:
+        replica_count: "{{ worker_count_result.stdout | int }}"
 
-- name: Create workload namespace on spoke
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
-  shell: |
-    oc create namespace {{ workload_namespace }} --dry-run=client -o yaml | \
-      oc apply -f -
-  changed_when: false
-  register: namespace_result
+    - name: Create workload namespace on spoke
+      environment:
+        KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+      shell: |
+        oc create namespace {{ workload_namespace }} --dry-run=client -o yaml | \
+          oc apply -f -
+      changed_when: false
+      register: namespace_result
 
-- name: Render deployment manifest from template
-  set_fact:
-    deployment_manifest: "{{ lookup('template', 'deployment.j2') }}"
+    - name: Render deployment manifest from template
+      set_fact:
+        deployment_manifest: "{{ lookup('template', 'deployment.j2') }}"
 
-- name: Apply deployment to spoke cluster
-  environment:
-    KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
-  shell: |
-    cat << 'MANIFEST' | oc apply -f -
-    {{ deployment_manifest }}
-    MANIFEST
-  register: deployment_apply_result
-  changed_when: deployment_apply_result.stdout is search('(created|configured)')
-  failed_when: deployment_apply_result.rc != 0
+    - name: Apply deployment to spoke cluster
+      environment:
+        KUBECONFIG: "{{ spoke_kubeconfig_file.path }}"
+      shell: |
+        cat << 'MANIFEST' | oc apply -f -
+        {{ deployment_manifest }}
+        MANIFEST
+      register: deployment_apply_result
+      changed_when: deployment_apply_result.stdout is search('(created|configured)')
+      failed_when: deployment_apply_result.rc != 0
 
-- name: Determine deployment status
-  set_fact:
-    deployment_status: "{{ 'SUCCESS' if deployment_apply_result.rc == 0 else 'FAILED' }}"
+    - name: Determine deployment status
+      set_fact:
+        deployment_status: "{{ 'SUCCESS' if deployment_apply_result.rc == 0 else 'FAILED' }}"
 
-- name: Record deployment result
-  set_fact:
-    deployment_results: "{{ deployment_results + [deployment_result] }}"
-  vars:
-    deployment_result:
-      cluster: "{{ spoke_cluster_name }}"
-      status: "{{ deployment_status }}"
-      replicas: "{{ replica_count }}"
-      timestamp: "{{ ansible_date_time.iso8601 }}"
-
-- name: Clean up temporary kubeconfig file
-  file:
-    path: "{{ spoke_kubeconfig_file.path }}"
-    state: absent
+    - name: Record deployment result
+      set_fact:
+        deployment_results: "{{ deployment_results + [deployment_result] }}"
+      vars:
+        deployment_result:
+          cluster: "{{ spoke_cluster_name }}"
+          status: "{{ deployment_status }}"
+          replicas: "{{ replica_count }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+  always:
+    - name: Clean up temporary kubeconfig file
+      file:
+        path: "{{ spoke_kubeconfig_file.path }}"
+        state: absent
+      when:
+        - spoke_kubeconfig_file is defined
+        - spoke_kubeconfig_file.path is defined
