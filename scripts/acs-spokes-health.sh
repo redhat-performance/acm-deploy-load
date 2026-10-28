@@ -22,6 +22,7 @@ echo ""
 # 2. Iterate through each discovered spoke cluster
 for CLUSTER in ${CLUSTERS}; do
   KUBECONFIG_FILE="${KUBECONFIG_DIR}/${CLUSTER}-kubeconfig"
+  KUBECONFIG_TEMPORARY=false
 
   echo "=================================================================="
   echo ">>> Checking Spoke: ${CLUSTER}"
@@ -44,13 +45,24 @@ for CLUSTER in ${CLUSTERS}; do
   # Kubeconfig resolution: Check if file exists locally, or fetch it on-the-fly from ACM secret
   if [[ ! -f "${KUBECONFIG_FILE}" ]]; then
     echo "[INFO] Kubeconfig '${KUBECONFIG_FILE}' not found locally. Attempting to extract from ACM secret..."
-    
+
+    # Create the credential file with restrictive permissions before writing to it.
+    if ! (umask 077; : > "${KUBECONFIG_FILE}") || ! chmod 0600 "${KUBECONFIG_FILE}"; then
+      echo "[ERROR] Could not create secure kubeconfig file '${KUBECONFIG_FILE}'. Skipping."
+      rm -f "${KUBECONFIG_FILE}"
+      echo ""
+      continue
+    fi
+    KUBECONFIG_TEMPORARY=true
+
     # In ACM, the admin kubeconfig secret resides in the spoke cluster's namespace on the hub
     oc get secret "${CLUSTER}-admin-kubeconfig" -n "${CLUSTER}" -o jsonpath='{.data.kubeconfig}' 2>/dev/null | base64 -d > "${KUBECONFIG_FILE}" 2>/dev/null || true
 
     if [[ ! -s "${KUBECONFIG_FILE}" ]]; then
       echo "[ERROR] Could not locate or extract kubeconfig for '${CLUSTER}'. Skipping."
-      rm -f "${KUBECONFIG_FILE}"
+      if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
+        rm -f "${KUBECONFIG_FILE}"
+      fi
       echo ""
       continue
     fi
@@ -60,6 +72,9 @@ for CLUSTER in ${CLUSTERS}; do
   # Direct Spoke API Reachability & Node readiness
   if ! oc --kubeconfig "${KUBECONFIG_FILE}" get nodes --request-timeout=5s >/dev/null 2>&1; then
     echo "[ERROR] API server for '${CLUSTER}' unreachable via '${KUBECONFIG_FILE}'. Skipping pod inspection."
+    if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
+      rm -f "${KUBECONFIG_FILE}"
+    fi
     echo ""
     continue
   fi
@@ -88,4 +103,7 @@ for CLUSTER in ${CLUSTERS}; do
   fi
 
   echo ""
+  if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
+    rm -f "${KUBECONFIG_FILE}"
+  fi
 done
