@@ -84,7 +84,7 @@ for CLUSTER in ${CLUSTERS}; do
     continue
   fi
 
-  if ! NODE_STATUS_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" get nodes \
+  if ! NODE_STATUS_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" get nodes --request-timeout=5s \
     -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .status.conditions[?(@.type=="Ready")]}{.status}{"\n"}{end}{end}'); then
     echo "[ERROR] Could not query node status for '${CLUSTER}'. Skipping pod inspection."
     if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
@@ -113,7 +113,7 @@ for CLUSTER in ${CLUSTERS}; do
   printf "%-50s %s\n" "POD NAME" "CONTAINER COUNT"
   printf "%-50s %s\n" "--------------------------------------------------" "---------------"
 
-  if ! POD_QUERY_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods \
+  if ! POD_QUERY_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods --request-timeout=5s \
     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'); then
     echo "[ERROR] Could not query workload pods for '${CLUSTER}'."
     if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
