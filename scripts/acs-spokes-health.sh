@@ -20,6 +20,8 @@ echo "${CLUSTERS}"
 echo ""
 
 # 2. Iterate through each discovered spoke cluster
+INSPECTION_FAILED=false
+
 for CLUSTER in ${CLUSTERS}; do
   KUBECONFIG_FILE="${KUBECONFIG_DIR}/${CLUSTER}-kubeconfig"
   KUBECONFIG_TEMPORARY=false
@@ -50,6 +52,7 @@ for CLUSTER in ${CLUSTERS}; do
     if ! (umask 077; : > "${KUBECONFIG_FILE}") || ! chmod 0600 "${KUBECONFIG_FILE}"; then
       echo "[ERROR] Could not create secure kubeconfig file '${KUBECONFIG_FILE}'. Skipping."
       rm -f "${KUBECONFIG_FILE}"
+      INSPECTION_FAILED=true
       echo ""
       continue
     fi
@@ -63,6 +66,7 @@ for CLUSTER in ${CLUSTERS}; do
       if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
         rm -f "${KUBECONFIG_FILE}"
       fi
+      INSPECTION_FAILED=true
       echo ""
       continue
     fi
@@ -75,6 +79,7 @@ for CLUSTER in ${CLUSTERS}; do
     if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
       rm -f "${KUBECONFIG_FILE}"
     fi
+    INSPECTION_FAILED=true
     echo ""
     continue
   fi
@@ -107,3 +112,8 @@ for CLUSTER in ${CLUSTERS}; do
     rm -f "${KUBECONFIG_FILE}"
   fi
 done
+
+if [[ "${INSPECTION_FAILED}" == true ]]; then
+  echo "[ERROR] One or more spoke inspections failed."
+  exit 1
+fi
