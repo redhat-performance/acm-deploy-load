@@ -13,7 +13,7 @@
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-workload.yml \
 #   -e container_images_file=./workload_images.txt \
 #   -e workload_namespace=my-workload \
-#   -e container_image_registry=registry.example.com \
+#   -e container_image_registry_host=registry.example.com \
 #   -e container_image_tag=v1.0.0
 
 - name: Deploy workload to ACM managed spoke clusters
