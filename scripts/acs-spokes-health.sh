@@ -84,8 +84,22 @@ for CLUSTER in ${CLUSTERS}; do
     continue
   fi
 
-  UNREADY_NODES=$(oc --kubeconfig "${KUBECONFIG_FILE}" get nodes \
-    -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .status.conditions[?(@.type=="Ready")]}{.status}{"\n"}{end}{end}' | grep -vc "True" || true)
+  if ! NODE_STATUS_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" get nodes \
+    -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .status.conditions[?(@.type=="Ready")]}{.status}{"\n"}{end}{end}'); then
+    echo "[ERROR] Could not query node status for '${CLUSTER}'. Skipping pod inspection."
+    if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
+      rm -f "${KUBECONFIG_FILE}"
+    fi
+    INSPECTION_FAILED=true
+    echo ""
+    continue
+  fi
+
+  if [[ -z "${NODE_STATUS_OUTPUT}" ]]; then
+    UNREADY_NODES=0
+  else
+    UNREADY_NODES=$(printf '%s\n' "${NODE_STATUS_OUTPUT}" | awk '$2 != "True" { count++ } END { print count + 0 }')
+  fi
 
   if [[ "${UNREADY_NODES}" -gt 0 ]]; then
     echo "[WARN] Spoke has ${UNREADY_NODES} node(s) not in Ready state."
@@ -99,7 +113,22 @@ for CLUSTER in ${CLUSTERS}; do
   printf "%-50s %s\n" "POD NAME" "CONTAINER COUNT"
   printf "%-50s %s\n" "--------------------------------------------------" "---------------"
 
-  POD_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}' 2>/dev/null | awk '{print $1 "\t" NF-1}')
+  if ! POD_QUERY_OUTPUT=$(oc --kubeconfig "${KUBECONFIG_FILE}" -n workload get pods \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].name}{"\n"}{end}'); then
+    echo "[ERROR] Could not query workload pods for '${CLUSTER}'."
+    if [[ "${KUBECONFIG_TEMPORARY}" == true ]]; then
+      rm -f "${KUBECONFIG_FILE}"
+    fi
+    INSPECTION_FAILED=true
+    echo ""
+    continue
+  fi
+
+  if [[ -z "${POD_QUERY_OUTPUT}" ]]; then
+    POD_OUTPUT=""
+  else
+    POD_OUTPUT=$(printf '%s\n' "${POD_QUERY_OUTPUT}" | awk '{print $1 "\t" NF-1}')
+  fi
 
   if [[ -z "${POD_OUTPUT}" ]]; then
     echo "No pods found or namespace 'workload' does not exist"
