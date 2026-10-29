@@ -12,6 +12,10 @@ configMapGenerator:
 {% endif %}
   name: {{ ocloud_clustertemplate_name }}-extra-manifest-v1
   namespace: {{ ocloud_clustertemplate_namespace }}
+- files:
+  - ibu-manifest/PlatformBackupRestore.yaml
+  name: {{ ocloud_clustertemplate_name }}-ibu-platform-backup-{{ ocloud_clustertemplate_version }}-1
+  namespace: openshift-adp
 generatorOptions:
   disableNameSuffixHash: true
 
@@ -20,6 +24,8 @@ resources:
 - ./{{ ocloud_clustertemplate_name }}/pull-secret.yaml
 - ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ai-v1.yaml
 - ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ibi-v1.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-{{ ocloud_clustertemplate_revision }}.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-{{ ocloud_clustertemplate_revision }}.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-v1.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-v1.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-v2.yaml
+- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-v2.yaml
 - ./{{ ocloud_clustertemplate_name }}/policytemplates-defaults-v1.yaml

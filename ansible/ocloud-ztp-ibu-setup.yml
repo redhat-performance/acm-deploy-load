@@ -1,0 +1,22 @@
+---
+# Playbook to add an O-Cloud Manager upgrade version
+#
+# Adds a new version's ClusterTemplates (install v1 + upgrade v2) and PolicyTemplates
+# to an existing O-Cloud Manager GitOps repo (previously initialized by rhacm-ztp-setup.yml).
+# Can be run multiple times for different target versions.
+#
+# Required variables:
+#   cluster_image_set: openshift-4.22.20          # Upgrade target OCP version
+#   ocloud_ibu_seed_image: registry:5000/org/img  # Seed image URI (auto-populated for disconnected)
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/ocloud-ztp-ibu-setup.yml
+#
+
+- name: Setup O-Cloud Manager upgrade version
+  hosts: bastion
+  vars_files:
+  - vars/all.yml
+  roles:
+  - ocloud-ztp-templates

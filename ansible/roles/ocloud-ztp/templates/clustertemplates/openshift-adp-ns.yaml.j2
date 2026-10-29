@@ -1,0 +1,8 @@
+---
+# The openshift-adp namespace is required on the hub for the IBU platform backup ConfigMap.
+# If OADP is already installed on the hub (e.g. via the telco-hub-deploy playbook), this
+# namespace will already exist and this resource is a no-op.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-adp

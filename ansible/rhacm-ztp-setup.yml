@@ -22,3 +22,5 @@
     when: setup_ran_du_ztp | default(false)
   - role: ocloud-ztp
     when: setup_ocloud_ztp | default(false)
+  - role: ocloud-ztp-templates
+    when: setup_ocloud_ztp | default(false)

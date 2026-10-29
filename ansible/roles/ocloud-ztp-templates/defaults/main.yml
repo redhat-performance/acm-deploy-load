@@ -1,0 +1,104 @@
+---
+# ocloud-ztp-templates default vars
+# Templates a version's ClusterTemplates (install v1 + upgrade v2) and PolicyTemplates
+# into an existing O-Cloud Manager GitOps repo. Used by both initial setup (ocloud-ztp.yml)
+# and upgrade version addition (ocloud-ztp-ibu-setup.yml).
+
+# ocloud ztp will always be using telco-reference repo directories
+ztp_repo_name: telco-reference
+ztp_argocd_base_path: telco-ran/configuration/argocd
+ztp_source_crs_path: telco-ran/configuration/source-crs
+
+# Pull secret vars for cluster template secret
+pull_secret: "{{ lookup('file', '../pull-secret.txt') }}"
+# Disconnected registry support
+registry_user: registry
+registry_password: registry
+auth_encoded: "{{ (registry_user + ':' + registry_password) | b64encode }}"
+disconnected_pull_secret: ' {"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}": {"auth": "{{ auth_encoded }}"}}}'
+
+########################################################
+# OCP and ClusterTemplate/PolicyTemplate version vars
+# All derived from cluster_image_set
+########################################################
+cluster_image_set: openshift-4.22.20
+# OCP version, extracted from cluster_image_set - 4.22.20
+ocloud_clustertemplate_ocp_version: "{{ cluster_image_set | regex_replace('^openshift-', '') }}"
+# DU Profile version, extracted from ocloud_clustertemplate_ocp_version - 4.22
+ocloud_du_profile: "{{ (ocloud_clustertemplate_ocp_version | split('.'))[:2] | join('.') }}"
+# Clustertemplate name convention - sno-ran-du
+ocloud_clustertemplate_name: sno-ran-du
+
+# Clustertemplate version convention - v4-22-20
+ocloud_clustertemplate_version: "v{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}"
+# Clustertemplate namespace convention - version-4-22-20-sno-ran-du
+ocloud_clustertemplate_namespace: "version-{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}-{{ ocloud_clustertemplate_name }}"
+# Cluster template folder convention - version_4_22_20
+ocloud_clustertemplate_folder: "version_{{ ocloud_clustertemplate_ocp_version | replace('.', '_') }}"
+
+########################################################
+# IBU Seed Image vars
+########################################################
+# Seed image path and tag components
+ocloud_ibu_seed_image_path: openshift-kni/ocp-ibu
+ocloud_ibu_seed_image_tag: "{{ ocloud_clustertemplate_ocp_version }}.ibu-x86_64"
+# Full seed image URI - auto-populated for disconnected environments using the bastion registry
+ocloud_ibu_seed_image: "{% if (rhacm_disconnected_registry | default('', true)) | length > 1 %}{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/{{ ocloud_ibu_seed_image_path }}:{{ ocloud_ibu_seed_image_tag }}{% else %}quay.io/{{ ocloud_ibu_seed_image_path }}:{{ ocloud_ibu_seed_image_tag }}{% endif %}"
+ocloud_ibu_seed_image_version: "{{ ocloud_clustertemplate_ocp_version }}"
+
+########################################################
+# IBGU Plan Parameters
+########################################################
+ocloud_ibu_max_concurrency: 1
+ocloud_ibu_prep_timeout: 15
+ocloud_ibu_upgrade_timeout: 60
+ocloud_ibu_finalize_timeout: 5
+ocloud_ibu_abort_timeout: 5
+ocloud_ibu_auto_rollback_timeout: 1800
+
+########################################################
+# Clustertemplate GitOps directory vars
+########################################################
+# NIC interface in clusterinstance defaults
+sno_nic_interface: enp1s0
+
+ocloud_base_domain: example.lab.redhat.com
+# Clusterinstance default ssh key
+ssh_public_key_file: ~/.ssh/id_rsa.pub
+
+# Extra-manifest vars
+ocloud_var_lib_containers_disk: /dev/sda
+
+# Template refs
+# AI (Assisted Installer) templates
+ai_clusterinstance_cluster_templates_ns: open-cluster-management
+ai_clusterinstance_cluster_templates: ai-cluster-templates-v1-search-obs
+ai_clusterinstance_node_templates_ns: open-cluster-management
+ai_clusterinstance_node_templates: ai-node-templates-v1
+
+# IBI (Image-Based Install) templates
+ibi_clusterinstance_cluster_templates_ns: open-cluster-management
+ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-telco-search-obs
+ibi_clusterinstance_node_templates_ns: open-cluster-management
+ibi_clusterinstance_node_templates: ibi-node-templates-v1
+
+# Include the crun container runtime manifest with day-0 install via clustertemplates extra-manifest directory
+include_crun_extra_manifests: true
+
+# Clustertemplate's Policytemplate default of oadp S3 URL to match where the object store is accessible
+oadp_s3Url: http://{{ groups['bastion'][0] }}:9000
+
+########################################################
+# Policytemplate GitOps directory vars
+########################################################
+# Policy namespace follows official convention: ztp-<cluster-template-namespace>
+ocloud_policy_namespace: "ztp-{{ ocloud_clustertemplate_namespace }}"
+
+disconnected_operator_index_name: redhat/redhat-operator-index
+operator_index_tag: v4.22
+disconnected_certified_operator_index_name: redhat/certified-operator-index
+disconnected_certified_operator_index_tag: v4.22
+
+# oadp s3 credentials
+s3_access_key_id: rustfs
+s3_secret_access_key: rustfs123

@@ -2,11 +2,11 @@
 apiVersion: clcm.openshift.io/v1alpha1
 kind: ClusterTemplate
 metadata:
-  name: {{ ocloud_clustertemplate_name }}.{{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ ocloud_clustertemplate_revision }}
+  name: {{ ocloud_clustertemplate_name }}.{{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ item.revision }}
   namespace: {{ ocloud_clustertemplate_namespace }}
 spec:
   name: "{{ ocloud_clustertemplate_name }}"
-  version: "{{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ ocloud_clustertemplate_revision }}"
+  version: "{{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ item.revision }}"
   release: "{{ ocloud_clustertemplate_ocp_version }}"
   templateDefaults:
     hwMgmtDefaults:
@@ -18,6 +18,40 @@ spec:
           #   resourceselector.clcm.openshift.io/server-type: XR8620t
     clusterInstanceDefaults: clusterinstance-defaults-{{ item.type }}-v1
     policyTemplateDefaults: policytemplate-defaults-v1
+{% if item.include_upgrade_defaults | default(false) %}
+    upgradeDefaults:
+      imageBasedGroupUpgrade:
+        ibuSpec:
+          seedImageRef:
+            image: "{{ ocloud_ibu_seed_image }}"
+            version: "{{ ocloud_ibu_seed_image_version }}"
+          oadpContent:
+            - name: {{ ocloud_clustertemplate_name }}-ibu-platform-backup-{{ ocloud_clustertemplate_version }}-1
+              namespace: openshift-adp
+          autoRollbackOnFailure:
+            initMonitorTimeoutSeconds: {{ ocloud_ibu_auto_rollback_timeout }}
+        plan:
+          - actions: ["Prep"]
+            rolloutStrategy:
+              maxConcurrency: {{ ocloud_ibu_max_concurrency }}
+              timeout: {{ ocloud_ibu_prep_timeout }}
+          - actions: ["AbortOnFailure"]
+            rolloutStrategy:
+              maxConcurrency: {{ ocloud_ibu_max_concurrency }}
+              timeout: {{ ocloud_ibu_abort_timeout }}
+          - actions: ["Upgrade"]
+            rolloutStrategy:
+              maxConcurrency: {{ ocloud_ibu_max_concurrency }}
+              timeout: {{ ocloud_ibu_upgrade_timeout }}
+          - actions: ["AbortOnFailure"]
+            rolloutStrategy:
+              maxConcurrency: {{ ocloud_ibu_max_concurrency }}
+              timeout: {{ ocloud_ibu_abort_timeout }}
+          - actions: ["FinalizeUpgrade"]
+            rolloutStrategy:
+              maxConcurrency: {{ ocloud_ibu_max_concurrency }}
+              timeout: {{ ocloud_ibu_finalize_timeout }}
+{% endif %}
   templateParameterSchema:
     properties:
       nodeClusterName:
@@ -227,6 +261,19 @@ spec:
           storage-lv-devicePaths-1:
             type: string
         type: object
+{% if item.include_upgrade_defaults | default(false) %}
+      upgradeParameters:
+        description: Upgrade parameters for IBU (overrides upgradeDefaults)
+        properties:
+          imageBasedGroupUpgrade:
+            type: object
+            properties:
+              ibuSpec:
+                type: object
+              plan:
+                type: array
+        type: object
+{% endif %}
     required:
     - nodeClusterName
     - oCloudSiteId
