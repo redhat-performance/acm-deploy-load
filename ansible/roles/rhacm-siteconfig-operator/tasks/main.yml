@@ -61,6 +61,23 @@
     obs: true
     enabled: "{{ setup_rhacm_observability }}"
 
+- name: Template SiteConfig Operator ibi-cluster telco templates
+  when: item.enabled | default(true)
+  template:
+    src: ibi-cluster-templates-v1-telco.yaml.j2
+    dest: "{{ install_directory }}/rhacm-siteconfig-operator/{{ item.name }}.yaml"
+  loop:
+  - name: "ibi-cluster-templates-v1-telco"
+    search: "false"
+    obs: false
+  - name: "ibi-cluster-templates-v1-telco-search"
+    search: "true"
+    obs: false
+  - name: "ibi-cluster-templates-v1-telco-search-obs"
+    search: "true"
+    obs: true
+    enabled: "{{ setup_rhacm_observability }}"
+
 - name: Enable SiteConfig Operator
   shell: |
     export KUBECONFIG={{ hub_cluster_kubeconfig }}
@@ -102,6 +119,16 @@
     enabled: "{{ setup_rhacm_observability }}"
   - name: "ibi-cluster-templates-v1-search"
   - name: "ibi-cluster-templates-v1-search-obs"
+    enabled: "{{ setup_rhacm_observability }}"
+
+- name: Apply SiteConfig Operator ibi-cluster telco templates
+  when: item.enabled | default(true)
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-siteconfig-operator/{{ item.name }}.yaml
+  loop:
+  - name: "ibi-cluster-templates-v1-telco"
+  - name: "ibi-cluster-templates-v1-telco-search"
+  - name: "ibi-cluster-templates-v1-telco-search-obs"
     enabled: "{{ setup_rhacm_observability }}"
 
 - name: Patch SiteConfig Operator maxConcurrentReconciles to {{ siteconfig_max_concurrent_reconciles }}

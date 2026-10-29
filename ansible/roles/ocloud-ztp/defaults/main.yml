@@ -75,7 +75,7 @@ ai_clusterinstance_node_templates: ai-node-templates-v1
 
 # IBI (Image-Based Install) templates
 ibi_clusterinstance_cluster_templates_ns: open-cluster-management
-ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-search-obs
+ibi_clusterinstance_cluster_templates: ibi-cluster-templates-v1-telco-search-obs
 ibi_clusterinstance_node_templates_ns: open-cluster-management
 ibi_clusterinstance_node_templates: ibi-node-templates-v1
 
