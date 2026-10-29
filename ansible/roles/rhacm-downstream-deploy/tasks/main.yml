@@ -6,53 +6,30 @@
     dest: "{{ install_directory }}/snapshot.ver"
     content: "{{ rhacm_build }}"
 
-- name: Install ACM operator from Konflux downstream
-  when: is_konflux_build
-  block:
-  - name: Create ACM Konflux dowstream build install manifests
-    template:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}"
-    loop:
-    - src: cs-acm-dev-catalog.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml"
-    - src: cs-mce-dev-catalog.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml"
-    - src: acm-operator.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/acm-operator.yaml"
-  - name: Apply dowstream ACM and MCE CatalogSource Manifests
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-acm-dev-catalog.yaml
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-mce-dev-catalog.yaml
 
-  - name: Apply downstream ACM Operator manifest
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/acm-operator.yaml
 
-- name: Install ACM operator from ART build 
-  when: is_art_build
-  block: 
-  - name: Create ACM ART build install manifests
-    template:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}"
-    loop:
-    - src: cs-art-fbc-multicluster.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-art-fbc-multicluster.yaml"
-    - src: cs-art-fbc-backplane.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/cs-art-fbc-backplane.yaml"
-    - src: acm-operator_art.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/acm-operator_art.yaml"
-  - name: Apply ACM and MCE CatalogSource Manifests for ART build
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-art-fbc-multicluster.yaml
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-art-fbc-backplane.yaml
+- name: Create ACM ART build install manifests
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: cs-art-fbc-multicluster.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/cs-art-fbc-multicluster.yaml"
+  - src: cs-art-fbc-backplane.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/cs-art-fbc-backplane.yaml"
+  - src: acm-operator_art.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/acm-operator_art.yaml"
 
-  - name: Apply ACM Operator manifest for ART build
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/acm-operator_art.yaml
+- name: Apply ACM and MCE CatalogSource Manifests for ART build
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-art-fbc-multicluster.yaml
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/cs-art-fbc-backplane.yaml
 
-- name: Create ACM common install manifests
+- name: Apply ACM Operator manifest for ART build
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f {{ install_directory }}/rhacm-deploy/acm-operator_art.yaml
+
+- name: Create ACM install manifests
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
