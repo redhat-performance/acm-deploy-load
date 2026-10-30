@@ -44,7 +44,8 @@
   failed_when: >-
     rhacm_acs_central_cleanup_crs_revoke.rc != 0 and
     'not found' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower) and
-    'does not exist' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower)
+    'does not exist' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower) and
+    'could not find crs' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower)
 
 - name: Delete the RHACS Central custom resource
   ansible.builtin.command: >-
