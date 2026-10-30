@@ -28,7 +28,7 @@ The `[hv]` and `[hv_vm]` groups are only needed by manifest generation and IBI p
 | `bastion` | All playbooks | The bastion machine where playbooks run and services are hosted |
 | `hv` | `ibi-prepare-snos.yml` | Hypervisor nodes that host VMs |
 | `hv_vm` | `sno-manifests.yml`, `telco-core-manifests.yml`, `ibi-prepare-snos.yml` | Individual VMs hosted on hypervisors (targets for SNO/MNO deployment) |
-| `managed_clusters` | `acs-secure-spokes.yml`, `acs-spokes-sensor-cleanup.yml` | ACM managed cluster names (spokes) to register with ACS Central or perform cleanup on |
+| `managed_clusters` | `acs-secure-spokes.yml`, `acs-cleanup.yml` | ACM managed cluster names (spokes) to register with ACS Central or perform cleanup on |
 
 > [!TIP]
 > The `sno-manifests.yml` and `ibi-prepare-snos.yml` playbooks benefit from `--forks 10` for parallel execution across VMs.
@@ -58,7 +58,7 @@ Playbook variables are set in vars files under `ansible/vars/`. Copy the sample 
 | `aap-deploy.yml` | Deploy and configure Ansible Automation Platform with ACM integration |
 | `acs-secure-spokes-rhacm-policy.yml` | Deploy RHACS Central, then secure managed clusters through an ACM policy |
 | `acs-secure-spokes.yml` | Register managed clusters with ACS Central and deploy sensors |
-| `acs-spokes-sensor-cleanup.yml` | Delete sensors from managed clusters and unregister from ACS Central |
+| `acs-cleanup.yml` | Delete sensors, unregister managed clusters, and optionally tear down RHACS Central |
 | `ibi-prepare-snos.yml` | Create IBI prep ISO, build disk file, and distribute to hypervisors |
 | `ibu-prepare-seed-cluster.yml` | Unmanage a seed cluster and generate a seed image for IBI/IBU |
 | `mce-deploy.yml` | Deploy MCE standalone with assisted-installer and ClusterImageSets |
@@ -127,7 +127,7 @@ ansible-playbook -i ansible/inventory/<cloud>.local ansible/acs-secure-spokes-rh
 
 See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usage.
 
-### acs-spokes-sensor-cleanup.yml
+### acs-cleanup.yml
 
 **Target**: bastion (localhost)
 
@@ -136,14 +136,16 @@ See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usa
 **Roles executed** (in order):
 1. `acs-spokes-sensor-cleanup` (tagged `sensor-cleanup`) - Deletes sensors from spokes
 2. `acs-spokes-registration` (tagged `registration`, action: `unregister`) - Unregisters spokes from ACS Central
+3. `rhacm-acs-central-cleanup` (tagged `central-cleanup`) - Revokes `admin-crs` and removes Central resources
 
 **Environment variables required**:
-- `ROX_API_TOKEN` - ACS Central API token (required for unregister role only)
-- `ROX_CENTRAL_ADDRESS` - ACS Central URL (required for unregister role only)
+- `ROX_API_TOKEN` - ACS Central API token (required for registration and Central cleanup)
+- `ROX_CENTRAL_ADDRESS` - ACS Central URL (required for registration and Central cleanup)
 
 **Options**:
-- `--skip-tags registration` - Only delete sensors, skip unregister
-- `--skip-tags sensor-cleanup` - Only unregister clusters, skip sensor deletion
+- `--tags sensor-cleanup` - Delete sensors only
+- `--tags registration` - Unregister clusters only
+- `--tags central-cleanup` - Revoke `admin-crs` and remove Central resources only
 - `-e cleanup_sensor_generation_after_delete=true` - Remove sensor generation directories after deletion
 
 See [ACS Secure Spokes Setup and Cleanup](acs-secure-spokes.md) for detailed usage.
