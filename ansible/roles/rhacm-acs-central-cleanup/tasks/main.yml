@@ -1,0 +1,79 @@
+---
+# Remove the resources managed by rhacm-acs-central in dependency order. The
+# CRS is revoked while Central is available; the Central CR is then deleted so
+# its finalizer can remove the Helm release.
+- name: Validate RHACS Central cleanup prerequisites
+  block:
+    - name: Check that oc is available
+      ansible.builtin.command: which oc
+      register: rhacm_acs_central_cleanup_oc_check
+      changed_when: false
+
+    - name: Check that roxctl is available
+      ansible.builtin.command: which roxctl
+      register: rhacm_acs_central_cleanup_roxctl_check
+      changed_when: false
+
+    - name: Assert required RHACS Central cleanup variables
+      ansible.builtin.assert:
+        that:
+          - hub_cluster_kubeconfig | default('') | length > 0
+          - rox_api_token | default('') | length > 0
+          - rox_central_address | default('') | length > 0
+          - (rox_central_address | default('')) is ansible.builtin.url
+          - rox_crs_secret_name | length > 0
+          - rhacm_acs_central_namespace | length > 0
+          - rhacm_acs_central_cr_name | length > 0
+          - rhacm_acs_central_default_tls_secret_name | length > 0
+          - rhacm_acs_central_cleanup_oc_check.rc == 0
+          - rhacm_acs_central_cleanup_roxctl_check.rc == 0
+        fail_msg: >-
+          hub_cluster_kubeconfig, ROX_API_TOKEN, a valid ROX_CENTRAL_ADDRESS,
+          the Central resource names, oc, and roxctl are required to clean up
+          RHACS Central.
+
+- name: Revoke the RHACS cluster registration secret
+  ansible.builtin.command: >-
+    roxctl central crs revoke {{ rox_crs_secret_name }}
+    {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %}
+    -e {{ rox_central_address }}
+  environment:
+    ROX_API_TOKEN: "{{ rox_api_token }}"
+  register: rhacm_acs_central_cleanup_crs_revoke
+  changed_when: rhacm_acs_central_cleanup_crs_revoke.rc == 0
+  failed_when: >-
+    rhacm_acs_central_cleanup_crs_revoke.rc != 0 and
+    'not found' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower) and
+    'does not exist' not in (rhacm_acs_central_cleanup_crs_revoke.stderr | lower)
+
+- name: Delete the RHACS Central custom resource
+  ansible.builtin.command: >-
+    oc delete central {{ rhacm_acs_central_cr_name }}
+    -n {{ rhacm_acs_central_namespace }}
+    --ignore-not-found --wait=true
+    --timeout={{ rhacm_acs_central_cleanup_timeout }}
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_cleanup_cr_delete
+  changed_when: rhacm_acs_central_cleanup_cr_delete.stdout is search('deleted')
+
+- name: Delete the Central default TLS secret
+  ansible.builtin.command: >-
+    oc delete secret {{ rhacm_acs_central_default_tls_secret_name }}
+    -n {{ rhacm_acs_central_namespace }}
+    --ignore-not-found
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_cleanup_tls_delete
+  changed_when: rhacm_acs_central_cleanup_tls_delete.stdout is search('deleted')
+
+- name: Delete the RHACS Central namespace
+  ansible.builtin.command: >-
+    oc delete namespace {{ rhacm_acs_central_namespace }}
+    --ignore-not-found --wait=true
+    --timeout={{ rhacm_acs_central_cleanup_timeout }}
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_cleanup_namespace_delete
+  changed_when: rhacm_acs_central_cleanup_namespace_delete.stdout is search('deleted')
+  when: rhacm_acs_central_cleanup_delete_namespace | bool

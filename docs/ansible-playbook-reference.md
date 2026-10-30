@@ -91,6 +91,14 @@ short configurable label (`RHACS Central` by default) because X.509 CNs are
 limited to 64 characters. Existing TLS secrets are reused; set
 `rhacm_acs_central_rotate_tls_certificate=true` to rotate one deliberately.
 
+The `rhacm-acs-central-cleanup` role first revokes the `admin-crs` cluster
+registration secret with `roxctl`, then deletes the Central CR (waiting for
+its finalizer) and route TLS secret. It requires `ROX_API_TOKEN` and
+`ROX_CENTRAL_ADDRESS`. It can also delete the
+`rhacs-operator` namespace with
+`rhacm_acs_central_cleanup_delete_namespace=true`; that is disabled by default
+because the namespace may also contain the RHACS Operator.
+
 ```console
 ansible-playbook -i ansible/inventory/<cloud>.local ansible/acs-secure-spokes-rhacm-policy.yml \
   -e rox_central_address=https://central-rhacs-operator.apps.example.com
