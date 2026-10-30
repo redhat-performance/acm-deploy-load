@@ -1,0 +1,13 @@
+---
+rhacm_acs_central_namespace: rhacs-operator
+rhacm_acs_central_cr_name: stackrox-central-services
+rhacm_acs_central_default_tls_secret_name: central-default-tls-cert
+rhacm_acs_central_cleanup_timeout: 10m
+# This is the CRS created by rhacm-acs-secured-cluster and distributed through
+# its ACM policy.
+rox_crs_secret_name: admin-crs
+roxctl_insecure: true
+# The namespace commonly also hosts the RHACS Operator. Leave it in place by
+# default; enable this only when the namespace and its remaining contents are
+# meant to be removed as part of a complete RHACS teardown.
+rhacm_acs_central_cleanup_delete_namespace: false

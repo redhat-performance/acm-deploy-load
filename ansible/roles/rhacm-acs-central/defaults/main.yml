@@ -1,0 +1,13 @@
+---
+rhacm_acs_central_namespace: rhacs-operator
+rhacm_acs_central_cr_name: stackrox-central-services
+rhacm_acs_central_default_tls_secret_name: central-default-tls-cert
+# X.509 common names are limited to 64 characters. The complete route hostname
+# is stored in the DNS SAN, which clients use for hostname verification.
+rhacm_acs_central_certificate_common_name: RHACS Central
+# Existing certificates are retained on normal reruns. Set true to issue and
+# apply a new self-signed certificate.
+rhacm_acs_central_rotate_tls_certificate: false
+rhacm_acs_central_certificate_validity_days: 365
+rhacm_acs_central_storage_class_name: localstorage-sc
+rhacm_acs_central_scanner_v4_db_size: 15Gi

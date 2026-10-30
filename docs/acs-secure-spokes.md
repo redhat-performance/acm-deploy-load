@@ -7,7 +7,7 @@ This document describes how to use the ACS (Advanced Cluster Security) playbooks
 Two main playbooks are available:
 
 1. **`ansible/acs-secure-spokes.yml`** — Register clusters with ACS Central and deploy sensors
-2. **`ansible/acs-spokes-sensor-cleanup.yml`** — Delete sensors and unregister clusters from ACS Central
+2. **`ansible/acs-cleanup.yml`** — Delete sensors, unregister clusters, and optionally tear down RHACS Central
 
 ## Prerequisites
 
@@ -187,7 +187,7 @@ ok: [localhost] => {
 
 ## ACS Secure Spokes Cleanup
 
-### Playbook: `ansible/acs-spokes-sensor-cleanup.yml`
+### Playbook: `ansible/acs-cleanup.yml`
 
 This playbook performs cleanup on all managed clusters:
 
@@ -196,22 +196,27 @@ This playbook performs cleanup on all managed clusters:
    - Runs the delete script on each spoke
    - Optionally removes sensor generation directories
 
-2. **Unregister Spokes from Central** (tagged `unregister`)
+2. **Unregister Spokes from Central** (tagged `registration`)
    - Runs `roxctl cluster delete` for each cluster
    - Handles already-deleted clusters gracefully
+
+3. **Tear Down Central** (tagged `central-cleanup`)
+   - Revokes `admin-crs` with `roxctl`
+   - Deletes the Central CR and its route TLS secret
+   - Optionally deletes the `rhacs-operator` namespace
 
 ### Usage
 
 #### Delete Sensors Only (Keep Generation Directories)
 
 ```bash
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags registration
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-cleanup.yml --tags sensor-cleanup
 ```
 
 #### Delete Sensors and Clean Up Generation Directories
 
 ```bash
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags registration -e cleanup_sensor_generation_after_delete=true
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-cleanup.yml --tags sensor-cleanup -e cleanup_sensor_generation_after_delete=true
 ```
 
 #### Unregister Clusters from Central Only
@@ -220,25 +225,25 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sens
 export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml --skip-tags sensor-cleanup
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-cleanup.yml --tags registration
 ```
 
-#### Full Cleanup (Delete Sensors and Unregister)
+#### Full Teardown (Delete Sensors, Unregister, and Remove Central)
 
 ```bash
 export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-cleanup.yml
 ```
 
-#### Full Cleanup with Generation Directory Removal
+#### Full Teardown with Generation Directory Removal
 
 ```bash
 export ROX_API_TOKEN="<your-api-token>"
 export ROX_CENTRAL_ADDRESS="https://$(oc get route central -n rhacs-operator -o jsonpath='{.spec.host}')"
 
-time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sensor-cleanup.yml -e cleanup_sensor_generation_after_delete=true
+time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-cleanup.yml -e cleanup_sensor_generation_after_delete=true
 ```
 
 ### Playbook Roles
@@ -258,6 +263,12 @@ time ansible-playbook -i ansible/inventory/cloud30.local ansible/acs-spokes-sens
 - Records SUCCESS or NOT_FOUND status
 - Prints unregister summary
 
+#### `rhacm-acs-central-cleanup`
+- Revokes the shared `admin-crs` CRS before Central is removed
+- Deletes the Central CR and its route TLS secret
+- Deletes the `rhacs-operator` namespace only when
+  `rhacm_acs_central_cleanup_delete_namespace=true`
+
 ### Output
 
 The playbook produces summaries showing:
@@ -271,7 +282,7 @@ The playbook produces summaries showing:
 
 - **Sensor generation directories**: `/root/secured_clusters/sensor-<cluster-name>/`
 - **CRS cache**: Stored as secrets in spoke namespaces on hub
-- **Playbooks**: `ansible/acs-secure-spokes.yml`, `ansible/acs-spokes-sensor-cleanup.yml`
+- **Playbooks**: `ansible/acs-secure-spokes.yml`, `ansible/acs-cleanup.yml`
 - **Roles**: `ansible/roles/acs-*`
 
 ## Troubleshooting
@@ -296,7 +307,8 @@ This occurs when a cluster is already registered in ACS Central. Solutions:
 This is expected if:
 - Sensors were never deployed
 - Sensor directories were cleaned up after deployment
-- Use `--tags sensor-cleanup` to skip if not present
+- Use `--tags registration` or `--tags central-cleanup` to omit sensor cleanup
+  when it is not needed
 
 ### ROX_API_TOKEN Not Recognized
 
@@ -317,7 +329,8 @@ echo $ROX_CENTRAL_ADDRESS
 
 1. **Always run on managed_clusters group**: Ensure your inventory has clusters under `[managed_clusters]` group
 2. **Preserve sensor directories**: Keep directories unless actively cleaning up; useful for redeployment
-3. **Use tags for selective operations**: Use `--skip-tags` to exclude an operation (e.g., `--skip-tags registration`)
+3. **Use tags for selective operations**: Use `--tags sensor-cleanup`,
+   `--tags registration`, or `--tags central-cleanup` to run only that phase
 4. **Validate environment before cleanup**: Ensure correct ROX_CENTRAL_ADDRESS before unregistering
 5. **Check CRS status**: CRS mismatches trigger regeneration automatically; no manual intervention needed
 

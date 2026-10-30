@@ -1,0 +1,133 @@
+---
+# Generate (or reuse) one CRS and distribute it with the operator and
+# SecuredCluster custom resource through ACM governance.
+# Installs **Custom Resource** (instantiates Sensor, Collector, Admission Controller, and Scanner V4) on ACM managed clusters
+# Only applies to spokes under managed_clusters inventory group
+- name: Validate RHACS policy prerequisites
+  block:
+    - name: Check that roxctl is available
+      ansible.builtin.command: which roxctl
+      register: rhacm_acs_roxctl_check
+      changed_when: false
+    - name: Assert required RHACS policy variables
+      ansible.builtin.assert:
+        that:
+          - rox_api_token | length > 0
+          - rox_central_address | length > 0
+          - rox_central_address is ansible.builtin.url
+          - rhacm_acs_central_endpoint | length > 0
+          - rhacm_acs_roxctl_check.rc == 0
+        fail_msg: ROX_API_TOKEN, ROX_CENTRAL_ADDRESS, a valid Central endpoint, and roxctl in PATH are required.
+
+- name: Read cached cluster registration secret from the hub
+  ansible.builtin.shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get secret {{ rox_crs_secret_name }} -n {{ rhacm_acs_policy_namespace }} \
+      -o jsonpath='{.data.admin-crs\.yml}' 2>/dev/null | base64 -d
+  register: rhacm_acs_existing_crs
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Set cached cluster registration secret
+  ansible.builtin.set_fact:
+    rhacm_acs_crs: "{{ rhacm_acs_existing_crs.stdout }}"
+  when: rhacm_acs_existing_crs.stdout | length > 0
+  no_log: true
+
+- name: Generate and cache cluster registration secret
+  when: rhacm_acs_existing_crs.stdout | length == 0
+  block:
+    - name: Create temporary CRS work directory
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: rhacm-acs-crs
+      register: rhacm_acs_crs_work_dir
+    - name: Revoke an uncached CRS with the same name
+      ansible.builtin.command: >-
+        roxctl central crs revoke {{ rox_crs_secret_name }}
+        {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %}
+        -e {{ rox_central_address }}
+      environment:
+        ROX_API_TOKEN: "{{ rox_api_token }}"
+      changed_when: false
+      failed_when: false
+      no_log: true
+    - name: Generate cluster registration secret with roxctl
+      ansible.builtin.command: >-
+        roxctl central crs generate --valid-for {{ rox_crs_valid_for }}
+        {% if roxctl_insecure %}--insecure-skip-tls-verify{% endif %}
+        -e {{ rox_central_address }} {{ rox_crs_secret_name }}
+        --output {{ rhacm_acs_crs_work_dir.path }}/admin-crs.yml
+      environment:
+        ROX_API_TOKEN: "{{ rox_api_token }}"
+      no_log: true
+    - name: Read generated cluster registration secret
+      ansible.builtin.slurp:
+        src: "{{ rhacm_acs_crs_work_dir.path }}/admin-crs.yml"
+      register: rhacm_acs_generated_crs
+      no_log: true
+    - name: Set generated cluster registration secret
+      ansible.builtin.set_fact:
+        rhacm_acs_crs: "{{ rhacm_acs_generated_crs.content | b64decode }}"
+      no_log: true
+    - name: Create policy namespace and cache CRS on the hub
+      ansible.builtin.shell: |
+        set -o pipefail
+        KUBECONFIG={{ hub_cluster_kubeconfig }} oc create namespace {{ rhacm_acs_policy_namespace }} --dry-run=client -o yaml | KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f -
+        KUBECONFIG={{ hub_cluster_kubeconfig }} oc create secret generic {{ rox_crs_secret_name }} --from-file=admin-crs.yml={{ rhacm_acs_crs_work_dir.path }}/admin-crs.yml -n {{ rhacm_acs_policy_namespace }} --dry-run=client -o yaml | KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f -
+      args:
+        executable: /bin/bash
+      no_log: true
+  always:
+    - name: Remove temporary CRS work directory
+      ansible.builtin.file:
+        path: "{{ rhacm_acs_crs_work_dir.path }}"
+        state: absent
+      when: rhacm_acs_crs_work_dir is defined
+
+- name: Create temporary policy work directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: rhacm-acs-policy
+  register: rhacm_acs_policy_work_dir
+- name: Label selected managed clusters for the RHACS policy
+  ansible.builtin.command: >-
+    oc label managedcluster {{ item }} {{ rhacm_acs_managed_cluster_label }}=true --overwrite
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  loop: "{{ groups.get('managed_clusters', []) }}"
+  register: rhacm_acs_cluster_labels
+  changed_when: rhacm_acs_cluster_labels.stdout is search('(labeled|not labeled)')
+- name: Render RHACS secured-cluster policy
+  ansible.builtin.template:
+    src: policy-rhacs-secured-cluster.j2
+    dest: "{{ rhacm_acs_policy_work_dir.path }}/policy.yaml"
+    mode: '0600'
+  no_log: true
+- name: Render RHACS policy placement and binding
+  ansible.builtin.template:
+    src: placement-rule-and-binding.j2
+    dest: "{{ rhacm_acs_policy_work_dir.path }}/placement.yaml"
+    mode: '0600'
+- name: Apply RHACS secured-cluster policy to the hub
+  ansible.builtin.command: >-
+    oc apply -f {{ rhacm_acs_policy_work_dir.path }}/policy.yaml -f {{ rhacm_acs_policy_work_dir.path }}/placement.yaml
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_policy_apply
+  changed_when: rhacm_acs_policy_apply.stdout is search('(created|configured)')
+  no_log: true
+- name: Remove temporary policy manifests
+  ansible.builtin.file:
+    path: "{{ rhacm_acs_policy_work_dir.path }}"
+    state: absent
+  when:
+    - rhacm_acs_policy_work_dir is defined
+    - not rhacm_acs_keep_policy_manifests | bool
+
+- name: Display retained policy manifest location
+  ansible.builtin.debug:
+    msg: "RHACS policy manifests retained in {{ rhacm_acs_policy_work_dir.path }}"
+  when:
+    - rhacm_acs_policy_work_dir is defined
+    - rhacm_acs_keep_policy_manifests | bool
