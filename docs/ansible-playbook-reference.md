@@ -86,8 +86,9 @@ existing RHACS secured-cluster policy workflow for managed clusters. Run this
 after the RHACS Operator is installed on the hub.
 
 Set `ROX_CENTRAL_ADDRESS` to Central's HTTPS route URL. The role derives the
-hostname from that value and uses it as the certificate CN and SAN. Existing
-TLS secrets are reused; set
+hostname from that value and stores it in the certificate DNS SAN. The CN is a
+short configurable label (`RHACS Central` by default) because X.509 CNs are
+limited to 64 characters. Existing TLS secrets are reused; set
 `rhacm_acs_central_rotate_tls_certificate=true` to rotate one deliberately.
 
 ```console

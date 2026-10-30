@@ -20,9 +20,12 @@
           - rhacm_acs_central_oc_check.rc == 0
           - rhacm_acs_central_openssl_check.rc == 0
           - rhacm_acs_central_certificate_validity_days | int > 0
+          - rhacm_acs_central_certificate_common_name | length > 0
+          - rhacm_acs_central_certificate_common_name | length <= 64
         fail_msg: >-
           hub_cluster_kubeconfig, a valid rox_central_address, oc, and openssl
-          are required to deploy RHACS Central.
+          are required to deploy RHACS Central. The certificate common name
+          must be 64 characters or fewer.
 
 - name: Derive the Central route hostname from rox_central_address
   ansible.builtin.set_fact:
@@ -88,7 +91,7 @@
           - -out
           - "{{ rhacm_acs_central_tls_work_dir.path }}/tls.crt"
           - -subj
-          - "/CN={{ rhacm_acs_central_route_hostname }}"
+          - "/CN={{ rhacm_acs_central_certificate_common_name }}"
           - -addext
           - "subjectAltName=DNS:{{ rhacm_acs_central_route_hostname }}"
           - -addext
