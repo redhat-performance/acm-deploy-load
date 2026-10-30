@@ -1,0 +1,145 @@
+---
+- name: Validate RHACS Central prerequisites
+  block:
+    - name: Check that oc is available
+      ansible.builtin.command: which oc
+      register: rhacm_acs_central_oc_check
+      changed_when: false
+
+    - name: Check that openssl is available
+      ansible.builtin.command: which openssl
+      register: rhacm_acs_central_openssl_check
+      changed_when: false
+
+    - name: Assert required RHACS Central variables
+      ansible.builtin.assert:
+        that:
+          - hub_cluster_kubeconfig | default('') | length > 0
+          - rox_central_address | default('') | length > 0
+          - (rox_central_address | default('')) is ansible.builtin.url
+          - rhacm_acs_central_oc_check.rc == 0
+          - rhacm_acs_central_openssl_check.rc == 0
+          - rhacm_acs_central_certificate_validity_days | int > 0
+        fail_msg: >-
+          hub_cluster_kubeconfig, a valid rox_central_address, oc, and openssl
+          are required to deploy RHACS Central.
+
+- name: Derive the Central route hostname from rox_central_address
+  ansible.builtin.set_fact:
+    rhacm_acs_central_route_hostname: >-
+      {{ rox_central_address
+         | regex_replace('^https?://', '')
+         | regex_replace('/.*$', '')
+         | regex_replace(':[0-9]+$', '') }}
+
+- name: Validate the Central route hostname
+  ansible.builtin.assert:
+    that:
+      - rhacm_acs_central_route_hostname | length > 0
+      - rhacm_acs_central_route_hostname is match('^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$')
+    fail_msg: rox_central_address must contain a valid DNS hostname or HTTPS URL.
+
+- name: Ensure the RHACS Central namespace exists
+  ansible.builtin.shell: |
+    set -o pipefail
+    oc create namespace {{ rhacm_acs_central_namespace | quote }} --dry-run=client -o yaml | oc apply -f -
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_namespace_apply
+  changed_when: rhacm_acs_central_namespace_apply.stdout is search('(created|configured)')
+
+- name: Check for the Central default TLS secret
+  ansible.builtin.command: >-
+    oc get secret {{ rhacm_acs_central_default_tls_secret_name }}
+    -n {{ rhacm_acs_central_namespace }}
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_tls_secret
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Create or rotate the Central default TLS secret
+  when: >-
+    rhacm_acs_central_tls_secret.rc != 0 or
+    rhacm_acs_central_rotate_tls_certificate | bool
+  block:
+    - name: Create temporary certificate work directory
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: rhacm-acs-central-tls
+      register: rhacm_acs_central_tls_work_dir
+
+    - name: Generate the Central route TLS certificate
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -x509
+          - -nodes
+          - -days
+          - "{{ rhacm_acs_central_certificate_validity_days | string }}"
+          - -newkey
+          - rsa:2048
+          - -keyout
+          - "{{ rhacm_acs_central_tls_work_dir.path }}/tls.key"
+          - -out
+          - "{{ rhacm_acs_central_tls_work_dir.path }}/tls.crt"
+          - -subj
+          - "/CN={{ rhacm_acs_central_route_hostname }}"
+          - -addext
+          - "subjectAltName=DNS:{{ rhacm_acs_central_route_hostname }}"
+          - -addext
+          - "basicConstraints=critical,CA:FALSE"
+          - -addext
+          - "keyUsage=critical,digitalSignature,keyEncipherment"
+          - -addext
+          - "extendedKeyUsage=serverAuth"
+      no_log: true
+
+    - name: Apply the Central default TLS secret
+      ansible.builtin.shell: |
+        set -o pipefail
+        oc create secret tls {{ rhacm_acs_central_default_tls_secret_name | quote }} \
+          --cert={{ rhacm_acs_central_tls_work_dir.path | quote }}/tls.crt \
+          --key={{ rhacm_acs_central_tls_work_dir.path | quote }}/tls.key \
+          -n {{ rhacm_acs_central_namespace | quote }} --dry-run=client -o yaml | oc apply -f -
+      args:
+        executable: /bin/bash
+      environment:
+        KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+      no_log: true
+  always:
+    - name: Remove temporary certificate work directory
+      ansible.builtin.file:
+        path: "{{ rhacm_acs_central_tls_work_dir.path }}"
+        state: absent
+      when: rhacm_acs_central_tls_work_dir is defined
+
+- name: Create temporary Central manifest directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: rhacm-acs-central
+  register: rhacm_acs_central_manifest_dir
+
+- name: Render the RHACS Central custom resource
+  ansible.builtin.template:
+    src: central.yaml.j2
+    dest: "{{ rhacm_acs_central_manifest_dir.path }}/central.yaml"
+    mode: '0600'
+
+- name: Apply the RHACS Central custom resource
+  ansible.builtin.command: >-
+    oc apply -f {{ rhacm_acs_central_manifest_dir.path }}/central.yaml
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_apply
+  changed_when: rhacm_acs_central_apply.stdout is search('(created|configured)')
+
+- name: Remove temporary Central manifest directory
+  ansible.builtin.file:
+    path: "{{ rhacm_acs_central_manifest_dir.path }}"
+    state: absent
+  when: rhacm_acs_central_manifest_dir is defined

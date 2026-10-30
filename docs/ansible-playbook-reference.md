@@ -56,6 +56,7 @@ Playbook variables are set in vars files under `ansible/vars/`. Copy the sample 
 | - | - |
 | `aap-2-6-deploy.yml` | Deploy and configure AAP 2.6 specifically |
 | `aap-deploy.yml` | Deploy and configure Ansible Automation Platform with ACM integration |
+| `acs-secure-spokes-rhacm-policy.yml` | Deploy RHACS Central, then secure managed clusters through an ACM policy |
 | `acs-secure-spokes.yml` | Register managed clusters with ACS Central and deploy sensors |
 | `acs-spokes-sensor-cleanup.yml` | Delete sensors from managed clusters and unregister from ACS Central |
 | `ibi-prepare-snos.yml` | Create IBI prep ISO, build disk file, and distribute to hypervisors |
@@ -74,6 +75,25 @@ Playbook variables are set in vars files under `ansible/vars/`. Copy the sample 
 | `telco-core-manifests.yml` | Generate Telco Core MNO cluster manifests |
 
 ## Playbook Details
+
+### acs-secure-spokes-rhacm-policy.yml
+
+**Target**: bastion (localhost)
+
+Deploys the RHACS `Central` custom resource, ensures its namespace exists, and
+creates the self-signed TLS secret used by the Central route. It then runs the
+existing RHACS secured-cluster policy workflow for managed clusters. Run this
+after the RHACS Operator is installed on the hub.
+
+Set `ROX_CENTRAL_ADDRESS` to Central's HTTPS route URL. The role derives the
+hostname from that value and uses it as the certificate CN and SAN. Existing
+TLS secrets are reused; set
+`rhacm_acs_central_rotate_tls_certificate=true` to rotate one deliberately.
+
+```console
+ansible-playbook -i ansible/inventory/<cloud>.local ansible/acs-secure-spokes-rhacm-policy.yml \
+  -e rox_central_address=https://central-rhacs-operator.apps.example.com
+```
 
 ### acs-secure-spokes.yml
 
