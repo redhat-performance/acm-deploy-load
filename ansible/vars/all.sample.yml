@@ -36,11 +36,10 @@ setup_ztp_perfprofile_realtime: true
 setup_ztp_searchcollector_enabled: true
 
 # Install ACM/ZTP vars
-is_konflux_build: false
-# Example: rhacm_build: '2.9.0-DOWNSTREAM-2023-11-14-18-06-19' # ACM 2.9 GA Build
-rhacm_build:
-# Example for MCE 2.9.0 konflux build: mce_build: '2.9.0-DOWNSTREAM-2025-07-09-19-18-30'
-mce_build:
+# Example for ACM: rhacm_build: 'multiclusterhub-operator-fbc-5.0.0-20261029020416.ocp5.0' # ACM 5.0 ART build
+rhacm_build: multiclusterhub-operator-fbc-5.0.0-20261029020416.ocp5.0
+# Example for MCE : mce_build: 'backplane-operator-fbc-5.0.0-20261028202101.ocp5.0' # MCE 5.0 ART build
+mce_build: backplane-operator-fbc-5.0.0-20261028202101.ocp5.0
 # Use redhat-operators for connected environment (acm_source only for rhacm-deploy.yml)
 acm_source: cs-redhat-operator-index-v4-22
 acm_channel: release-2.17

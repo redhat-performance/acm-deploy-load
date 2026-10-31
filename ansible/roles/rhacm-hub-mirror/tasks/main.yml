@@ -6,53 +6,27 @@
     path: "{{ install_directory }}/rhacm-deploy"
     state: directory
 
-- name: Konflux build tasks
-  when: is_konflux_build
-  block:
-  - name: Create ImageDigestMirrorSet manifest
-    template:
-      src: idms-konflux.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/idms.yml"
+- name: Create ImageDigestMirrorSet manifest
+  template:
+    src: idms.yaml.j2
+    dest: "{{ install_directory }}/rhacm-deploy/idms.yml"
 
-  - name: Check if idms exists
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageDigestMirrorSet rhacm-repo
-    ignore_errors: true
-    register: idms_exists
+- name: Check if idms exists
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageDigestMirrorSet rhacm-repo
+  ignore_errors: true
+  register: idms_exists
 
-  - name: Apply ImageDigestMirrorSet to hub cluster
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/idms.yml"
-    when: idms_exists.rc == 1
+- name: Apply ImageDigestMirrorSet to hub cluster
+  shell: |
+    KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/idms.yml"
+  when: idms_exists.rc == 1
 
-  - name: Enable wait for MachineConfigPools to update
-    set_fact:
-      wait_for_machineconfigpool_update: true
-    when: idms_exists.rc == 1
+- name: Enable wait for MachineConfigPools to update
+  set_fact:
+    wait_for_machineconfigpool_update: true
+  when: idms_exists.rc == 1
 
-- name: Non-Konflux build tasks
-  when: not is_konflux_build
-  block:
-  - name: Create ImageContentSourcePolicy manifest
-    template:
-      src: icsp.yaml.j2
-      dest: "{{ install_directory }}/rhacm-deploy/icsp.yml"
-
-  - name: Check if icsp exists
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc get ImageContentSourcePolicy rhacm-repo
-    ignore_errors: true
-    register: icsp_exists
-
-  - name: Apply ImageContentSourcePolicy to hub cluster
-    shell: |
-      KUBECONFIG={{ hub_cluster_kubeconfig }} oc apply -f "{{ install_directory }}/rhacm-deploy/icsp.yml"
-    when: icsp_exists.rc == 1
-
-  - name: Enable wait for MachineConfigPools to update
-    set_fact:
-      wait_for_machineconfigpool_update: true
-    when: icsp_exists.rc == 1
 
 - name: Determine if we enable worker mcp
   shell: |
