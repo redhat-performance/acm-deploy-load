@@ -116,7 +116,7 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (fleet summary header + plaintext percentiles) |
 | `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (fleet summary header + plaintext percentiles) |
 | `acm-deploy-load/analyze-clusterinstances.py` | CI `.stats` file format (fleet summary header + plaintext percentiles, two stat blocks) |
-| `acm-deploy-load/analyze-provisioningrequests.py` | PR `.stats` file format (fleet summary header + plaintext percentiles, five stat blocks) |
+| `acm-deploy-load/analyze-provisioningrequests.py` | PR `.stats` file format (fleet summary header + plaintext percentiles, six stat blocks; fleet header has `Fleet Install Duration` and `Fleet Upgrade Duration` (kubectl-patch → UpgradeCompleted); IBU adds `IBU Upgrade Stats` block) |
 | `acm-deploy-load/analyze-baremetalhosts.py` | BMH `.stats` file format (fleet summary header + plaintext percentiles, scenario-dependent stat blocks) |
 | `acm-deploy-load/analyze-clustergroupupgrades.py` | CGU `.stats` file format (header + plaintext percentiles) |
 | `acm-deploy-load/utils/time_utils.py` | Timestamp parsing tolerance, zero-second durations counted as real measurements |
