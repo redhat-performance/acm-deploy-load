@@ -1236,6 +1236,90 @@ def odf_queries(report_dir, route, token, end_ts, duration, w, h):
   return q_names
 
 
+def ocloud_queries(report_dir, route, token, end_ts, duration, w, h):
+  sub_report_dir = os.path.join(report_dir, "ocloud")
+  make_report_directories(sub_report_dir)
+  q_names = OrderedDict()
+
+  # O-Cloud Manager oran-o2ims namespace CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims'})"
+  query_thanos(route, q, "oran-o2ims", token, end_ts, duration, sub_report_dir, "cpu-ocloud", "O-Cloud Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims'})"
+  query_thanos(route, q, "oran-o2ims", token, end_ts, duration, sub_report_dir, "mem-ocloud", "O-Cloud Manager Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='oran-o2ims'}[5m]))"
+  query_thanos(route, q, "oran-o2ims", token, end_ts, duration, sub_report_dir, "net-rcv-ocloud", "O-Cloud Manager Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='oran-o2ims'}[5m]))"
+  query_thanos(route, q, "oran-o2ims", token, end_ts, duration, sub_report_dir, "net-xmt-ocloud", "O-Cloud Manager Network Transmit Throughput", "NET", w, h, q_names)
+
+  # All pods combined (useful for spotting outliers)
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-pods", "O-Cloud Manager Pod CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-pods", "O-Cloud Manager Pod Memory Usage", "MEM", w, h, q_names)
+
+  # alarms-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'alarms-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-alarms-server", "O-Cloud Alarms Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'alarms-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-alarms-server", "O-Cloud Alarms Server Memory Usage", "MEM", w, h, q_names)
+
+  # artifacts-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'artifacts-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-artifacts-server", "O-Cloud Artifacts Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'artifacts-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-artifacts-server", "O-Cloud Artifacts Server Memory Usage", "MEM", w, h, q_names)
+
+  # cluster-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'cluster-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-cluster-server", "O-Cloud Cluster Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'cluster-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-cluster-server", "O-Cloud Cluster Server Memory Usage", "MEM", w, h, q_names)
+
+  # hardwaremanager-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'hardwaremanager-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-hardwaremanager-server", "O-Cloud Hardware Manager Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'hardwaremanager-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-hardwaremanager-server", "O-Cloud Hardware Manager Server Memory Usage", "MEM", w, h, q_names)
+
+  # oran-o2ims-controller-manager CPU/Memory/Network
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'oran-o2ims-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-controller-manager", "O-Cloud Controller Manager CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'oran-o2ims-controller-manager-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-controller-manager", "O-Cloud Controller Manager Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='oran-o2ims',pod=~'oran-o2ims-controller-manager-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-ocloud-controller-manager", "O-Cloud Controller Manager Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='oran-o2ims',pod=~'oran-o2ims-controller-manager-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-ocloud-controller-manager", "O-Cloud Controller Manager Network Transmit Throughput", "NET", w, h, q_names)
+
+  # postgres-server CPU/Memory/Network
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'postgres-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-postgres-server", "O-Cloud Postgres Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'postgres-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-postgres-server", "O-Cloud Postgres Server Memory Usage", "MEM", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_receive_bytes_total{cluster='',namespace='oran-o2ims',pod=~'postgres-server-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-rcv-ocloud-postgres-server", "O-Cloud Postgres Server Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum by (pod) (irate(container_network_transmit_bytes_total{cluster='',namespace='oran-o2ims',pod=~'postgres-server-.*'}[5m]))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "net-xmt-ocloud-postgres-server", "O-Cloud Postgres Server Network Transmit Throughput", "NET", w, h, q_names)
+
+  # provisioning-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'provisioning-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-provisioning-server", "O-Cloud Provisioning Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'provisioning-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-provisioning-server", "O-Cloud Provisioning Server Memory Usage", "MEM", w, h, q_names)
+
+  # resource-server CPU/Memory
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='oran-o2ims',pod=~'resource-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-ocloud-resource-server", "O-Cloud Resource Server CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='oran-o2ims',pod=~'resource-server-.*'})"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-ocloud-resource-server", "O-Cloud Resource Server Memory Usage", "MEM", w, h, q_names)
+
+  # Volume space used by O-Cloud Manager (postgres-server-data PVC and any future PVCs)
+  q = "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace='oran-o2ims'})"
+  query_thanos(route, q, "persistentvolumeclaim", token, end_ts, duration, sub_report_dir, "pvc-ocloud", "O-Cloud Manager Volume Usage", "DISK_USAGE", w, h, q_names)
+
+  return q_names
+
+
 def node_queries(report_dir, route, token, end_ts, duration, w, h, namespaces):
   # Node CPU/Memory/Disk/Network
   sub_report_dir = os.path.join(report_dir, "node")
@@ -1429,6 +1513,7 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
         # Build list of DataFrames, one per metric, then merge them
         dfs = []
         series = []
+        seen_names = set()
 
         for metric in qd_json["data"]["result"]:
           # Create datetime series for this metric
@@ -1441,6 +1526,18 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
           else:
             metric_name = metric["metric"][series_label]
             logger.debug("{}: {}, Num of values: {}".format(series_label, metric_name, len(metric["values"])))
+
+          # Deduplicate series names: duplicate label values cause pd.merge to create
+          # columns like osd.0_x/osd.0_y, and a third duplicate then tries to create
+          # osd.0_x again which pandas rejects with MergeError. Track all emitted names
+          # (including suffixed ones) so a generated name never collides with a
+          # naturally-occurring series of the same label value.
+          if metric_name in seen_names:
+            counter = 1
+            while "{}.{}".format(metric_name, counter) in seen_names:
+              counter += 1
+            metric_name = "{}.{}".format(metric_name, counter)
+          seen_names.add(metric_name)
 
           # Convert values based on unit
           if y_unit == "MEM":
@@ -1706,6 +1803,9 @@ def main():
   if "openshift-adp" in namespaces:
     logger.info("openshift-adp namespace found, querying for adp metrics")
     report_data["adp"] = adp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+  if "oran-o2ims" in namespaces:
+    logger.info("oran-o2ims namespace found, querying for o-cloud manager metrics")
+    report_data["ocloud"] = ocloud_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
   # Minio is a "workload" running on hub clusters to provide object storage for the cluster
   if "minio" in namespaces:

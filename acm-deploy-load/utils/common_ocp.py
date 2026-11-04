@@ -196,8 +196,8 @@ def get_ocp_version(kubeconfig):
 
 
 def get_prometheus_token(kubeconfig, ocp_version):
-  if ocp_version["major"] == 4 and ocp_version["minor"] > 10:
-    # 4.11 requires us to create the token instead of find it in a secret
+  if ocp_version["major"] >= 5 or (ocp_version["major"] == 4 and ocp_version["minor"] > 10):
+    # 4.11+ and OCP 5+ use oc create token instead of a secret
     # --duration=24h could be passed to get a token for longer duration
     oc_cmd = ["oc", "--kubeconfig", kubeconfig, "create", "token", "prometheus-k8s", "-n", "openshift-monitoring"]
     rc, output = command(oc_cmd, False, no_log=True)
