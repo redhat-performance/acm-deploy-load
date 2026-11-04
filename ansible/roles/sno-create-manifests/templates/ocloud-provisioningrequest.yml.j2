@@ -35,6 +35,7 @@ spec:
       extraLabels:
         ManagedCluster:
           site: {{ inventory_hostname }}
+{% if ocloud_legacy_nodes_enabled %}
       nodes:
         - bootMode: UEFI
           # extraAnnotations:
@@ -82,6 +83,43 @@ spec:
                     next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
                     next-hop-interface: {{ sno_nic_interface }}
                     table-id: 254
+{% else %}
+      nodeGroups:
+        - name: master
+          nodeLabels:
+            node-role.kubernetes.io/master: ""
+          # extraAnnotations:
+          #   BareMetalHost:
+          #     extra-annotation-key: extra-annotation-value
+          # extraLabels:
+          #   BareMetalHost:
+          #     extra-label-key: extra-label-value
+          nodeNetwork:
+            config:
+              dns-resolver:
+                config:
+                  server:
+                    - {{ hostvars[inventory_hostname]['hv_ip'] }}
+              routes:
+                config:
+                  - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                    next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+                    next-hop-interface: {{ sno_nic_interface }}
+                    table-id: 254
+          nodes:
+            - hostName: {{ inventory_hostname }}
+              nodeNetwork:
+                interfaces:
+                  - name: {{ sno_nic_interface }}
+                    addresses:
+{% if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv4 %}
+                      ipv4:
+                        - "{{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}"
+{% else %}
+                      ipv6:
+                        - "{{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}"
+{% endif %}
+{% endif %}
     policyTemplateParameters:
       # cluster-log-fwd-filters-labels: '{"label1": "test1", "label2": "test2"}'
       # cluster-log-fwd-outputs-url: "tcp://198.51.100.50:9092/test"

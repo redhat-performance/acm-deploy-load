@@ -114,6 +114,9 @@ ocloud_clustertemplate_name: sno-ran-du
 # Clustertemplate version convention - v4-22-16 and determined from cluster_image_set
 # ocloud_clustertemplate_version: v4-22-16
 ocloud_hardware_mgmt_enabled: false
+# Set to true only when targeting O-Cloud Manager 4.22.x, which uses a flat nodes list
+# in ClusterTemplate defaults and ProvisioningRequests instead of the 5.0+ nodeGroups format.
+ocloud_legacy_nodes_enabled: false
 # Base domain shared across all SNOs in this environment
 ocloud_base_domain: example.lab.redhat.com
 

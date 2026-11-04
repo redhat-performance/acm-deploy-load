@@ -62,6 +62,10 @@ ocloud_ibu_auto_rollback_timeout: 1800
 # NIC interface in clusterinstance defaults
 sno_nic_interface: enp1s0
 
+# O-Cloud Manager 5.0+ uses nodeGroups in ClusterTemplate defaults and ProvisioningRequests.
+# Set to true only when targeting O-Cloud Manager 4.22.x, which uses the legacy flat nodes list.
+ocloud_legacy_nodes_enabled: false
+
 ocloud_base_domain: example.lab.redhat.com
 # Clusterinstance default ssh key
 ssh_public_key_file: ~/.ssh/id_rsa.pub

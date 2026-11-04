@@ -155,6 +155,7 @@ spec:
               - cidr
               type: object
             type: array
+{% if ocloud_legacy_nodes_enabled %}
           nodes:
             items:
               description: NodeSpec
@@ -209,6 +210,126 @@ spec:
               - hostName
               type: object
             type: array
+{% else %}
+          nodeGroups:
+            description: Node configuration by group.
+            items:
+              properties:
+                name:
+                  description: >
+                    Node group name. Must match a ClusterTemplate defaults
+                    nodeGroups entry and the corresponding hardware node
+                    group / MachineConfigPool name.
+                  minLength: 1
+                  type: string
+                extraAnnotations:
+                  additionalProperties:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  description: Additional node-level annotations applied to every
+                    host in this group
+                  type: object
+                extraLabels:
+                  additionalProperties:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  description: Additional node-level labels applied to every host
+                    in this group
+                  type: object
+                nodeLabels:
+                  additionalProperties:
+                    type: string
+                  description: NodeLabels allows the specification of custom roles
+                    for your nodes in your managed clusters applied to every host
+                    in this group.
+                  type: object
+                nodeNetwork:
+                  description: Group-level network overlay applied to every host
+                    in this group.
+                  properties:
+                    config:
+                      description: Opaque nmstate overlay (for example dns-resolver
+                        and routes) shared by every host in this group.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  type: object
+                nodes:
+                  description: Per-host identity and addressing for this group.
+                  items:
+                    properties:
+                      hostName:
+                        description: Hostname is the desired hostname for the host
+                        type: string
+                      extraAnnotations:
+                        additionalProperties:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        description: Additional annotations for this host
+                        type: object
+                      extraLabels:
+                        additionalProperties:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        description: Additional labels for this host
+                        type: object
+                      nodeLabels:
+                        additionalProperties:
+                          type: string
+                        description: Custom node labels for this host
+                        type: object
+                      nodeNetwork:
+                        description: Per-host addressing keyed by interface name.
+                        properties:
+                          interfaces:
+                            description: Per-interface addressing. Each name must
+                              match a defaults nodeNetwork.interfaces[].name.
+                            items:
+                              properties:
+                                name:
+                                  minLength: 1
+                                  type: string
+                                addresses:
+                                  description: At least one of ipv4 or ipv6; CIDR
+                                    strings, e.g. "192.0.2.10/24".
+                                  minProperties: 1
+                                  properties:
+                                    ipv4:
+                                      items:
+                                        minLength: 1
+                                        type: string
+                                      minItems: 1
+                                      type: array
+                                    ipv6:
+                                      items:
+                                        minLength: 1
+                                        type: string
+                                      minItems: 1
+                                      type: array
+                                  type: object
+                              required:
+                              - name
+                              - addresses
+                              type: object
+                            minItems: 1
+                            type: array
+                        required:
+                        - interfaces
+                        type: object
+                    required:
+                    - hostName
+                    - nodeNetwork
+                    type: object
+                  type: array
+              required:
+              - name
+              - nodes
+              type: object
+            type: array
+{% endif %}
           serviceNetwork:
             description: ServiceNetwork is the list of IP address pools for services.
             items:
@@ -229,7 +350,11 @@ spec:
             type: string
         required:
         - clusterName
+{% if ocloud_legacy_nodes_enabled %}
         - nodes
+{% else %}
+        - nodeGroups
+{% endif %}
         type: object
       policyTemplateParameters:
         description: Policy template parameters (hardware-specific)
