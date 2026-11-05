@@ -71,6 +71,7 @@ Then follow the quickstart guides in [Documentation](#documentation) to set up a
 | [Deploy SNO via IBI](docs/deploy-sno-ibi.md) | Deploy SNO clusters at scale using Image-Based Installer |
 | [Deploy Telco Hub via ArgoCD](docs/deploy-telco-hub.md) | Deploy Telco Hub using ArgoCD/GitOps RDS |
 | [Deploy O-Cloud Manager](docs/deploy-ocloud-manager.md) | Deploy O-Cloud Manager Operator with ACM |
+| [O-Cloud Manager IBU Upgrade](docs/ocloud-ibu-upgrade.md) | Upgrade O-Cloud-managed SNOs via ProvisioningRequests |
 | [ZTP DU Profile Setup](docs/ztp-du-profile-setup.md) | DU profile policy configuration — PolicyGenerator vs PolicyGenTemplate, variables reference |
 
 ## Workload Scripts
