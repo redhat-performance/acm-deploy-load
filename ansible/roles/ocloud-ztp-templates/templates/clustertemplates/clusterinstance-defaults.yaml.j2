@@ -37,6 +37,7 @@ data:
     machineNetwork:
       - cidr: {{ hostvars[groups['hv_vm'][0]]['machine_network'] }}
     networkType: OVNKubernetes
+{% if ocloud_legacy_nodes_enabled %}
     nodes:
       - automatedCleaningMode: disabled
         bootMode: UEFI
@@ -79,6 +80,55 @@ data:
 {% else %}
           - name: {{ ibi_clusterinstance_node_templates }}
             namespace: {{ ibi_clusterinstance_node_templates_ns }}
+{% endif %}
+{% else %}
+    nodeGroups:
+      - name: master
+        role: master
+        bootMode: UEFI
+        ironicInspect: "disabled"
+        automatedCleaningMode: disabled
+        nodeNetwork:
+          interfaces:
+            - name: {{ sno_nic_interface }}
+              label: boot-interface
+          config:
+            interfaces:
+{% if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv4 %}
+              - ipv4:
+                  dhcp: false
+                  enabled: true
+                ipv6:
+                  dhcp: false
+                  enabled: false
+{% else %}
+              - ipv4:
+                  dhcp: false
+                  enabled: false
+                ipv6:
+{% if item.type == "ibi" %}
+                  autoconf: false
+{% endif %}
+                  dhcp: false
+                  enabled: true
+{% endif %}
+                name: {{ sno_nic_interface }}
+                type: ethernet
+            routes:
+              config:
+                - destination: {{ "::/0" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                  next-hop-interface: {{ sno_nic_interface }}
+                  table-id: 254
+        # rootDeviceHints:
+        #   deviceName: /dev/disk/by-path/pci-0000:01:00.0-nvme-1
+        templateRefs:
+{% if item.type == "ai" %}
+          - name: {{ ai_clusterinstance_node_templates }}
+            namespace: {{ ai_clusterinstance_node_templates_ns }}
+{% else %}
+          - name: {{ ibi_clusterinstance_node_templates }}
+            namespace: {{ ibi_clusterinstance_node_templates_ns }}
+{% endif %}
 {% endif %}
     pullSecretRef:
       name: pull-secret

@@ -85,3 +85,6 @@ ocloud_clustertemplate_revision: "v1"
 ocloud_hardware_profile_name: hw-profile-lab
 ocloud_hardware_mgmt_enabled: false
 ocloud_site_name: site-lab
+# Set to true only when targeting O-Cloud Manager 4.22.x, which uses a flat nodes list
+# in ProvisioningRequests instead of the 5.0+ nodeGroups format.
+ocloud_legacy_nodes_enabled: false
