@@ -1,0 +1,18 @@
+---
+# ocloud-vm-inventory default vars
+
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"
+
+# List of cluster definitions to generate manifests for.
+# Each entry: { profile: sno-ran-du|3node-ran-du|std-ran-du, workers: N, count: 1, labels: {} }
+# masters is derived from profile: sno-ran-du=1, others=3
+# workers forced to 0 for sno-ran-du and 3node-ran-du
+ocloud_cluster_definitions: []
+
+# VIP address offsets must match jetlag's corefile DNS entry counts.
+# Compact VIPs are offset by standard_cluster_dns_count so their addresses
+# don't collide with standard cluster VIPs.
+# Keep in sync with jetlag's standard_cluster_dns_count / compact_cluster_dns_count.
+standard_cluster_dns_count: 4000
+compact_cluster_dns_count: 4000

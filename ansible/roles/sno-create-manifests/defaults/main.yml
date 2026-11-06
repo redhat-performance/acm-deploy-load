@@ -73,11 +73,11 @@ ibi_clusterinstance_node_templates: ibi-node-templates-v1
 
 # O-Cloud Inventory and ProvisioningRequest defaults
 ocloud_resourcepool_name: resourcepool-lab
-# OCP version, extracted from cluster_image_set - 4.22.16
+# OCP version, extracted from cluster_image_set - 4.22.1
 ocloud_clustertemplate_ocp_version: "{{ cluster_image_set | regex_replace('^openshift-', '') }}"
 # Clustertemplate name convention - sno-ran-du
 ocloud_clustertemplate_name: sno-ran-du
-# Clustertemplate version convention - v4-22-16
+# Clustertemplate version convention - v4-22-1
 ocloud_clustertemplate_version: "v{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}"
 # The revision for the clustertemplate version.
 ocloud_clustertemplate_revision: "v1"

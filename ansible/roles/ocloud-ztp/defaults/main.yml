@@ -8,9 +8,6 @@ ocloud_manager_namespace: oran-o2ims
 
 hv_vm_manifests_directory: /root/hv-vm
 
-ocloud_inventory_source: "{{ hv_vm_manifests_directory }}/sno/ocloud-inventory"
-ocloud_provisioningrequest_source: "{{ hv_vm_manifests_directory }}/sno"
-
 # ocloud ztp will always be using telco-reference repo directories
 ztp_repo_name: telco-reference
 ztp_argocd_base_path: telco-ran/configuration/argocd

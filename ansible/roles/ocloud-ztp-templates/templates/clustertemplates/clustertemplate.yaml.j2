@@ -12,10 +12,10 @@ spec:
     hwMgmtDefaults:
       hardwareProvisioningTimeout: "90m"
       nodeGroupData:
-        - name: master
-          role: master
-          # resourceSelector:
-          #   resourceselector.clcm.openshift.io/server-type: XR8620t
+{% for ng in profile.node_groups %}
+        - name: {{ ng }}
+          role: {{ ng }}
+{% endfor %}
     clusterInstanceDefaults: clusterinstance-defaults-{{ item.type }}-v1
     policyTemplateDefaults: policytemplate-defaults-v1
 {% if item.upgrade_phase is defined %}
