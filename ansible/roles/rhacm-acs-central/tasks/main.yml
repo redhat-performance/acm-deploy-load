@@ -1,0 +1,55 @@
+---
+- name: Validate RHACS Central prerequisites
+  block:
+    - name: Check that oc is available
+      ansible.builtin.command: which oc
+      register: rhacm_acs_central_oc_check
+      changed_when: false
+
+    - name: Assert required RHACS Central variables
+      ansible.builtin.assert:
+        that:
+          - hub_cluster_kubeconfig | default('') | length > 0
+          - rox_central_address | default('') | length > 0
+          - (rox_central_address | default('')) is ansible.builtin.url
+          - rhacm_acs_central_oc_check.rc == 0
+        fail_msg: >-
+          hub_cluster_kubeconfig, a valid rox_central_address, and oc are
+          required to deploy RHACS Central.
+
+- name: Ensure the RHACS Central namespace exists
+  ansible.builtin.shell: |
+    set -o pipefail
+    oc create namespace {{ rhacm_acs_central_namespace | quote }} --dry-run=client -o yaml | oc apply -f -
+  args:
+    executable: /bin/bash
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_namespace_apply
+  changed_when: rhacm_acs_central_namespace_apply.stdout is search('(created|configured)')
+
+- name: Create temporary Central manifest directory
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: rhacm-acs-central
+  register: rhacm_acs_central_manifest_dir
+
+- name: Render the RHACS Central custom resource
+  ansible.builtin.template:
+    src: central.yaml.j2
+    dest: "{{ rhacm_acs_central_manifest_dir.path }}/central.yaml"
+    mode: '0600'
+
+- name: Apply the RHACS Central custom resource
+  ansible.builtin.command: >-
+    oc apply -f {{ rhacm_acs_central_manifest_dir.path }}/central.yaml
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_apply
+  changed_when: rhacm_acs_central_apply.stdout is search('(created|configured)')
+
+- name: Remove temporary Central manifest directory
+  ansible.builtin.file:
+    path: "{{ rhacm_acs_central_manifest_dir.path }}"
+    state: absent
+  when: rhacm_acs_central_manifest_dir is defined
