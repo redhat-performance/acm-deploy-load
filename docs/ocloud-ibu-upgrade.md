@@ -7,11 +7,50 @@ Upgrade (IBU) timing.
 _**Table of Contents**_
 
 <!-- TOC -->
+- [Test flow](#test-flow)
 - [ClusterTemplate revisions](#clustertemplate-revisions)
 - [Normal upgrade (v2)](#normal-upgrade-v2)
 - [Instrumented upgrade for timing (v3)](#instrumented-upgrade-for-timing-v3)
 - [Finalize the IBU](#finalize-the-ibu)
 <!-- /TOC -->
+
+## Test flow
+
+A complete O-Cloud IBU upgrade test with timing analysis follows these steps:
+
+1. **Install** — O-Cloud Manager provisions SNOs using the `v1` ClusterTemplate. Run
+   `analyze-provisioningrequests.py` after the fleet reaches `fulfilled` to capture
+   install timing.
+
+2. **Patch PRs for upgrade** — Update each PR's `templateVersion` to the `v3`
+   ClusterTemplate (or `v2` for a normal upgrade) and record the patch time in the
+   `ibu-patch-time` annotation (see [Instrumented upgrade for timing (v3)](#instrumented-upgrade-for-timing-v3)).
+
+3. **Wait for completion** — O-Cloud Manager drives Prep → Upgrade per cluster. Monitor
+   the fleet until all PRs report `UpgradeCompleted`.
+
+4. **Analyze** — Run both analysis scripts for the most complete picture:
+
+   `analyze-provisioningrequests.py` captures hub-side upgrade duration (patch time →
+   `UpgradeCompleted`) and fleet totals:
+
+   ```bash
+   export KUBECONFIG=/root/mno/kubeconfig
+   ./acm-deploy-load/analyze-provisioningrequests.py <results_directory>
+   ```
+
+   `analyze-ocloud-ibu.py` fetches per-SNO IBU objects from the spokes and produces
+   per-stage timing stats (Prep/Stateroot/Precache, Upgrade/PrePivot/PostPivot,
+   and totals):
+
+   ```bash
+   export KUBECONFIG=/root/mno/kubeconfig
+   ./acm-deploy-load/analyze-ocloud-ibu.py <ocp_version> <results_directory>
+   ```
+
+5. **Finalize** — If a follow-on IBU is needed on the same clusters, finalize each
+   spoke IBU to return it to `Idle` before the next upgrade cycle (see
+   [Finalize the IBU](#finalize-the-ibu)).
 
 ## ClusterTemplate revisions
 
@@ -63,18 +102,17 @@ oc get pr --no-headers | sort -k 2 | awk '{print $1}' | xargs -I{} bash -c \
   -p "{\"spec\":{\"templateName\":\"sno-ran-du\",\"templateVersion\":\"v4-22-3-ibi-v3\"},\"metadata\":{\"annotations\":{\"ibu-patch-time\":\"$TS\"}}}"'
 ```
 
-2. After the fleet reports `UpgradeCompleted`, collect each spoke's IBU object. It
-   holds `status.history` with the `Prep` and `Upgrade` stages and their nested phases
+2. After the fleet reports `UpgradeCompleted`, run `analyze-ocloud-ibu.py` to fetch
+   each spoke's IBU object and produce per-cluster timing stats. The script queries
+   `status.history` for `Prep` and `Upgrade` stages and their nested phases
    (`Stateroot`, `Precache`, `PrePivot`, `PostPivot`):
 
-```console
-mkdir -p /tmp/ibu-preserve
-ls -d /root/hv-vm/kc/*/ | sed 's#.*/kc/##;s#/##' | xargs -P 16 -I{} sh -c \
- 'oc --kubeconfig /root/hv-vm/kc/{}/kubeconfig get ibu upgrade -o json > /tmp/ibu-preserve/{}-ibu.json 2>/dev/null'
+```bash
+export KUBECONFIG=/root/mno/kubeconfig
+./acm-deploy-load/analyze-ocloud-ibu.py <ocp_version> <results_directory>
 ```
 
-3. Finalize the IBU (next section), then analyze the collected data with
-   `analyze-ocloud-imagebasedupgrades.py`.
+3. Finalize the IBU (next section) before running any follow-on IBU on the same SNOs.
 
 ## Finalize the IBU
 
@@ -94,5 +132,5 @@ Verify the fleet finalized (expect all `Idle`):
 
 ```console
 ls /root/hv-vm/kc/ | xargs -I% sh -c \
- "oc --kubeconfig /root/hv-vm/kc/%/kubeconfig get ibu --no-headers" | awk '{print $2, $3}' | sort | uniq -c
+ "oc --kubeconfig /root/hv-vm/kc/%/kubeconfig get ibu --no-headers" | awk '{print $3, $4}' | sort | uniq -c
 ```
