@@ -52,8 +52,8 @@ ocloud_ibu_seed_image_version: "{{ ocloud_clustertemplate_ocp_version }}"
 ocloud_ibu_max_concurrency: 1
 ocloud_ibu_prep_timeout: 15
 ocloud_ibu_upgrade_timeout: 60
-ocloud_ibu_finalize_timeout: 5
-ocloud_ibu_abort_timeout: 5
+ocloud_ibu_finalize_timeout: 15
+ocloud_ibu_abort_timeout: 15
 ocloud_ibu_auto_rollback_timeout: 1800
 
 ########################################################

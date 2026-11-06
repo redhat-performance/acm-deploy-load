@@ -18,7 +18,7 @@ spec:
           #   resourceselector.clcm.openshift.io/server-type: XR8620t
     clusterInstanceDefaults: clusterinstance-defaults-{{ item.type }}-v1
     policyTemplateDefaults: policytemplate-defaults-v1
-{% if item.include_upgrade_defaults | default(false) %}
+{% if item.upgrade_phase is defined %}
     upgradeDefaults:
       imageBasedGroupUpgrade:
         ibuSpec:
@@ -35,22 +35,28 @@ spec:
             rolloutStrategy:
               maxConcurrency: {{ ocloud_ibu_max_concurrency }}
               timeout: {{ ocloud_ibu_prep_timeout }}
+{% if item.upgrade_phase == "full" %}
           - actions: ["AbortOnFailure"]
             rolloutStrategy:
               maxConcurrency: {{ ocloud_ibu_max_concurrency }}
               timeout: {{ ocloud_ibu_abort_timeout }}
+{% endif %}
           - actions: ["Upgrade"]
             rolloutStrategy:
               maxConcurrency: {{ ocloud_ibu_max_concurrency }}
               timeout: {{ ocloud_ibu_upgrade_timeout }}
+{% if item.upgrade_phase == "full" %}
           - actions: ["AbortOnFailure"]
             rolloutStrategy:
               maxConcurrency: {{ ocloud_ibu_max_concurrency }}
               timeout: {{ ocloud_ibu_abort_timeout }}
+{% endif %}
+{% if item.upgrade_phase == "full" %}
           - actions: ["FinalizeUpgrade"]
             rolloutStrategy:
               maxConcurrency: {{ ocloud_ibu_max_concurrency }}
               timeout: {{ ocloud_ibu_finalize_timeout }}
+{% endif %}
 {% endif %}
   templateParameterSchema:
     properties:
@@ -386,7 +392,7 @@ spec:
           storage-lv-devicePaths-1:
             type: string
         type: object
-{% if item.include_upgrade_defaults | default(false) %}
+{% if item.upgrade_phase is defined %}
       upgradeParameters:
         description: Upgrade parameters for IBU (overrides upgradeDefaults)
         properties:
