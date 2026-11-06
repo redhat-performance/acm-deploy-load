@@ -1,0 +1,59 @@
+---
+# O-Cloud cluster definitions for ocloud-manifests.yml
+#
+# Each entry generates one cluster's ProvisioningRequest and inventory (BMH + secrets).
+# Profile controls topology and install type:
+#   std-ran-du:   3 masters + N workers (AI only)
+#   3node-ran-du: 3 schedulable masters (AI only)
+#   sno-ran-du:   1 master/SNO (AI and IBI)
+#
+# Optional 'count: N' repeats a definition N times (default 1).
+# Optional 'labels: {}' adds extra ManagedCluster labels.
+#
+# VMs are carved sequentially from hv_vm inventory group.
+# Apply inventory (ocloud/inventory/*.yaml) before ProvisioningRequests.
+
+ocloud_cluster_definitions:
+- profile: std-ran-du
+  workers: 3
+  labels: {}
+
+# 3-node compact cluster example:
+# ocloud_cluster_definitions:
+# - profile: 3node-ran-du
+#   labels: {}
+
+# SNO cluster examples:
+# ocloud_cluster_definitions:
+# - profile: sno-ran-du
+#   labels: {}
+# - profile: sno-ran-du
+#   count: 5
+#   labels: {}
+
+# Mixed topology example (carved sequentially from hv_vm pool):
+# ocloud_cluster_definitions:
+# - profile: std-ran-du
+#   workers: 3
+# - profile: 3node-ran-du
+# - profile: sno-ran-du
+#   count: 2
+
+# O-Cloud Manager ClusterTemplate profiles (default: sno-ran-du only; add entries for MNO support)
+# Used by ocloud-ztp-templates role (rhacm-ztp-setup.yml also loads vars/ocloud.yml)
+# ocloud_clustertemplate_profiles:
+#   - name: sno-ran-du
+#     cluster_type: SNO
+#     node_groups: [master]
+#     install_types: [ai, ibi]
+#     pg_template: sno-ran-du-pg.yaml.j2
+#   - name: 3node-ran-du
+#     cluster_type: HighlyAvailable
+#     node_groups: [master]
+#     install_types: [ai]
+#     pg_template: 3node-ran-du-pg.yaml.j2
+#   - name: std-ran-du
+#     cluster_type: HighlyAvailable
+#     node_groups: [master, worker]
+#     install_types: [ai]
+#     pg_template: std-ran-du-pg.yaml.j2

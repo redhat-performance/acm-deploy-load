@@ -3,6 +3,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 configMapGenerator:
+{% for prof in ocloud_clustertemplate_profiles %}
+{% if 'ai' in prof.install_types %}
 - files:
   - extra-manifest/marketplace-ns.yaml
   - extra-manifest/98-var-lib-containers-partitioned.yaml
@@ -10,24 +12,28 @@ configMapGenerator:
   - extra-manifest/enable-crun-master.yaml
   - extra-manifest/enable-crun-worker.yaml
 {% endif %}
-  name: {{ ocloud_clustertemplate_name }}-extra-manifest-v1
-  namespace: {{ ocloud_clustertemplate_namespace }}
+  name: {{ prof.name }}-extra-manifest-v1
+  namespace: version-{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}-{{ prof.name }}
+{% endif %}
 - files:
   - ibu-manifest/PlatformBackupRestore.yaml
-  name: {{ ocloud_clustertemplate_name }}-ibu-platform-backup-{{ ocloud_clustertemplate_version }}-1
+  name: {{ prof.name }}-ibu-platform-backup-{{ ocloud_clustertemplate_version }}-1
   namespace: openshift-adp
+{% endfor %}
 generatorOptions:
   disableNameSuffixHash: true
 
 resources:
-- ./{{ ocloud_clustertemplate_name }}/ns.yaml
-- ./{{ ocloud_clustertemplate_name }}/pull-secret.yaml
-- ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ai-v1.yaml
-- ./{{ ocloud_clustertemplate_name }}/clusterinstance-defaults-ibi-v1.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-v1.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-v1.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-v2.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-v2.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ai-v3.yaml
-- ./{{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-{{ ocloud_clustertemplate_version }}-ibi-v3.yaml
-- ./{{ ocloud_clustertemplate_name }}/policytemplates-defaults-v1.yaml
+{% for prof in ocloud_clustertemplate_profiles %}
+- ./{{ prof.name }}/ns.yaml
+- ./{{ prof.name }}/pull-secret.yaml
+{% for it in prof.install_types %}
+- ./{{ prof.name }}/clusterinstance-defaults-{{ it }}-v1.yaml
+{% endfor %}
+{% for it in prof.install_types %}
+- ./{{ prof.name }}/{{ prof.name }}-{{ ocloud_clustertemplate_version }}-{{ it }}-v1.yaml
+- ./{{ prof.name }}/{{ prof.name }}-{{ ocloud_clustertemplate_version }}-{{ it }}-v2.yaml
+- ./{{ prof.name }}/{{ prof.name }}-{{ ocloud_clustertemplate_version }}-{{ it }}-v3.yaml
+{% endfor %}
+- ./{{ prof.name }}/policytemplates-defaults-v1.yaml
+{% endfor %}
