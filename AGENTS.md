@@ -45,6 +45,7 @@ acm-deploy-load/                        # All Python scripts
 ├── analyze-baremetalhosts.py            # BMH lifecycle timing stats (inspect/IBI/AI)
 ├── analyze-clusterinstances.py          # ClusterInstance provisioning timing stats
 ├── analyze-provisioningrequests.py      # ProvisioningRequest end-to-end timing stats (O-Cloud)
+├── analyze-ocloud-ibu.py                # O-Cloud IBU per-stage upgrade timing stats (PR + spoke IBU)
 ├── analyze-clustergroupupgrades.py      # CGU per-cluster policy timing stats
 ├── analyze-imagebasedgroupupgrades.py   # IBGU analysis
 ├── analyze-imagebasedupgrades.py        # IBU analysis
@@ -70,6 +71,7 @@ acm-deploy-load/                        # All Python scripts
     ├── output.py                        # Report card generation (report.txt), CSV/stats formatting
     ├── ztp_monitor.py                   # Background thread sampling cluster install state every N seconds
     ├── time_utils.py                    # Shared timestamp parsing and duration helpers
+    ├── ibu.py                           # Shared IBU spoke fetch and history parsing (fetch_spoke_ibu, parse_ibu_history)
     └── talm.py                          # Detects TALM minor version
 scripts/
 ├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa

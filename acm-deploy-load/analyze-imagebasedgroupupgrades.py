@@ -25,7 +25,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from utils.command import command
+from utils.ibu import fetch_spoke_ibu, parse_ibu_history
 from utils.output import assemble_stats
 from utils.output import log_write
 import sys
@@ -159,51 +159,14 @@ def main():
   if ibu_analysis:
     # Get individual cluster IBU data here
     for cluster in ibus:
-      kubeconfig = "{}/{}/kubeconfig".format(cliargs.kubeconfigs, cluster)
-      if not cliargs.offline_process:
-        oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "ibu", "upgrade", "-o", "json"]
-        rc, output = command(oc_cmd, False, retries=2, no_log=True)
-        if rc != 0:
-          logger.error("analyze-imagebasedgroupupgrade, oc get ibu rc: {}".format(rc))
-          output = ""
-        with open("{}/{}-ibu.json".format(raw_data_dir, cluster), "w") as ibu_data_file:
-          ibu_data_file.write(output)
-
-      if os.stat("{}/{}-ibu.json".format(raw_data_dir, cluster)).st_size == 0:
-        ibu_data = ""
-      else:
-        with open("{}/{}-ibu.json".format(raw_data_dir, cluster), "r") as ibu_data_file:
-          ibu_data = json.load(ibu_data_file)
-
-      # Determine timestamps from conditions in IBU data
-      ibu_prep_started_time = ""
-      ibu_prep_completed_time = ""
-      ibu_upgrade_started_time = ""
-      ibu_upgrade_completed_time = ""
-      ibu_rollback_started_time = ""
-      ibu_rollback_completed_time = ""
-      if "status" in ibu_data:
-        if "history" in ibu_data["status"]:
-          for item in ibu_data["status"]["history"]:
-            if item["stage"] == "Prep":
-              if "startTime" in item:
-                ibu_prep_started_time = datetime.strptime(item["startTime"], "%Y-%m-%dT%H:%M:%SZ")
-              if "completionTime" in item:
-                ibu_prep_completed_time = datetime.strptime(item["completionTime"], "%Y-%m-%dT%H:%M:%SZ")
-            elif item["stage"] == "Upgrade":
-              if "startTime" in item:
-                ibu_upgrade_started_time = datetime.strptime(item["startTime"], "%Y-%m-%dT%H:%M:%SZ")
-              if "completionTime" in item:
-                ibu_upgrade_completed_time = datetime.strptime(item["completionTime"], "%Y-%m-%dT%H:%M:%SZ")
-            elif item["stage"] == "Rollback":
-              if "startTime" in item:
-                ibu_rollback_started_time = datetime.strptime(item["startTime"], "%Y-%m-%dT%H:%M:%SZ")
-              if "completionTime" in item:
-                ibu_rollback_completed_time = datetime.strptime(item["completionTime"], "%Y-%m-%dT%H:%M:%SZ")
-        else:
-          logger.error("History key missing in ibu, check LCA version (Must be 4.17 or newer)")
-          # No longer exit on missing history key
-          # sys.exit(1)
+      ibu_data = fetch_spoke_ibu(cluster, cliargs.kubeconfigs, raw_data_dir, cliargs.offline_process)
+      history = parse_ibu_history(ibu_data)
+      ibu_prep_started_time = history["Prep"]["start"]
+      ibu_prep_completed_time = history["Prep"]["completion"]
+      ibu_upgrade_started_time = history["Upgrade"]["start"]
+      ibu_upgrade_completed_time = history["Upgrade"]["completion"]
+      ibu_rollback_started_time = history["Rollback"]["start"]
+      ibu_rollback_completed_time = history["Rollback"]["completion"]
 
       # Match timestamps from IBU data to the correct cluster
       cluster_found = False
