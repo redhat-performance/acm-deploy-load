@@ -334,6 +334,126 @@ def generate_telco_core_load_report(workload_start_time, end_time, start_delay_c
         total_soak_baseline_time, str(timedelta(seconds=total_soak_baseline_time))))
 
 
+def generate_ocloud_deploy_load_report(
+    start_time, end_time,
+    inspect_start_time, inspect_end_time,
+    install_start_time, install_end_time,
+    upgrade_start_time, upgrade_end_time,
+    soak_start_time,
+    skip_inspection, skip_install, skip_upgrade,
+    total_hosts_committed, total_hosts_inspected, total_hosts_inspect_failed,
+    total_prs_applied, total_prs_installed, total_prs_install_failed,
+    total_prs_patched, total_prs_upgraded, total_prs_upgrade_failed,
+    template_version, monitor_data, cliargs, versions, report_dir):
+
+  total_time = round(end_time - start_time)
+  total_idle_baseline_time = round(inspect_start_time - start_time)
+  total_inspect_time = round(inspect_end_time - inspect_start_time)
+  total_install_time = round(install_end_time - install_start_time)
+  total_upgrade_time = round(upgrade_end_time - upgrade_start_time)
+  total_soak_baseline_time = round(end_time - soak_start_time)
+
+  inspect_success_pct = 0
+  install_success_pct = 0
+  upgrade_success_pct = 0
+  if total_hosts_committed > 0:
+    inspect_success_pct = round((total_hosts_inspected / total_hosts_committed) * 100, 1)
+  if total_prs_applied > 0:
+    install_success_pct = round((total_prs_installed / total_prs_applied) * 100, 1)
+  if total_prs_patched > 0:
+    upgrade_success_pct = round((total_prs_upgraded / total_prs_patched) * 100, 1)
+
+  with open("{}/report.txt".format(report_dir), "w") as report:
+    phase_break(True, report)
+    log_write(report, "ocloud-deploy-load Report Card")
+    phase_break(True, report)
+    log_write(report, "Versions")
+    if versions["acm_version"]:
+      log_write(report, " * ACM: {}".format(versions["acm_version"]))
+    if versions["mce_version"]:
+      log_write(report, " * MCE: {}".format(versions["mce_version"]))
+    if versions["ocloud_manager_version"]:
+      log_write(report, " * O-Cloud Manager: {}".format(versions["ocloud_manager_version"]))
+    if versions["test_version"]:
+      log_write(report, " * Test: {}".format(versions["test_version"]))
+    if versions["hub_version"]:
+      log_write(report, " * Hub OCP: {}".format(versions["hub_version"]))
+    if not skip_inspection:
+      log_write(report, "Inspection Results")
+      log_write(report, " * Hosts committed: {}".format(total_hosts_committed))
+      log_write(report, " * Hosts inspected (available): {}".format(total_hosts_inspected))
+      log_write(report, " * Hosts inspect failed: {}".format(total_hosts_inspect_failed))
+      log_write(report, " * Inspect success percent: {}%".format(inspect_success_pct))
+    if not skip_install:
+      log_write(report, "Install Results")
+      log_write(report, " * PRs applied: {}".format(total_prs_applied))
+      log_write(report, " * PRs installed (ConfigurationApplied): {}".format(total_prs_installed))
+      log_write(report, " * PRs install failed: {}".format(total_prs_install_failed))
+      log_write(report, " * Install success percent: {}%".format(install_success_pct))
+    if not skip_upgrade:
+      log_write(report, "Upgrade Results")
+      log_write(report, " * PRs patched for upgrade: {}".format(total_prs_patched))
+      log_write(report, " * PRs upgraded (UpgradeCompleted): {}".format(total_prs_upgraded))
+      log_write(report, " * PRs upgrade failed: {}".format(total_prs_upgrade_failed))
+      log_write(report, " * Upgrade success percent: {}%".format(upgrade_success_pct))
+      log_write(report, " * Upgrade templateVersion: {}".format(template_version))
+    log_write(report, "Workload Parameters")
+    log_write(report, " * Method: {}".format(cliargs.method))
+    log_write(report, " * Kubeconfig: {}".format(cliargs.kubeconfig))
+    log_write(report, " * PR manifests: {}".format(cliargs.provisioningrequest_manifests))
+    log_write(report, " * ArgoCD directory: {}".format(cliargs.argocd_directory))
+    log_write(report, " * Resource pool: {}".format(cliargs.resourcepool_name))
+    log_write(report, " * Phase 1 / Idle Baseline (Start delay): {}s :: {}".format(
+        cliargs.start_delay, str(timedelta(seconds=cliargs.start_delay))))
+    if not skip_inspection:
+      log_write(report, " * Phase 2 (Inspection): batch={}, interval={}s, timeout={}s".format(
+          cliargs.inspect_batch, cliargs.inspect_interval, cliargs.inspect_timeout))
+    if not skip_install:
+      log_write(report, " * Phase 3 (Install): batch={}, interval={}s, timeout={}s".format(
+          cliargs.install_batch, cliargs.install_interval, cliargs.install_timeout))
+    if not skip_upgrade:
+      log_write(report, " * Phase 4 (Upgrade): batch={}, interval={}s, timeout={}s".format(
+          cliargs.upgrade_batch, cliargs.upgrade_interval, cliargs.upgrade_timeout))
+      log_write(report, "  * OCP version: {}".format(cliargs.upgrade_ocp_version))
+      log_write(report, "  * Revision: {}".format(cliargs.upgrade_revision))
+      log_write(report, "  * ClusterTemplate: {}".format(cliargs.clustertemplate_name))
+      log_write(report, "  * templateVersion: {}".format(template_version))
+    log_write(report, " * Phase 5 / Soak Baseline (End delay): {}s :: {}".format(
+        cliargs.end_delay, str(timedelta(seconds=cliargs.end_delay))))
+    log_write(report, " * Monitor interval: {}s".format(cliargs.monitor_interval))
+    log_write(report, "Workload Phases")
+    log_write(report, " * Start Time: {} {}".format(
+        datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        int(start_time * 1000)))
+    log_write(report, " * End Time: {} {}".format(
+        datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        int(end_time * 1000)))
+    log_write(report, " * Total duration: {}s :: {}".format(total_time, str(timedelta(seconds=total_time))))
+    log_write(report, " * Phase 1 (Idle Baseline): {} to {} :: {}s :: {}".format(
+        datetime.fromtimestamp(start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        datetime.fromtimestamp(inspect_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        total_idle_baseline_time, str(timedelta(seconds=total_idle_baseline_time))))
+    if not skip_inspection:
+      log_write(report, " * Phase 2 (Inspection): {} to {} :: {}s :: {}".format(
+          datetime.fromtimestamp(inspect_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          datetime.fromtimestamp(inspect_end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          total_inspect_time, str(timedelta(seconds=total_inspect_time))))
+    if not skip_install:
+      log_write(report, " * Phase 3 (Install): {} to {} :: {}s :: {}".format(
+          datetime.fromtimestamp(install_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          datetime.fromtimestamp(install_end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          total_install_time, str(timedelta(seconds=total_install_time))))
+    if not skip_upgrade:
+      log_write(report, " * Phase 4 (Upgrade): {} to {} :: {}s :: {}".format(
+          datetime.fromtimestamp(upgrade_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          datetime.fromtimestamp(upgrade_end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+          total_upgrade_time, str(timedelta(seconds=total_upgrade_time))))
+    log_write(report, " * Phase 5 (Soak Baseline): {} to {} :: {}s :: {}".format(
+        datetime.fromtimestamp(soak_start_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        datetime.fromtimestamp(end_time, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        total_soak_baseline_time, str(timedelta(seconds=total_soak_baseline_time))))
+
+
 def log_write(file, message):
   logger.info(message)
   file.write(message + "\n")

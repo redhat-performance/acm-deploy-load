@@ -20,6 +20,7 @@ Dependencies: Python 3, `oc` CLI with hub cluster access, Chrome (for static plo
 | `acm-deploy-load/acm-deploy-load.py` | Deploy SNO/Compact/MNO clusters via AI or IBI (7 methods) | `scripts/interval-ztp-install-all.sh` |
 | `acm-deploy-load/acm-telco-core-load.py` | Deploy Telco Core MNO clusters via GitOps + policy churn | `scripts/acm-telco-core-load.sh` |
 | `acm-deploy-load/acm-mc-load.py` | Policy churn workload against existing managed clusters | `scripts/mc-load-24hr.sh` |
+| `acm-deploy-load/ocloud-deploy-load.py` | O-Cloud BMH inspection → SNO install → IBU upgrade via ProvisioningRequests | `scripts/ocloud-ztp-inspect-install-upgrade-all.sh` |
 
 Deployment methods: `ai-manifest`, `ai-clusterinstance`, `ai-clusterinstance-gitops`, `ai-siteconfig-gitops`, `ibi-manifest`, `ibi-clusterinstance`, `ibi-clusterinstance-gitops`
 
@@ -63,24 +64,29 @@ acm-deploy-load/                        # All Python scripts
 ├── etcd-defrag.py                       # etcd defragmentation utility
 ├── acm-health.py                        # ACM hub health check
 ├── ocp-health.py                        # OCP cluster health check
+├── ocloud-deploy-load.py                # O-Cloud BMH inspection → PR install → IBU upgrade orchestrator
 └── utils/
     ├── __init__.py                      # Marks the utilities package
     ├── analysis.py                      # launch_prometheus_analysis() helper
     ├── command.py                       # subprocess wrapper around `oc` with retry and dry-run
     ├── common_ocp.py                    # OCP utilities: namespace lists, Prometheus token, Thanos routing
+    ├── gitops.py                        # Shared git_commit_push() helper
     ├── output.py                        # Report card generation (report.txt), CSV/stats formatting
     ├── ztp_monitor.py                   # Background thread sampling cluster install state every N seconds
+    ├── ocloud_monitor.py                # Background thread sampling BMH/PR/CI/ICI state for O-Cloud
     ├── time_utils.py                    # Shared timestamp parsing and duration helpers
     ├── ibu.py                           # Shared IBU spoke fetch and history parsing (fetch_spoke_ibu, parse_ibu_history)
     └── talm.py                          # Detects TALM minor version
 scripts/
 ├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa
 ├── acm-telco-core-load.sh               # Orchestrates acm-telco-core-load.py + acm-telco-load-hub analysis
+├── ocloud-ztp-inspect-install-upgrade-all.sh  # Orchestrates ocloud-deploy-load.py + post-test analysis + ocloud-pa
 ├── dry-run-ztp-install.sh               # Dry-run orchestration variant
 ├── mc-load-24hr.sh                      # 24-hour managed cluster load test
 ├── post-acm-load-data-collection.sh     # Post-test data collection (pods, events, CRs)
 ├── post-ztp-install-data-collection.sh  # Post-ZTP install data collection
 ├── post-ztp-upgrade-data-collection.sh  # Post-ZTP upgrade data collection
+├── post-ocloud-ztp-all-data-collection.sh  # Post-ocloud-deploy-load data collection
 └── post-ztp-gen-day1-csv.sh             # Generate day-1 per-cluster CSV
 ansible/
 ├── roles/                               # 48 roles (ACM, MCE, IBI, IBU, AAP, ZTP, telco-core, O-Cloud Manager, ACS, etc.)
@@ -96,6 +102,8 @@ results/                                 # Timestamped test output directories (
 
 - **Deployment methods**: `ai-*` = Assisted Installer, `ibi-*` = Image-Based Installer; `-manifest` = direct apply, `-clusterinstance` = ClusterInstance API, `-gitops` = ArgoCD/ZTP GitOps
 - **ZTPMonitor**: Background thread in `utils/ztp_monitor.py` that continuously samples `AgentClusterInstall` and `ImageClusterInstall` resources, tracking state transitions and recording timestamps for analysis
+- **OCloudMonitor**: Background thread in `utils/ocloud_monitor.py` that samples `BareMetalHost`, `ProvisioningRequest`, `ClusterInstance`, and `ImageClusterInstall`/`AgentClusterInstall` resources; provides the control signal for all three `ocloud-deploy-load.py` phase-break decisions
+- **git_commit_push**: Shared helper in `utils/gitops.py` for `git add`/`git commit`/`git push` sequences; extracted from both `acm-deploy-load.py` and `acm-telco-core-load.py`
 - **Thanos routing**: `common_ocp.py` dynamically determines whether to query Prometheus directly or route through the Thanos querier based on cluster configuration
 - **Stats output**: Analysis scripts produce `.stats` files with percentile breakdowns (50p, 95p, 99p) alongside raw `.csv` files
 - **Dry-run support**: `command.py` supports a dry-run mode that logs `oc` commands without executing them
@@ -115,7 +123,7 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/analyze-prometheus.py` | `-p` prefix flag, `y_unit` conversions, component namespace detection, stats file layout (`{component}/stats/{metric}.stats`), pandas describe output format |
 | `acm-deploy-load/acm-deploy-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-cluster-deployment`, `phase3-soak-baseline`), result directory naming |
 | `acm-deploy-load/acm-telco-core-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-batch-{N}`, `phase3-soak-baseline`), result directory naming, batch phase structure |
-| `acm-deploy-load/utils/output.py` | `report.txt` format and report card title (`acm-deploy-load Report Card`, `acm-telco-core-load Report Card`) |
+| `acm-deploy-load/utils/output.py` | `report.txt` format and report card title (`acm-deploy-load Report Card`, `acm-telco-core-load Report Card`, `ocloud-deploy-load Report Card`) |
 | `acm-deploy-load/analyze-acm-deploy-time.py` | `deploy-time-*` file format (durations, peak concurrency) |
 | `acm-deploy-load/analyze-imageclusterinstalls.py` | ICI `.stats` file format (fleet summary header + plaintext percentiles) |
 | `acm-deploy-load/analyze-agentclusterinstalls.py` | ACI `.stats` file format (fleet summary header + plaintext percentiles) |
@@ -127,6 +135,8 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/graph-acm-compare.py` | `GRAPH_DEFS` and `DEPLOY_DEFS` graph definitions, comparison graph naming (`comparison-{metric}.png`), cluster deploy graph types |
 | `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |
 | `scripts/acm-telco-core-load.sh` | Full-test Prometheus analysis prefix (`acm-telco-load-hub`) |
+| `acm-deploy-load/ocloud-deploy-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-inspection`, `phase3-install`, `phase4-upgrade`, `phase5-soak-baseline`), result directory naming (`{ts}-ocloud-{method}-{suffix}`) |
+| `scripts/ocloud-ztp-inspect-install-upgrade-all.sh` | Full-test Prometheus analysis prefix (`ocloud-pa`) |
 
 **Skills that depend on the above:**
 - `.claude/skills/acm-load-analysis/` — result directory layout, metrics/units, comparison methodology
