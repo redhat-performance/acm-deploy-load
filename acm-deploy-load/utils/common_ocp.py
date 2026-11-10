@@ -121,6 +121,21 @@ def get_base_ocp_namespaces(ocp_version):
     return ocp_4_20_base_namespaces
 
 
+def get_ocloud_manager_version(kubeconfig, dry_run=False):
+  logger.info("Getting O-Cloud Manager version")
+  if dry_run:
+    return "ocloud-manager (dry-run)"
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "csv", "-n", "oran-o2ims",
+      "-o", "jsonpath={.items[0].spec.version}"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0 or not output.strip():
+    logger.warning("O-Cloud Manager CSV not found in oran-o2ims (rc: {})".format(rc))
+    return ""
+  version = output.strip()
+  logger.info("O-Cloud Manager version: {}".format(version))
+  return version
+
+
 def get_mce_version(kubeconfig, dry_run=False):
   logger.info("Getting MultiClusterEngine version")
   if dry_run:

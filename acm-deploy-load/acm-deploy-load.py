@@ -24,6 +24,7 @@ from jinja2 import Template
 from utils.analysis import launch_prometheus_analysis
 from utils.common_ocp import detect_aap_instance, get_aap_version, get_mce_version, get_mch_version, get_ocp_version, validate_kubeconfig
 from utils.command import command
+from utils.gitops import git_commit_push
 from utils.output import generate_deploy_load_report
 from utils.output import phase_break
 from utils.ztp_monitor import ZTPMonitor
@@ -196,18 +197,9 @@ def deploy_ztp_clusters(clusters, manifest_type, ztp_deploy_apps, start_index, e
       file1.writelines(kustomization_rendered)
   git_files.append("{}/kustomization.yaml".format(ztp_deploy_apps[ztp_app_index]["location"]))
 
-  # Git Process:
-  for file in git_files:
-    logger.debug("git add {}".format(file))
-    git_add = ["git", "add", file]
-    rc, output = command(git_add, dry_run, retries=3, cmd_directory=argocd_dir)
-    if rc != 0:
-      logger.error("acm-deploy-load, git add rc: {}, Output: {}".format(rc, output))
-      sys.exit(1)
-  logger.info("Added {} files in git".format(len(git_files)))
-  git_commit = ["git", "commit", "-m", "Deploying Clusters {} to {}".format(start_index, end_index)]
-  rc, output = command(git_commit, dry_run, cmd_directory=argocd_dir)
-  rc, output = command(["git", "push"], dry_run, cmd_directory=argocd_dir)
+  git_commit_push(git_files,
+      "Deploying Clusters {} to {}".format(start_index, end_index),
+      argocd_dir, dry_run)
 
 
 def log_monitor_data(data, elapsed_seconds, cliargs):

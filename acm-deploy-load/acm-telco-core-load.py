@@ -26,6 +26,7 @@ from jinja2 import Template
 from utils.analysis import launch_prometheus_analysis
 from utils.command import command
 from utils.common_ocp import get_mce_version, get_mch_version, get_ocp_version, validate_kubeconfig
+from utils.gitops import git_commit_push
 from utils.output import generate_telco_core_load_report
 from utils.output import log_write
 from utils.output import phase_break
@@ -79,21 +80,9 @@ def deploy_clusters(full_cluster_list, commit_message, gitops_dir):
       clusters=base_names)
   with open("{}/kustomization.yaml".format(gitops_dir), "w") as file1:
     file1.writelines(kustomization_rendered)
-  # Git Process:
-  git_add = ["git", "add", "{}/kustomization.yaml".format(gitops_dir)]
-  rc, output = command(git_add, False, retries=3, cmd_directory=gitops_dir)
-  if rc != 0:
-    logger.error("acm-telco-core-load, git add rc: {}, Output: {}".format(rc, output))
-    sys.exit(1)
-  for cluster in full_cluster_list:
-    git_add = ["git", "add", "{}/{}".format(gitops_dir, os.path.basename(cluster))]
-    rc, output = command(git_add, False, retries=3, cmd_directory=gitops_dir)
-    if rc != 0:
-      logger.error("acm-telco-core-load, git add rc: {}, Output: {}".format(rc, output))
-      sys.exit(1)
-  git_commit = ["git", "commit", "-m", commit_message]
-  rc, output = command(git_commit, False, cmd_directory=gitops_dir)
-  rc, output = command(["git", "push"], False, cmd_directory=gitops_dir)
+  all_files = ["{}/kustomization.yaml".format(gitops_dir)] + \
+      ["{}/{}".format(gitops_dir, os.path.basename(c)) for c in full_cluster_list]
+  git_commit_push(all_files, commit_message, gitops_dir, False)
 
 
 def update_policy_cm(policy_ns, cm_name, policy_keys, policy_dir, hub_kc):
