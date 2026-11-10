@@ -95,6 +95,13 @@ echo "##########################################################################
 
 time ./scripts/post-ocloud-ztp-all-data-collection.sh 2>&1 | tee -a ${log_file}
 
+echo "$(date -u) :: Running graph-ocloud-deploy.py" 2>&1 | tee -a ${log_file}
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
+time ./acm-deploy-load/graph-ocloud-deploy.py ${results_dir} 2>&1 | tee -a ${log_file}
+
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
 echo "$(date -u) :: Running Post Run Analysis" 2>&1 | tee -a ${log_file}
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 

@@ -44,12 +44,15 @@ logging.Formatter.converter = time.gmtime
 
 def log_monitor_data(monitor_data, elapsed_seconds):
   logger.info("Elapsed total time: {}s :: {}".format(elapsed_seconds, str(timedelta(seconds=elapsed_seconds))))
+  logger.info("BMH Committed (GitOps applied): {}".format(monitor_data["bmh_committed"]))
   logger.info("BMH Inspecting: {}".format(monitor_data["bmh_inspecting"]))
   logger.info("BMH Available (Inspect Complete): {}".format(monitor_data["bmh_inspect_complete"]))
   logger.info("BMH Inspect Failed: {}".format(monitor_data["bmh_inspect_failed"]))
   logger.info("BMH Provisioning: {}".format(monitor_data["bmh_provisioning"]))
   logger.info("BMH Provisioned: {}".format(monitor_data["bmh_provisioned"]))
   logger.info("BMH Error: {}".format(monitor_data["bmh_error"]))
+  logger.info("PR Applied: {}".format(monitor_data["pr_applied"]))
+  logger.info("PR Patched (for upgrade): {}".format(monitor_data["pr_patched"]))
   logger.info("PR Pending: {}".format(monitor_data["pr_pending"]))
   logger.info("PR Progressing: {}".format(monitor_data["pr_progressing"]))
   logger.info("PR Fulfilled: {}".format(monitor_data["pr_fulfilled"]))
@@ -57,6 +60,7 @@ def log_monitor_data(monitor_data, elapsed_seconds):
   logger.info("PR Installed (ConfigurationApplied): {}".format(monitor_data["pr_installed"]))
   logger.info("PR Upgraded (UpgradeCompleted): {}".format(monitor_data["pr_upgraded"]))
   logger.info("PR Upgrade Failed: {}".format(monitor_data["pr_upgrade_failed"]))
+  logger.info("Managed Clusters: {}".format(monitor_data["managed"]))
   logger.info("CI Not Started: {}".format(monitor_data["ci_notstarted"]))
   logger.info("CI Progressing: {}".format(monitor_data["ci_progressing"]))
   logger.info("CI Failed: {}".format(monitor_data["ci_failed"]))
@@ -319,11 +323,14 @@ def main():
 
   # Initialize monitor data and start monitor thread
   monitor_data = {
+    "bmh_committed": 0,
     "bmh_inspecting": 0, "bmh_available": 0, "bmh_provisioning": 0,
     "bmh_provisioned": 0, "bmh_error": 0,
     "bmh_inspect_complete": 0, "bmh_inspect_failed": 0,
+    "pr_applied": 0, "pr_patched": 0,
     "pr_pending": 0, "pr_progressing": 0, "pr_fulfilled": 0, "pr_failed": 0,
     "pr_installed": 0, "pr_upgraded": 0, "pr_upgrade_failed": 0,
+    "managed": 0,
     "ci_notstarted": 0, "ci_progressing": 0, "ci_failed": 0, "ci_completed": 0,
     "ici_aci_installing": 0, "ici_aci_failed": 0, "ici_aci_completed": 0,
   }
@@ -412,6 +419,7 @@ def main():
         sys.exit(1)
 
       committed_hosts.update(batch_host_set)
+      monitor_data["bmh_committed"] = len(committed_hosts)
       total_hosts_committed += len(batch_files)
       logger.info("Total hosts committed for inspection: {}".format(total_hosts_committed))
 
@@ -446,7 +454,6 @@ def main():
   #############################################################################
   # Phase 3: ProvisioningRequest Install
   #############################################################################
-  total_prs_applied = 0
   total_prs_installed = 0
   total_prs_install_failed = 0
   installed_pr_uuids = []
@@ -484,19 +491,19 @@ def main():
         if rc != 0:
           logger.error("oc apply failed for {}: rc={}, output={}".format(pr_file, rc, output))
         else:
-          total_prs_applied += 1
+          monitor_data["pr_applied"] += 1
 
       if pr_idx < len(all_pr_files) and cliargs.install_interval > 0:
         logger.info("Sleeping {}s before next install batch".format(cliargs.install_interval))
         time.sleep(cliargs.install_interval)
         log_monitor_data(monitor_data, round(time.time() - start_time))
 
-    if total_prs_applied > 0:
-      logger.info("Waiting for {} PRs to complete install...".format(total_prs_applied))
+    if monitor_data["pr_applied"] > 0:
+      logger.info("Waiting for {} PRs to complete install...".format(monitor_data["pr_applied"]))
       wait_install_start = time.time()
       wait_for_phase(monitor_data, "install",
                      ("pr_fulfilled", "pr_failed"),
-                     total_prs_applied, wait_install_start, cliargs.install_timeout, start_time)
+                     monitor_data["pr_applied"], wait_install_start, cliargs.install_timeout, start_time)
 
     total_prs_installed = monitor_data["pr_installed"]
     total_prs_install_failed = monitor_data["pr_failed"]
@@ -530,7 +537,6 @@ def main():
   #############################################################################
   # Phase 4: IBU Upgrade
   #############################################################################
-  total_prs_patched = 0
   total_prs_upgraded = 0
   total_prs_upgrade_failed = 0
   upgrade_start_time = install_end_time
@@ -593,19 +599,19 @@ def main():
         if rc != 0:
           logger.error("oc patch failed for PR {}: rc={}, output={}".format(pr_uuid, rc, output))
         else:
-          total_prs_patched += 1
+          monitor_data["pr_patched"] += 1
 
       if uuid_idx < len(installed_pr_uuids) and cliargs.upgrade_interval > 0:
         logger.info("Sleeping {}s before next upgrade batch".format(cliargs.upgrade_interval))
         time.sleep(cliargs.upgrade_interval)
         log_monitor_data(monitor_data, round(time.time() - start_time))
 
-    if total_prs_patched > 0:
-      logger.info("Waiting for {} PRs to complete upgrade...".format(total_prs_patched))
+    if monitor_data["pr_patched"] > 0:
+      logger.info("Waiting for {} PRs to complete upgrade...".format(monitor_data["pr_patched"]))
       wait_upgrade_start = time.time()
       wait_for_phase(monitor_data, "upgrade",
                      ("pr_upgraded", "pr_upgrade_failed"),
-                     total_prs_patched, wait_upgrade_start, cliargs.upgrade_timeout, start_time)
+                     monitor_data["pr_patched"], wait_upgrade_start, cliargs.upgrade_timeout, start_time)
 
     upgrade_end_time = time.time()
 
@@ -647,6 +653,27 @@ def main():
   logger.info("Upgrade result: upgraded={}, upgrade_failed={}".format(
       total_prs_upgraded, total_prs_upgrade_failed))
 
+  def _ts(t):
+    return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+  phases_list = [{"num": "1", "label": "Idle Baseline",
+                  "start": _ts(start_time), "end": _ts(inspect_start_time)}]
+  if not cliargs.skip_inspection:
+    phases_list.append({"num": "2", "label": "Inspection",
+                        "start": _ts(inspect_start_time), "end": _ts(inspect_end_time)})
+  if not cliargs.skip_install:
+    phases_list.append({"num": "3", "label": "Install",
+                        "start": _ts(install_start_time), "end": _ts(install_end_time)})
+  if not cliargs.skip_upgrade:
+    phases_list.append({"num": "4", "label": "Upgrade",
+                        "start": _ts(upgrade_start_time), "end": _ts(upgrade_end_time)})
+  phases_list.append({"num": "5", "label": "Soak Baseline",
+                      "start": _ts(soak_start_time), "end": _ts(end_time)})
+
+  with open(os.path.join(report_dir, "phases.json"), "w") as pf:
+    json.dump({"phases": phases_list}, pf, indent=2)
+  logger.info("Phases written to {}/phases.json".format(report_dir))
+
   generate_ocloud_deploy_load_report(
       start_time, end_time,
       inspect_start_time, inspect_end_time,
@@ -655,8 +682,8 @@ def main():
       soak_start_time,
       cliargs.skip_inspection, cliargs.skip_install, cliargs.skip_upgrade,
       total_hosts_committed, total_hosts_inspected, total_hosts_inspect_failed,
-      total_prs_applied, total_prs_installed, total_prs_install_failed,
-      total_prs_patched, total_prs_upgraded, total_prs_upgrade_failed,
+      monitor_data["pr_applied"], total_prs_installed, total_prs_install_failed,
+      monitor_data["pr_patched"], total_prs_upgraded, total_prs_upgrade_failed,
       template_version, monitor_data, cliargs, versions, report_dir)
 
 if __name__ == "__main__":
