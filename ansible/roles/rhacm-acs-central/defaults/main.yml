@@ -1,0 +1,5 @@
+---
+rhacm_acs_central_namespace: rhacs-operator
+rhacm_acs_central_cr_name: stackrox-central-services
+rhacm_acs_central_storage_class_name: localstorage-sc
+rhacm_acs_central_scanner_v4_db_size: 15Gi
