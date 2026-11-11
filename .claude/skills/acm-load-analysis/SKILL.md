@@ -344,7 +344,7 @@ etcd members for DB size), and styling.
 | `fsync-etcd` | etcd WAL Fsync Duration | Max across members | ms (CSV seconds × 1000) | 10ms |
 | `peer-rtt-etcd` | etcd Peer Round-Trip Time | Max across members | ms (CSV seconds × 1000) | 50ms |
 
-**Cluster deploy graphs (4, from monitor_data.csv):**
+**Cluster deploy graphs (4, from monitor_data.csv — acm-deploy-load/acm-telco-core-load only):**
 
 | File Suffix | Title | Data Source | Y Unit |
 |---|---|---|---|
@@ -352,6 +352,17 @@ etcd members for DB size), and styling.
 | `deploy-managed` | Cluster Deploy — Managed | `cluster_applied` + `managed` | # Clusters |
 | `deploy-compliant` | Cluster Deploy — Compliant | `cluster_applied` + `policy_compliant` | # Clusters |
 | `deploy-all` | Cluster Deploy — All Milestones | `cluster_applied` + all 3 milestones | # Clusters |
+
+**O-Cloud deploy graphs (6, from monitor_data.csv — ocloud-deploy-load only, via graph-ocloud-deploy.py):**
+
+| Filename Pattern | Story | Series |
+|---|---|---|
+| `ocloud-bmh-inspection-{ts}.png` | GitOps apply → inspect → available | `bmh_committed`, `bmh_inspecting`, `bmh_inspect_complete`, `bmh_available`, `bmh_inspect_failed` |
+| `ocloud-bmh-provisioning-{ts}.png` | BMH during install | `bmh_available`, `bmh_provisioning`, `bmh_provisioned`, `bmh_error` |
+| `ocloud-pr-install-{ts}.png` | PR lifecycle (high level) | `pr_pending`, `pr_progressing`, `managed`, `pr_installed`, `pr_fulfilled`, `pr_failed` |
+| `ocloud-install-depth-{ts}.png` | CI + ICI/ACI install internals | `ci_progressing`, `ci_completed`, `ci_failed`, `ici_aci_installing`, `ici_aci_completed`, `ici_aci_failed` |
+| `ocloud-pr-upgrade-{ts}.png` | PR IBU upgrade progression | `pr_progressing`, `pr_upgraded`, `pr_upgrade_failed`, `pr_fulfilled` |
+| `ocloud-share-{ts}.png` | End-to-end milestones overlay | `bmh_inspect_complete`, `managed`, `pr_installed`, `pr_fulfilled`, `pr_upgraded` |
 
 Each individual deploy graph shows `cluster_applied` alongside one milestone
 metric. The combined `deploy-all` graph overlays all milestones with a right-side

@@ -389,6 +389,7 @@ def generate_ocloud_deploy_load_report(
       log_write(report, " * PRs applied: {}".format(total_prs_applied))
       log_write(report, " * PRs installed (ConfigurationApplied): {}".format(total_prs_installed))
       log_write(report, " * PRs install failed: {}".format(total_prs_install_failed))
+      log_write(report, " * Managed clusters: {}".format(monitor_data["managed"]))
       log_write(report, " * Install success percent: {}%".format(install_success_pct))
     if not skip_upgrade:
       log_write(report, "Upgrade Results")

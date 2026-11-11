@@ -56,6 +56,7 @@ acm-deploy-load/                        # All Python scripts
 ├── analyze-single-cluster-time.py       # Single cluster timing breakdown
 ├── graph-acm-deploy.py                  # Deployment visualization (plotly → PNG)
 ├── graph-acm-compare.py                 # Comparison overlay graphs (plotly → PNG)
+├── graph-ocloud-deploy.py               # O-Cloud monitor_data.csv visualization (plotly → PNG)
 ├── graph-clusterversion.py              # ClusterVersion visualization
 ├── graph-upgrade.py                     # Upgrade visualization
 ├── report-per-cluster.py                # Per-cluster combined report/graph
@@ -102,7 +103,7 @@ results/                                 # Timestamped test output directories (
 
 - **Deployment methods**: `ai-*` = Assisted Installer, `ibi-*` = Image-Based Installer; `-manifest` = direct apply, `-clusterinstance` = ClusterInstance API, `-gitops` = ArgoCD/ZTP GitOps
 - **ZTPMonitor**: Background thread in `utils/ztp_monitor.py` that continuously samples `AgentClusterInstall` and `ImageClusterInstall` resources, tracking state transitions and recording timestamps for analysis
-- **OCloudMonitor**: Background thread in `utils/ocloud_monitor.py` that samples `BareMetalHost`, `ProvisioningRequest`, `ClusterInstance`, and `ImageClusterInstall`/`AgentClusterInstall` resources; provides the control signal for all three `ocloud-deploy-load.py` phase-break decisions
+- **OCloudMonitor**: Background thread in `utils/ocloud_monitor.py` that samples `BareMetalHost`, `ProvisioningRequest`, `ClusterInstance`, `ImageClusterInstall`/`AgentClusterInstall`, and `ManagedCluster` resources; provides the control signal for all three `ocloud-deploy-load.py` phase-break decisions; writes 26-column `monitor_data.csv` (date + bmh_committed, bmh inspection/provisioning states, pr_applied/pr_patched [set by main thread], PR states, managed, CI states, ICI/ACI states)
 - **git_commit_push**: Shared helper in `utils/gitops.py` for `git add`/`git commit`/`git push` sequences; extracted from both `acm-deploy-load.py` and `acm-telco-core-load.py`
 - **Thanos routing**: `common_ocp.py` dynamically determines whether to query Prometheus directly or route through the Thanos querier based on cluster configuration
 - **Stats output**: Analysis scripts produce `.stats` files with percentile breakdowns (50p, 95p, 99p) alongside raw `.csv` files
@@ -110,7 +111,7 @@ results/                                 # Timestamped test output directories (
 
 ## OCP Resources Monitored
 
-`AgentClusterInstall`, `ImageClusterInstall`, `ClusterInstance`, `ProvisioningRequest`, `ClusterGroupUpgrade`, `ImageClusterGroupUpgrade`, `ClusterVersion`, `Policy`/`PolicyTemplate`, `AnsibleJob`, `MultiClusterHub`, `MultiClusterEngine`, `MultiClusterObservability`
+`AgentClusterInstall`, `ImageClusterInstall`, `ClusterInstance`, `ProvisioningRequest`, `ClusterGroupUpgrade`, `ImageClusterGroupUpgrade`, `ClusterVersion`, `Policy`/`PolicyTemplate`, `AnsibleJob`, `ManagedCluster`, `MultiClusterHub`, `MultiClusterEngine`, `MultiClusterObservability`
 
 ## Skill Maintenance
 
@@ -135,7 +136,9 @@ whether the corresponding skill references need updating.
 | `acm-deploy-load/graph-acm-compare.py` | `GRAPH_DEFS` and `DEPLOY_DEFS` graph definitions, comparison graph naming (`comparison-{metric}.png`), cluster deploy graph types |
 | `scripts/interval-ztp-install-all.sh` | Full-test Prometheus analysis prefix (`deploy-pa`) |
 | `scripts/acm-telco-core-load.sh` | Full-test Prometheus analysis prefix (`acm-telco-load-hub`) |
-| `acm-deploy-load/ocloud-deploy-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-inspection`, `phase3-install`, `phase4-upgrade`, `phase5-soak-baseline`), result directory naming (`{ts}-ocloud-{method}-{suffix}`) |
+| `acm-deploy-load/ocloud-deploy-load.py` | Phase directory naming (`phase1-idle-baseline`, `phase2-inspection`, `phase3-install`, `phase4-upgrade`, `phase5-soak-baseline`), result directory naming (`{ts}-ocloud-{method}-{suffix}`), `phases.json` layout (list of `{num, label, start, end}` for each phase that ran) |
+| `acm-deploy-load/utils/ocloud_monitor.py` | `monitor_data.csv` column set and order (26 cols: date, bmh_committed, bmh inspection/provisioning, pr_applied, pr_patched, PR states, managed, CI states, ICI/ACI states) |
+| `acm-deploy-load/graph-ocloud-deploy.py` | Graph filenames (`ocloud-bmh-inspection-{ts}.png`, `ocloud-bmh-provisioning-{ts}.png`, `ocloud-pr-install-{ts}.png`, `ocloud-install-depth-{ts}.png`, `ocloud-pr-upgrade-{ts}.png`, `ocloud-share-{ts}.png`) |
 | `scripts/ocloud-ztp-inspect-install-upgrade-all.sh` | Full-test Prometheus analysis prefix (`ocloud-pa`) |
 
 **Skills that depend on the above:**

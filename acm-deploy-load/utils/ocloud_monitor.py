@@ -59,16 +59,19 @@ class OCloudMonitor(Thread):
     with open(self.csv_file, "w") as csv_file:
       csv_file.write(
           "date,"
-          "bmh_inspecting,bmh_available,bmh_provisioning,bmh_provisioned,bmh_error,"
-          "bmh_inspect_complete,bmh_inspect_failed,"
-          "pr_pending,pr_progressing,pr_fulfilled,pr_failed,"
+          "bmh_committed,"
+          "bmh_inspecting,bmh_inspect_complete,bmh_inspect_failed,"
+          "bmh_available,bmh_provisioning,bmh_provisioned,bmh_error,"
+          "pr_applied,pr_patched,pr_pending,pr_progressing,pr_fulfilled,pr_failed,"
           "pr_installed,pr_upgraded,pr_upgrade_failed,"
+          "managed,"
           "ci_notstarted,ci_progressing,ci_failed,ci_completed,"
           "ici_aci_installing,ici_aci_failed,ici_aci_completed\n")
 
     while self.signal:
       start_sample_time = time.time()
 
+      bmh_committed = len(self.committed_hosts)
       bmh_inspecting = 0
       bmh_available = 0
       bmh_provisioning = 0
@@ -83,6 +86,7 @@ class OCloudMonitor(Thread):
       pr_installed = 0
       pr_upgraded = 0
       pr_upgrade_failed = 0
+      managed = 0
       ci_notstarted = 0
       ci_progressing = 0
       ci_failed = 0
@@ -191,7 +195,20 @@ class OCloudMonitor(Thread):
                 ici_aci_completed += 1
               break
 
+      # 5. ManagedCluster — count available clusters (excluding local-cluster)
+      mc_data = self._get_json(["get", "managedcluster", "-A", "-o", "json"], "mc")
+      for item in mc_data["items"]:
+        if item.get("metadata", {}).get("name", "") == "local-cluster":
+          logger.debug("mc: Skipping local-cluster")
+          continue
+        for condition in item.get("status", {}).get("conditions", []):
+          if condition.get("type") == "ManagedClusterConditionAvailable":
+            if condition.get("status") == "True":
+              managed += 1
+            break
+
       # Update shared monitor_data
+      self.monitor_data["bmh_committed"] = bmh_committed
       self.monitor_data["bmh_inspecting"] = bmh_inspecting
       self.monitor_data["bmh_available"] = bmh_available
       self.monitor_data["bmh_provisioning"] = bmh_provisioning
@@ -206,6 +223,7 @@ class OCloudMonitor(Thread):
       self.monitor_data["pr_installed"] = pr_installed
       self.monitor_data["pr_upgraded"] = pr_upgraded
       self.monitor_data["pr_upgrade_failed"] = pr_upgrade_failed
+      self.monitor_data["managed"] = managed
       self.monitor_data["ci_notstarted"] = ci_notstarted
       self.monitor_data["ci_progressing"] = ci_progressing
       self.monitor_data["ci_failed"] = ci_failed
@@ -216,16 +234,20 @@ class OCloudMonitor(Thread):
 
       # Write CSV row
       with open(self.csv_file, "a") as csv_file:
-        csv_file.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+        csv_file.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
             datetime.fromtimestamp(start_sample_time, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            bmh_inspecting, bmh_available, bmh_provisioning, bmh_provisioned, bmh_error,
-            bmh_inspect_complete, bmh_inspect_failed,
+            bmh_committed,
+            bmh_inspecting, bmh_inspect_complete, bmh_inspect_failed,
+            bmh_available, bmh_provisioning, bmh_provisioned, bmh_error,
+            self.monitor_data["pr_applied"], self.monitor_data["pr_patched"],
             pr_pending, pr_progressing, pr_fulfilled, pr_failed,
             pr_installed, pr_upgraded, pr_upgrade_failed,
+            managed,
             ci_notstarted, ci_progressing, ci_failed, ci_completed,
             ici_aci_installing, ici_aci_failed, ici_aci_completed
         ))
 
+      logger.debug("BMH committed (GitOps applied): {}".format(bmh_committed))
       logger.debug("BMH inspecting/available/provisioning/provisioned/error: {}/{}/{}/{}/{}".format(
           bmh_inspecting, bmh_available, bmh_provisioning, bmh_provisioned, bmh_error))
       logger.debug("BMH inspect complete/failed (committed): {}/{}".format(
@@ -234,6 +256,7 @@ class OCloudMonitor(Thread):
           pr_pending, pr_progressing, pr_fulfilled, pr_failed))
       logger.debug("PR installed/upgraded/upgrade_failed: {}/{}/{}".format(
           pr_installed, pr_upgraded, pr_upgrade_failed))
+      logger.debug("Managed clusters: {}".format(managed))
       logger.debug("CI notstarted/progressing/failed/completed: {}/{}/{}/{}".format(
           ci_notstarted, ci_progressing, ci_failed, ci_completed))
       logger.debug("ICI/ACI installing/failed/completed: {}/{}/{}".format(
