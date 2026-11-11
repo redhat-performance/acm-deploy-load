@@ -87,8 +87,7 @@ scripts/
 ├── post-acm-load-data-collection.sh     # Post-test data collection (pods, events, CRs)
 ├── post-ztp-install-data-collection.sh  # Post-ZTP install data collection
 ├── post-ztp-upgrade-data-collection.sh  # Post-ZTP upgrade data collection
-├── post-ocloud-ztp-all-data-collection.sh  # Post-ocloud-deploy-load data collection
-└── post-ztp-gen-day1-csv.sh             # Generate day-1 per-cluster CSV
+└── post-ocloud-ztp-all-data-collection.sh  # Post-ocloud-deploy-load data collection
 ansible/
 ├── roles/                               # 48 roles (ACM, MCE, IBI, IBU, AAP, ZTP, telco-core, O-Cloud Manager, ACS, etc.)
 └── vars/                                # Sample variable files for all cluster types
