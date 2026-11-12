@@ -18,7 +18,7 @@
 
 # import prometheus_api_client
 import argparse
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from datetime import datetime, timedelta, timezone
 from utils.common_ocp import get_base_ocp_namespaces
 from utils.common_ocp import get_ocp_namespace_list
@@ -114,13 +114,13 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "state", token, end_ts, duration, sub_report_dir, "central-postgres-connections", "ACS Central Postgres Connections", "Count", w, h, q_names)
 
   # Central gRPC metrics
-  q = "rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'central-.*'}[5m])"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "central-grpc-duration", "ACS Central gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'central-.*'}[5m])"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "central-grpc-handled", "ACS Central gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   # Central HTTP metrics
-  q = "rate(http_incoming_requests_total{namespace='rhacs-operator',pod=~'central-.*'}[5m])"
+  q = "sum by (code) (rate(http_incoming_requests_total{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "code", token, end_ts, duration, sub_report_dir, "central-http-requests", "ACS Central HTTP Requests Rate", "Requests/s", w, h, q_names)
   q = "http_incoming_request_duration_histogram_seconds"
   query_thanos(route, q, "path", token, end_ts, duration, sub_report_dir, "central-http-duration", "ACS Central HTTP Request Duration", "Seconds", w, h, q_names)
@@ -171,9 +171,9 @@ def acs_scanner_indexer_queries(report_dir, route, token, end_ts, duration, w, h
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "indexer-pg-total-conns", "ACS Indexer Postgres Total Connections", "Count", w, h, q_names)
 
   # Indexer gRPC metrics
-  q = "rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m])"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "indexer-grpc-duration", "ACS Indexer gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m])"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "indexer-grpc-handled", "ACS Indexer gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   return q_names
@@ -218,9 +218,9 @@ def acs_scanner_matcher_queries(report_dir, route, token, end_ts, duration, w, h
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "matcher-pg-total-conns", "ACS Matcher Postgres Total Connections", "Count", w, h, q_names)
 
   # Matcher gRPC metrics
-  q = "rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m])"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "matcher-grpc-duration", "ACS Matcher gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m])"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "matcher-grpc-handled", "ACS Matcher gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   return q_names
@@ -530,21 +530,38 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
       if len(qd_json["data"]["result"]) == 0:
         logger.warning("Empty data returned from query")
       else:
-        # Build list of DataFrames, one per metric, then merge them
+        # Build list of DataFrames, one per metric, then merge them.  A
+        # Prometheus query can return several series with the same selected
+        # display label (for example, grpc_code="OK" for several methods).
+        # Make those column names unique before merging.
+        def get_metric_name(metric):
+          if series_label not in metric["metric"]:
+            return series_label
+          return metric["metric"][series_label]
+
+        metric_names = [get_metric_name(metric) for metric in qd_json["data"]["result"]]
+        duplicate_metric_names = {name for name, count in Counter(metric_names).items() if count > 1}
+
         dfs = []
         series = []
 
-        for metric in qd_json["data"]["result"]:
+        for metric, base_metric_name in zip(qd_json["data"]["result"], metric_names):
           # Create datetime series for this metric
           metric_datetime = [datetime.fromtimestamp(x[0], tz=timezone.utc) for x in metric["values"]]
 
           # Determine the series name
           if series_label not in metric["metric"]:
-            metric_name = series_label
+            metric_name = base_metric_name
             logger.debug("Num of values: {}".format(len(metric["values"])))
           else:
-            metric_name = metric["metric"][series_label]
+            metric_name = base_metric_name
             logger.debug("{}: {}, Num of values: {}".format(series_label, metric_name, len(metric["values"])))
+
+          if base_metric_name in duplicate_metric_names:
+            labels = ", ".join("{}={}".format(key, value)
+                               for key, value in sorted(metric["metric"].items())
+                               if key != "__name__")
+            metric_name = "{} ({})".format(base_metric_name, labels)
 
           # Convert values based on unit
           if y_unit == "MEM":
