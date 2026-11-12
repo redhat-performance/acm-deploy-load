@@ -14,6 +14,12 @@ test_ver="test-00"
 kubeconfig="/root/mno/kubeconfig"
 spoke_kc_dir="/root/hv-vm/kc"          # analyze-ocloud-ibu.py -k argument
 
+# Phase 1 - Idle baseline
+# Idle baseline for 15 seconds for faster test run
+start_delay=15
+# Idle baseline for 2 hours for long duration comparison
+# start_delay=7200
+
 # Phase 2 — Inspection
 inspect_batch=100
 inspect_interval=0
@@ -29,8 +35,11 @@ upgrade_batch=100
 upgrade_interval=0
 upgrade_timeout=3600
 
-start_delay=10
+# Phase 5 - Soak baseline
+# Soak baseline for 2 minutes for faster test run
 end_delay=120
+# Soak baseline for 6 hours for long duration comparison
+# end_delay=21600
 
 # Set to "false" to skip a phase
 run_inspection=true
@@ -103,6 +112,14 @@ time ./acm-deploy-load/graph-ocloud-deploy.py ${results_dir} 2>&1 | tee -a ${log
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
 echo "$(date -u) :: Running Post Run Analysis" 2>&1 | tee -a ${log_file}
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
+time ./acm-deploy-load/analyze-provisioningrequests.py ${results_dir} 2>&1 | tee -a ${log_file}
+
+echo "################################################################################" 2>&1 | tee -a ${log_file}
+
+time ./acm-deploy-load/analyze-baremetalhosts.py ${results_dir} 2>&1 | tee -a ${log_file}
+
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
 time ./acm-deploy-load/analyze-clusterinstances.py ${results_dir} 2>&1 | tee -a ${log_file}
