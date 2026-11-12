@@ -44,6 +44,28 @@
     KUBECONFIG={{ seedcluster_kubeconfig }} oc delete localvolume -n openshift-local-storage --all
   ignore_errors: true
 
+- name: Find observability secrets in openshift-user-workload-monitoring on seed cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc get secret -n openshift-user-workload-monitoring -o name | \
+      grep -E "^secret/(obs-alertmanager-mtls-|observability-alertmanager-accessor-)" || true
+  register: uwm_obs_secrets
+
+- name: Delete observability secrets from openshift-user-workload-monitoring on seed cluster
+  shell: |
+    oc --kubeconfig={{ seedcluster_kubeconfig }} delete -n openshift-user-workload-monitoring {{ item }}
+  loop: "{{ uwm_obs_secrets.stdout_lines }}"
+
+- name: Find observability secrets in openshift-monitoring on seed cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc get secret -n openshift-monitoring -o name | \
+      grep -E "^secret/(obs-alertmanager-mtls-|observability-alertmanager-accessor-)" || true
+  register: mon_obs_secrets
+
+- name: Delete observability secrets from openshift-monitoring on seed cluster
+  shell: |
+    oc --kubeconfig={{ seedcluster_kubeconfig }} delete -n openshift-monitoring {{ item }}
+  loop: "{{ mon_obs_secrets.stdout_lines }}"
+
 # ignore_errors in the event the prometheusrules have already been removed
 - name: Delete acm prometheusrules from seed cluster
   shell: |
