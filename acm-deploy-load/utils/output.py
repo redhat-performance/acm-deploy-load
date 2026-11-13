@@ -342,8 +342,8 @@ def generate_ocloud_deploy_load_report(
     soak_start_time,
     skip_inspection, skip_install, skip_upgrade,
     total_hosts_committed, total_hosts_inspected, total_hosts_inspect_failed,
-    total_prs_applied, total_prs_installed, total_prs_install_failed,
-    total_prs_patched, total_prs_upgraded, total_prs_upgrade_failed,
+    total_prs_applied, total_prs_installed, total_prs_install_failed, total_prs_install_not_completed,
+    total_prs_patched, total_prs_upgraded, total_prs_upgrade_failed, total_prs_upgrade_not_completed,
     template_version, monitor_data, cliargs, versions, report_dir):
 
   total_time = round(end_time - start_time)
@@ -362,6 +362,24 @@ def generate_ocloud_deploy_load_report(
     install_success_pct = round((total_prs_installed / total_prs_applied) * 100, 1)
   if total_prs_patched > 0:
     upgrade_success_pct = round((total_prs_upgraded / total_prs_patched) * 100, 1)
+
+  if not skip_upgrade:
+    overall_success = total_prs_upgraded
+    overall_failed = total_prs_upgrade_failed
+    overall_label = "UpgradeCompleted"
+  elif not skip_install:
+    overall_success = total_prs_installed
+    overall_failed = total_prs_install_failed
+    overall_label = "ConfigurationApplied"
+  else:
+    overall_success = total_hosts_inspected
+    overall_failed = total_hosts_inspect_failed
+    overall_label = "Inspected"
+  overall_success_pct = 0
+  overall_failed_pct = 0
+  if total_hosts_committed > 0:
+    overall_success_pct = round((overall_success / total_hosts_committed) * 100, 1)
+    overall_failed_pct = round((overall_failed / total_hosts_committed) * 100, 1)
 
   with open("{}/report.txt".format(report_dir), "w") as report:
     phase_break(True, report)
@@ -388,6 +406,7 @@ def generate_ocloud_deploy_load_report(
       log_write(report, "Install Results")
       log_write(report, " * PRs applied: {}".format(total_prs_applied))
       log_write(report, " * PRs installed (ConfigurationApplied): {}".format(total_prs_installed))
+      log_write(report, " * PRs install not completed: {}".format(total_prs_install_not_completed))
       log_write(report, " * PRs install failed: {}".format(total_prs_install_failed))
       log_write(report, " * Managed clusters: {}".format(monitor_data["managed"]))
       log_write(report, " * Install success percent: {}%".format(install_success_pct))
@@ -395,9 +414,15 @@ def generate_ocloud_deploy_load_report(
       log_write(report, "Upgrade Results")
       log_write(report, " * PRs patched for upgrade: {}".format(total_prs_patched))
       log_write(report, " * PRs upgraded (UpgradeCompleted): {}".format(total_prs_upgraded))
+      log_write(report, " * PRs upgrade not completed: {}".format(total_prs_upgrade_not_completed))
       log_write(report, " * PRs upgrade failed: {}".format(total_prs_upgrade_failed))
       log_write(report, " * Upgrade success percent: {}%".format(upgrade_success_pct))
       log_write(report, " * Upgrade templateVersion: {}".format(template_version))
+    log_write(report, "Overall Results")
+    log_write(report, " * Overall Success ({} / Committed): {} / {}".format(
+        overall_label, overall_success, total_hosts_committed))
+    log_write(report, " * Overall Success Percent: {}%".format(overall_success_pct))
+    log_write(report, " * Overall Failed Percent: {}%".format(overall_failed_pct))
     log_write(report, "Workload Parameters")
     log_write(report, " * Method: {}".format(cliargs.method))
     log_write(report, " * Kubeconfig: {}".format(cliargs.kubeconfig))
