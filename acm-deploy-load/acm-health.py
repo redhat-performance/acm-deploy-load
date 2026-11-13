@@ -23,6 +23,7 @@ import json
 import logging
 import sys
 import time
+from datetime import datetime
 from utils.command import command
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(threadName)s : %(message)s")
@@ -104,11 +105,16 @@ def main():
   parser.add_argument("-k", "--kubeconfig", type=str, default="/root/mno/kubeconfig",
                       help="Changes which kubeconfig to connect to a cluster")
 
+  parser.add_argument("-o", "--output", type=str, default="",
+                      help="Write a plain-text report to this file (includes timestamp and options)")
+
   parser.add_argument("-d", "--debug", action="store_true", default=False, help="Set log level debug")
   cliargs = parser.parse_args()
 
   if cliargs.debug:
     logger.setLevel(logging.DEBUG)
+
+  run_ts = datetime.utcfromtimestamp(start_time).strftime("%Y-%m-%d %H:%M:%S UTC")
 
   healthy = 0
   unhealthy = 0
@@ -145,10 +151,14 @@ def main():
     report.append("multiclusterobservability: Failed")
 
   logger.info("################################################################################")
-  logger.info("Report:\n{}".format("\n".join(report)))
+  logger.info("Report:")
+  for line in report:
+    logger.info("  {}".format(line))
   logger.info("################################################################################")
-  if len(details) > 0:
-    logger.info("Details:\n{}".format("\n".join(details)))
+  if details:
+    logger.info("Details:")
+    for line in details:
+      logger.info("  {}".format(line))
   else:
     logger.info("Details: None")
   logger.info("################################################################################")
@@ -158,6 +168,32 @@ def main():
     logger.info("ACM passed all {} checks and appears healthy!!!".format(healthy))
   end_time = time.time()
   logger.info("Took {}s".format(round(end_time - start_time, 1)))
+
+  if cliargs.output:
+    with open(cliargs.output, "w") as f:
+      f.write("################################################################################\n")
+      f.write("acm-health.py Health Report\n")
+      f.write("Run at:     {}\n".format(run_ts))
+      f.write("Kubeconfig: {}\n".format(cliargs.kubeconfig))
+      f.write("################################################################################\n")
+      f.write("\nReport:\n")
+      for line in report:
+        f.write("  {}\n".format(line))
+      f.write("\nDetails:\n")
+      if details:
+        for line in details:
+          f.write("  {}\n".format(line))
+      else:
+        f.write("  None\n")
+      f.write("\n################################################################################\n")
+      if unhealthy > 0:
+        f.write("Result: FAILED {} out of {} checks\n".format(unhealthy, healthy + unhealthy))
+      else:
+        f.write("Result: PASSED all {} checks\n".format(healthy))
+      f.write("Took: {}s\n".format(round(end_time - start_time, 1)))
+      f.write("################################################################################\n")
+    logger.info("Report written to: {}".format(cliargs.output))
+
   return unhealthy
 
 if __name__ == "__main__":
