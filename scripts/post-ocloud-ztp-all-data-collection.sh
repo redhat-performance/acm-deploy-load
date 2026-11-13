@@ -72,6 +72,10 @@ cat ${output_dir}/provisioningrequests.sorted | grep -v "PROVISIONDETAILS" | awk
 cat ${output_dir}/provisioningrequests.sorted | grep "failed" | awk '{print $2}' \
   > ${output_dir}/provisioningrequests.failed
 
+echo "$(date -u) :: Collecting imagebasedgroupupgrade data"
+
+oc get imagebasedgroupupgrades -A > ${output_dir}/imagebasedgroupupgrades
+oc get imagebasedgroupupgrades -A -o yaml > ${output_dir}/imagebasedgroupupgrades.yaml
 
 echo "$(date -u) :: Collecting clusterinstance data"
 

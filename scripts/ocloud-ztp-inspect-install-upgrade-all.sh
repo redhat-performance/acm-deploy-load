@@ -10,6 +10,7 @@ set -o pipefail
 ################################################################################
 method="ibi"                           # ai or ibi
 upgrade_ocp_version="4.22.3"           # target OCP version for IBU upgrade
+upgrade_revision="v3"                  # v2=full upgrade with AbortOnFailure+Finalize, v3=Prep+Upgrade (no finalize)
 test_ver="test-00"
 kubeconfig="/root/mno/kubeconfig"
 spoke_kc_dir="/root/hv-vm/kc"          # analyze-ocloud-ibu.py -k argument
@@ -21,18 +22,22 @@ start_delay=15
 # start_delay=7200
 
 # Phase 2 — Inspection
-inspect_batch=100
+inspect_batch=200
 inspect_interval=0
 inspect_timeout=1800
 
 # Phase 3 — Install
-install_batch=100
+install_batch=200
 install_interval=0
+# 30 minutes with ibi (image-based installer)
 install_timeout=1800
+# 1.5 hours with ai (agent-installer)
+# install_timeout=5400
 
 # Phase 4 — Upgrade
-upgrade_batch=100
-upgrade_interval=0
+upgrade_batch=25
+# 10 minute interval to throttle stampede of Prep stage container image pulls
+upgrade_interval=600
 upgrade_timeout=3600
 
 # Phase 5 - Soak baseline
@@ -45,6 +50,9 @@ end_delay=120
 run_inspection=true
 run_install=true
 run_upgrade=true
+
+# Set to "false" to disable shuffling of host/PR lists
+shuffle=true
 
 # Set to "false" to skip Prometheus analysis
 run_prometheus=true
@@ -64,6 +72,9 @@ fi
 if [ "${run_upgrade}" != "true" ]; then
   skip_flags="${skip_flags} --skip-upgrade"
 fi
+if [ "${shuffle}" != "true" ]; then
+  skip_flags="${skip_flags} --no-shuffle"
+fi
 
 ################################################################################
 # Main orchestrator
@@ -78,7 +89,6 @@ echo "##########################################################################
 time ./acm-deploy-load/ocloud-deploy-load.py \
   -k "${kubeconfig}" \
   -m "${method}" \
-  -n \
   --test-version "${test_ver}" \
   --inspect-batch ${inspect_batch} \
   --inspect-interval ${inspect_interval} \
@@ -90,6 +100,7 @@ time ./acm-deploy-load/ocloud-deploy-load.py \
   --upgrade-interval ${upgrade_interval} \
   --upgrade-timeout ${upgrade_timeout} \
   --upgrade-ocp-version "${upgrade_ocp_version}" \
+  --upgrade-revision "${upgrade_revision}" \
   --start-delay ${start_delay} \
   --end-delay ${end_delay} \
   ${skip_flags} \

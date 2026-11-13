@@ -159,7 +159,7 @@ def main():
   parser.add_argument("--upgrade-ocp-version", type=str, default="",
                       help="Target OCP version for IBU upgrade, e.g. 4.22.3")
   parser.add_argument("--upgrade-revision", choices=["v2", "v3"], default="v3",
-                      help="ClusterTemplate revision (v3=Prep+Upgrade, no finalize)")
+                      help="ClusterTemplate revision (v2=full upgrade with AbortOnFailure+Finalize, v3=Prep+Upgrade no finalize)")
   parser.add_argument("--clustertemplate-name", type=str, default="sno-ran-du",
                       help="ClusterTemplate name")
 
@@ -456,6 +456,7 @@ def main():
   #############################################################################
   total_prs_installed = 0
   total_prs_install_failed = 0
+  total_prs_install_not_completed = 0
   installed_pr_uuids = []
   install_start_time = inspect_end_time
   install_end_time = install_start_time
@@ -507,8 +508,9 @@ def main():
 
     total_prs_installed = monitor_data["pr_installed"]
     total_prs_install_failed = monitor_data["pr_failed"]
-    logger.info("Install result: installed={}, failed={}".format(
-        total_prs_installed, total_prs_install_failed))
+    total_prs_install_not_completed = monitor_data["pr_progressing"]
+    logger.info("Install result: installed={}, failed={}, not_completed={}".format(
+        total_prs_installed, total_prs_install_failed, total_prs_install_not_completed))
 
     install_end_time = time.time()
 
@@ -539,6 +541,7 @@ def main():
   #############################################################################
   total_prs_upgraded = 0
   total_prs_upgrade_failed = 0
+  total_prs_upgrade_not_completed = 0
   upgrade_start_time = install_end_time
   upgrade_end_time = upgrade_start_time
 
@@ -650,8 +653,9 @@ def main():
 
   total_prs_upgraded = monitor_data["pr_upgraded"]
   total_prs_upgrade_failed = monitor_data["pr_upgrade_failed"]
-  logger.info("Upgrade result: upgraded={}, upgrade_failed={}".format(
-      total_prs_upgraded, total_prs_upgrade_failed))
+  total_prs_upgrade_not_completed = monitor_data["pr_progressing"]
+  logger.info("Upgrade result: upgraded={}, upgrade_failed={}, not_completed={}".format(
+      total_prs_upgraded, total_prs_upgrade_failed, total_prs_upgrade_not_completed))
 
   def _ts(t):
     return datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -682,8 +686,8 @@ def main():
       soak_start_time,
       cliargs.skip_inspection, cliargs.skip_install, cliargs.skip_upgrade,
       total_hosts_committed, total_hosts_inspected, total_hosts_inspect_failed,
-      monitor_data["pr_applied"], total_prs_installed, total_prs_install_failed,
-      monitor_data["pr_patched"], total_prs_upgraded, total_prs_upgrade_failed,
+      monitor_data["pr_applied"], total_prs_installed, total_prs_install_failed, total_prs_install_not_completed,
+      monitor_data["pr_patched"], total_prs_upgraded, total_prs_upgrade_failed, total_prs_upgrade_not_completed,
       template_version, monitor_data, cliargs, versions, report_dir)
 
 if __name__ == "__main__":
