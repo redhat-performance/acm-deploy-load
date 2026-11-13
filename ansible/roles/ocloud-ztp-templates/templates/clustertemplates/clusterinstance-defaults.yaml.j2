@@ -13,7 +13,7 @@ data:
     clusterNetwork:
       - cidr: {{ "fd01::/48" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "10.128.0.0/14" }}
         hostPrefix: {{ 64 if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else 23 }}
-    clusterType: SNO
+    clusterType: {{ profile.cluster_type }}
     cpuPartitioningMode: AllNodes
     # extraAnnotations:
     #   ManagedCluster:
@@ -21,7 +21,7 @@ data:
     extraLabels:
       ManagedCluster:
         cluster-version: "{{ ocloud_clustertemplate_version }}"
-        sno-ran-du-policy: "v1"
+        {{ profile.name }}-policy: "v1"
 {% if item.type == "ai" %}
     extraManifestsRefs:
       - name: {{ ocloud_clustertemplate_name }}-extra-manifest-v1
@@ -83,8 +83,9 @@ data:
 {% endif %}
 {% else %}
     nodeGroups:
-      - name: master
-        role: master
+{% for ng in profile.node_groups %}
+      - name: {{ ng }}
+        role: {{ ng }}
         bootMode: UEFI
         ironicInspect: "disabled"
         automatedCleaningMode: disabled
@@ -129,6 +130,7 @@ data:
           - name: {{ ibi_clusterinstance_node_templates }}
             namespace: {{ ibi_clusterinstance_node_templates_ns }}
 {% endif %}
+{% endfor %}
 {% endif %}
     pullSecretRef:
       name: pull-secret

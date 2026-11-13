@@ -1,0 +1,73 @@
+---
+# ocloud-vm-inventory generatecluster tasks
+#
+# Assembles cluster data for one ocloud_cluster_definitions entry.
+# Masters derived from profile; VIPs computed only for multi-node.
+
+- name: Derive master and worker counts for {{ cluster_def.profile }}
+  set_fact:
+    _masters: "{{ 1 if cluster_def.profile == 'sno-ran-du' else 3 }}"
+    _workers: "{{ 0 if cluster_def.profile in ['sno-ran-du', '3node-ran-du'] else (cluster_def.workers | default(0) | int) }}"
+    node_list: []
+
+- name: Generate nodes array for {{ cluster_def.profile }}
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': groups['hv_vm'][vmIdx],
+        'role': 'master' if vmIdx - vm_offset|int < _masters|int else 'worker',
+        'bmc_address': 'redfish-virtualmedia+http://' ~ ('[' ~ hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] ~ ']' if hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] | ansible.utils.ipv6 else hostvars[groups['hv_vm'][vmIdx]]['hv_ip']) ~ ':9000/redfish/v1/Systems/' ~ hostvars[groups['hv_vm'][vmIdx]]['domain_uuid'],
+        'bmc_user': bmc_username_base64,
+        'bmc_password': bmc_password_base64,
+        'mac_address': hostvars[groups['hv_vm'][vmIdx]]['mac_address'],
+        'ip_address': hostvars[groups['hv_vm'][vmIdx]]['ip'],
+        'prefix_length': hostvars[groups['hv_vm'][vmIdx]]['network_prefix'],
+        'dns_address': hostvars[groups['hv_vm'][vmIdx]]['hv_ip'],
+        'default_gateway_address': hostvars[groups['hv_vm'][vmIdx]]['gateway']
+      }
+    ] }}"
+  loop: "{{ range(vm_offset|int, vm_offset|int + _masters|int + _workers|int) | list }}"
+  loop_control:
+    loop_var: vmIdx
+
+- name: Append O-Cloud cluster data (SNO, no VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': (cluster_def.profile | regex_replace('-ran-du$', '')) ~ '-' ~ ('%05d' | format(cluster_index + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'SNO',
+        'topo_dir': 'sno',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int == 1
+
+- name: Append O-Cloud cluster data (MNO, with VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': (cluster_def.profile | regex_replace('-ran-du$', '')) ~ '-' ~ ('%05d' | format(cluster_index + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'HighlyAvailable',
+        'topo_dir': 'compact' if _workers|int == 0 else 'standard',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'api_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((cluster_index + 1) * -2)),
+        'ingress_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((cluster_index + 1) * -2) - 1),
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int > 1
+
+- name: Advance VM offset
+  set_fact:
+    vm_offset: "{{ vm_offset|int + _masters|int + _workers|int }}"

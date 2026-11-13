@@ -1,0 +1,28 @@
+---
+# ocloud-create-manifests default vars
+
+hv_vm_manifests_directory: /root/hv-vm
+
+# NIC interface name used in nodeNetwork config
+sno_nic_interface: enp1s0
+
+# O-Cloud resource pool name
+ocloud_resourcepool_name: resourcepool-lab
+
+# O-Cloud site name for ProvisioningRequest oCloudSiteId
+ocloud_site_name: site-lab
+
+# ClusterTemplate reference — name and version derived from cluster_image_set
+cluster_image_set: openshift-4.22.1
+ocloud_clustertemplate_version: "v{{ cluster_image_set | regex_replace('^openshift-', '') | replace('.', '-') }}"
+
+# ClusterTemplate revision appended to templateVersion (e.g. v1)
+ocloud_clustertemplate_revision: v1
+
+# Hardware profile name (used when ocloud_hardware_mgmt_enabled is true)
+ocloud_hardware_profile_name: hw-profile-lab
+ocloud_hardware_mgmt_enabled: false
+
+# sushy emulator bmc username/password
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"

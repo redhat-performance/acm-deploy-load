@@ -1,5 +1,4 @@
 ---
-# Network configuration for {{ inventory_hostname }} (required for inspection)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -41,8 +40,8 @@ stringData:
       - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
         next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
         next-hop-interface: {{ sno_nic_interface }}
+        table-id: 254
 ---
-# BMC credentials for {{ inventory_hostname }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -53,20 +52,20 @@ data:
   username: {{ bmc_username_base64 }}
   password: {{ bmc_password_base64 }}
 ---
-# BareMetalHost for {{ inventory_hostname }}
 apiVersion: metal3.io/v1alpha1
 kind: BareMetalHost
 metadata:
+  name: {{ inventory_hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
   annotations:
     bmac.agent-install.openshift.io/allow-provisioned-host-management: ""
   labels:
     resources.clcm.openshift.io/resourcePoolName: {{ ocloud_resourcepool_name }}
     interfacelabel.clcm.openshift.io/boot-interface: {{ sno_nic_interface }}
     resourceselector.clcm.openshift.io/server-id: {{ inventory_hostname }}
-  name: {{ inventory_hostname }}
-  namespace: {{ ocloud_resourcepool_name }}
 spec:
   automatedCleaningMode: disabled
+  online: false
 {% if hostvars[inventory_hostname]['hv_ip'] | ansible.utils.ipv6 %}
   bmc:
     address: redfish-virtualmedia+http://[{{ hostvars[inventory_hostname]['hv_ip'] }}]:9000/redfish/v1/Systems/{{ hostvars[inventory_hostname]['domain_uuid'] }}
@@ -80,5 +79,4 @@ spec:
 {% endif %}
   bootMACAddress: {{ hostvars[inventory_hostname]['mac_address'] }}
   bootMode: UEFI
-  online: false
   preprovisioningNetworkDataName: network-data-{{ inventory_hostname }}

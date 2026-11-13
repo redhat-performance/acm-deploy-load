@@ -1,0 +1,11 @@
+---
+# ocloud-vm-inventory default vars
+
+bmc_username_base64: "{{ 'redhat' | b64encode }}"
+bmc_password_base64: "{{ 'password' | b64encode }}"
+
+# List of cluster definitions to generate manifests for.
+# Each entry: { profile: sno-ran-du|3node-ran-du|std-ran-du, workers: N, count: 1, labels: {} }
+# masters is derived from profile: sno-ran-du=1, others=3
+# workers forced to 0 for sno-ran-du and 3node-ran-du
+ocloud_cluster_definitions: []

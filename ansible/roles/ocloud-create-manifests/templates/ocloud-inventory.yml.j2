@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: network-data-{{ node.hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+type: Opaque
+stringData:
+  nmstate: |
+    interfaces:
+    - name: {{ sno_nic_interface }}
+      type: ethernet
+      state: up
+{% if node.ip_address | ansible.utils.ipv4 %}
+      ipv4:
+        enabled: true
+        dhcp: false
+        address:
+        - ip: {{ node.ip_address }}
+          prefix-length: {{ node.prefix_length }}
+      ipv6:
+        enabled: false
+{% else %}
+      ipv4:
+        enabled: false
+      ipv6:
+        enabled: true
+        autoconf: false
+        dhcp: false
+        address:
+        - ip: {{ node.ip_address }}
+          prefix-length: {{ node.prefix_length }}
+{% endif %}
+    dns-resolver:
+      config:
+        server:
+        - {{ node.dns_address }}
+    routes:
+      config:
+      - destination: {{ "::/0" if node.ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
+        next-hop-interface: {{ sno_nic_interface }}
+        next-hop-address: {{ node.default_gateway_address }}
+        table-id: 254
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bmc-secret-{{ node.hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+type: Opaque
+data:
+  username: {{ node.bmc_user }}
+  password: {{ node.bmc_password }}
+---
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ node.hostname }}
+  namespace: {{ ocloud_resourcepool_name }}
+  annotations:
+    bmac.agent-install.openshift.io/allow-provisioned-host-management: ""
+  labels:
+    resources.clcm.openshift.io/resourcePoolName: {{ ocloud_resourcepool_name }}
+    interfacelabel.clcm.openshift.io/boot-interface: {{ sno_nic_interface }}
+    resourceselector.clcm.openshift.io/cluster-id: {{ cluster.cluster_name }}
+    resourceselector.clcm.openshift.io/node-role: {{ node.role }}
+spec:
+  automatedCleaningMode: disabled
+  online: false
+  bmc:
+    address: {{ node.bmc_address }}
+    credentialsName: bmc-secret-{{ node.hostname }}
+    disableCertificateVerification: true
+  bootMACAddress: {{ node.mac_address }}
+  bootMode: UEFI
+  preprovisioningNetworkDataName: network-data-{{ node.hostname }}

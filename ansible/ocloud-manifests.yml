@@ -1,0 +1,28 @@
+---
+# Playbook to create manifests for O-Cloud cluster(s)
+#
+# Generates ProvisioningRequest and O-Cloud inventory (BMH + NMState + BMC secrets)
+# for one or more clusters defined in ocloud_cluster_definitions. Supports all
+# topologies: sno-ran-du (1 master), 3node-ran-du (3 schedulable masters),
+# std-ran-du (3 masters + N workers).
+#
+# Apply inventory first (BMHs must register in the resource pool), then PRs.
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory/cloud30.local ansible/ocloud-manifests.yml
+#
+
+- name: Create manifests to create O-Cloud cluster(s)
+  hosts: bastion
+  gather_facts: false
+  vars_files:
+  - vars/all.yml
+  - vars/ocloud.yml
+  vars:
+    ocloud_clusters: []
+  roles:
+  - role: ocloud-vm-inventory
+    when: '"hv_vm" in groups'
+  - role: ocloud-create-manifests
+    when: ocloud_clusters | length > 0

@@ -1,0 +1,22 @@
+---
+# ocloud-vm-inventory tasks
+
+- name: Initialize ocloud_clusters and vm_offset
+  set_fact:
+    ocloud_clusters: []
+    vm_offset: 0
+    _ocloud_expanded_defs: []
+
+- name: Expand cluster definitions by count
+  set_fact:
+    _ocloud_expanded_defs: "{{ _ocloud_expanded_defs + ([cluster_def] * (cluster_def.count | default(1) | int)) }}"
+  loop: "{{ ocloud_cluster_definitions }}"
+  loop_control:
+    loop_var: cluster_def
+
+- name: Generate each cluster definition
+  include_tasks: generatecluster.yml
+  loop: "{{ _ocloud_expanded_defs }}"
+  loop_control:
+    loop_var: cluster_def
+    index_var: cluster_index

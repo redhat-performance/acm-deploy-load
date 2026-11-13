@@ -14,6 +14,13 @@
   hosts: bastion
   vars_files:
   - vars/all.yml
+  pre_tasks:
+  - name: Load ocloud vars when present
+    ansible.builtin.include_vars: "{{ item }}"
+    with_first_found:
+    - files:
+      - vars/ocloud.yml
+      skip: true
   roles:
   - rhacm-ztp-setup
   - role: telco-core-ztp

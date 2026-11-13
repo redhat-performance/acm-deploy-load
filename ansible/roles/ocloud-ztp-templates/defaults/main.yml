@@ -106,3 +106,14 @@ disconnected_certified_operator_index_tag: v4.22
 # oadp s3 credentials
 s3_access_key_id: rustfs
 s3_secret_access_key: rustfs123
+
+########################################################
+# ClusterTemplate profiles
+# Default: sno-ran-du only. Add std-ran-du and 3node-ran-du for MNO support.
+########################################################
+ocloud_clustertemplate_profiles:
+  - name: sno-ran-du
+    cluster_type: SNO
+    node_groups: [master]
+    install_types: [ai, ibi]
+    pg_template: sno-ran-du-pg.yaml.j2

@@ -1,0 +1,134 @@
+{% set master_nodes = cluster.nodes | selectattr('role', 'equalto', 'master') | list %}
+{% set worker_nodes = cluster.nodes | selectattr('role', 'equalto', 'worker') | list %}
+---
+apiVersion: clcm.openshift.io/v1alpha1
+kind: ProvisioningRequest
+metadata:
+  name: {{ cluster.cluster_name | to_uuid }}
+spec:
+  name: "{{ cluster.cluster_name }}-provisioning"
+  description: "Provisioning request for {{ cluster.profile }} cluster {{ cluster.cluster_name }}"
+  templateName: {{ cluster.profile }}
+  templateVersion: {{ ocloud_clustertemplate_version }}-{{ install_type }}-{{ ocloud_clustertemplate_revision }}
+  templateParameters:
+    nodeClusterName: {{ cluster.cluster_name }}
+    oCloudSiteId: {{ ocloud_site_name }}
+    hwMgmtParameters:
+      nodeGroupData:
+        - name: master
+          role: master
+{% if ocloud_hardware_mgmt_enabled %}
+          hwProfile: {{ ocloud_hardware_profile_name }}
+{% endif %}
+          resourcePoolId: {{ ocloud_resourcepool_name }}
+          resourceSelector:
+            cluster-id: {{ cluster.cluster_name }}
+            node-role: master
+{% if worker_nodes | length > 0 %}
+        - name: worker
+          role: worker
+{% if ocloud_hardware_mgmt_enabled %}
+          hwProfile: {{ ocloud_hardware_profile_name }}
+{% endif %}
+          resourcePoolId: {{ ocloud_resourcepool_name }}
+          resourceSelector:
+            cluster-id: {{ cluster.cluster_name }}
+            node-role: worker
+{% endif %}
+    clusterInstanceParameters:
+      additionalNTPSources:
+      - {{ cluster.ntp_source }}
+      clusterName: {{ cluster.cluster_name }}
+      extraLabels:
+        ManagedCluster:
+          site: {{ cluster.cluster_name }}
+{% if cluster.labels is defined and cluster.labels is not none and cluster.labels | length > 0 %}
+{%   for key, value in cluster.labels.items() %}
+          {{ key }}: "{{ value }}"
+{%   endfor %}
+{% endif %}
+      machineNetwork:
+        - cidr: {{ cluster.machine_network }}
+{% if cluster.masters > 1 %}
+      apiVIPs:
+      - {{ cluster.api_address }}
+      ingressVIPs:
+      - {{ cluster.ingress_address }}
+{% endif %}
+      nodeGroups:
+        - name: master
+          nodeLabels:
+            node-role.kubernetes.io/master: ""
+          nodeNetwork:
+            config:
+              dns-resolver:
+                config:
+                  server:
+                  - {{ master_nodes[0].dns_address }}
+              routes:
+                config:
+                - destination: {{ "::/0" if master_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                  next-hop-interface: {{ sno_nic_interface }}
+                  next-hop-address: {{ master_nodes[0].default_gateway_address }}
+                  table-id: 254
+          nodes:
+{% for node in master_nodes %}
+          - hostName: {{ node.hostname }}
+            nodeNetwork:
+              interfaces:
+              - name: {{ sno_nic_interface }}
+                addresses:
+{% if node.ip_address | ansible.utils.ipv4 %}
+                  ipv4:
+                  - {{ node.ip_address }}/{{ node.prefix_length }}
+{% else %}
+                  ipv6:
+                  - {{ node.ip_address }}/{{ node.prefix_length }}
+{% endif %}
+{% endfor %}
+{% if worker_nodes | length > 0 %}
+        - name: worker
+          nodeLabels:
+            node-role.kubernetes.io/worker: ""
+          nodeNetwork:
+            config:
+              dns-resolver:
+                config:
+                  server:
+                  - {{ worker_nodes[0].dns_address }}
+              routes:
+                config:
+                - destination: {{ "::/0" if worker_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                  next-hop-interface: {{ sno_nic_interface }}
+                  next-hop-address: {{ worker_nodes[0].default_gateway_address }}
+                  table-id: 254
+          nodes:
+{% for node in worker_nodes %}
+          - hostName: {{ node.hostname }}
+            nodeNetwork:
+              interfaces:
+              - name: {{ sno_nic_interface }}
+                addresses:
+{% if node.ip_address | ansible.utils.ipv4 %}
+                  ipv4:
+                  - {{ node.ip_address }}/{{ node.prefix_length }}
+{% else %}
+                  ipv6:
+                  - {{ node.ip_address }}/{{ node.prefix_length }}
+{% endif %}
+{% endfor %}
+{% endif %}
+    policyTemplateParameters:
+      install-plan-approval: "Automatic"
+      # cpu-isolated: "2-31"
+      # cpu-reserved: "0-1"
+      # hugepages-count: "16"
+      # hugepages-default: "1G"
+      # hugepages-size: "1G"
+      # oadp-s3url: "http://bastion:9000"
+      # ptpcfgslave-profile-interface: ens15f1
+      # sriov-network-vlan-1: "140"
+      # sriov-network-pfNames-1: '["ens2f0"]'
+      # storage-lv-devicePaths-1: '["/dev/disk/by-path/pci-0000:62:00.0-scsi-0:2:8:0"]'
+      # cluster-log-fwd-filters-labels: '{"label1": "test1"}'
+      # cluster-log-fwd-outputs-url: "tcp://198.51.100.50:9092/test"
