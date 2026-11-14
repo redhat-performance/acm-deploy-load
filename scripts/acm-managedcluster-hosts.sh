@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Create hosts-file blocks for ACM managed clusters using their Infrastructure
-# CRs through the ACM managed-cluster proxy API.  No changes are made to
-# /etc/hosts; the generated file can be reviewed and applied separately.
+# CRs. No changes are made to /etc/hosts; the generated file can be reviewed
+# and applied separately.
 
 set -euo pipefail
 
@@ -83,6 +83,12 @@ else
   : >> "$hosts_file"
 fi
 
+declare -a temporary_kubeconfigs=()
+cleanup() {
+  ((${#temporary_kubeconfigs[@]})) && rm -f "${temporary_kubeconfigs[@]}"
+}
+trap cleanup EXIT
+
 if ((${#requested_clusters[@]})); then
   clusters=("${requested_clusters[@]}")
 else
@@ -135,8 +141,23 @@ platform_apps=(
 
 for cluster in "${clusters[@]}"; do
   echo "Retrieving Infrastructure CR for ${cluster}" >&2
-  if ! infrastructure=$(oc_hub get --raw "/apis/proxy.open-cluster-management.io/v1beta1/namespaces/${cluster}/infrastructures/cluster"); then
-    echo "WARNING: unable to retrieve Infrastructure CR for ${cluster}; skipping" >&2
+  spoke_kubeconfig=$(mktemp "${TMPDIR:-/tmp}/acm-${cluster}-kubeconfig.XXXXXX")
+  chmod 0600 "$spoke_kubeconfig"
+  temporary_kubeconfigs+=("$spoke_kubeconfig")
+
+  if ! oc_hub get secret "${cluster}-admin-kubeconfig" -n "$cluster" \
+    -o jsonpath='{.data.kubeconfig}' | base64 -d > "$spoke_kubeconfig"; then
+    echo "WARNING: unable to retrieve the admin kubeconfig for ${cluster}; skipping" >&2
+    continue
+  fi
+
+  if [[ ! -s "$spoke_kubeconfig" ]]; then
+    echo "WARNING: the admin kubeconfig for ${cluster} is empty; skipping" >&2
+    continue
+  fi
+
+  if ! infrastructure=$(oc --kubeconfig "$spoke_kubeconfig" get infrastructure cluster -o json); then
+    echo "WARNING: unable to retrieve Infrastructure CR from ${cluster}; skipping" >&2
     continue
   fi
 
