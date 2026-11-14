@@ -79,6 +79,7 @@ acm-deploy-load/                        # All Python scripts
     ├── ibu.py                           # Shared IBU spoke fetch and history parsing (fetch_spoke_ibu, parse_ibu_history)
     └── talm.py                          # Detects TALM minor version
 scripts/
+├── acm-managedcluster-hosts.sh          # Builds managed-cluster API/ingress hosts-file blocks from spoke Infrastructure CRs
 ├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa
 ├── acm-telco-core-load.sh               # Orchestrates acm-telco-core-load.py + acm-telco-load-hub analysis
 ├── ocloud-ztp-inspect-install-upgrade-all.sh  # Orchestrates ocloud-deploy-load.py + post-test analysis + ocloud-pa
