@@ -13,7 +13,7 @@
   - rhacm_disconnected_registry is not none
   - rhacm_disconnected_registry | length > 1
 
-# clustertemplates version-level directories (profile subdirs created in templates-profile.yml)
+# Version-level directories for clustertemplates and policytemplates (profile subdirs created in templates-profile.yml)
 - name: Create clustertemplates version-level directories for version {{ ocloud_clustertemplate_ocp_version }}
   ansible.builtin.file:
     path: "{{ item }}"
@@ -22,6 +22,7 @@
   - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/"
   - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/"
   - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/ibu-manifest/"
+  - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/policytemplates/{{ ocloud_clustertemplate_folder }}/"
 
 - name: Template extra-manifest resources for version {{ ocloud_clustertemplate_ocp_version }}
   ansible.builtin.template:
