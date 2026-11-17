@@ -80,6 +80,7 @@ acm-deploy-load/                        # All Python scripts
     └── talm.py                          # Detects TALM minor version
 scripts/
 ├── acm-managedcluster-hosts.sh          # Builds managed-cluster API/ingress hosts-file blocks from spoke Infrastructure CRs
+├── post-acs-load-data-collection.sh     # Runs ACS Prometheus analysis for the hub and managed clusters
 ├── interval-ztp-install-all.sh          # Orchestrates acm-deploy-load.py + post-test analysis + deploy-pa
 ├── acm-telco-core-load.sh               # Orchestrates acm-telco-core-load.py + acm-telco-load-hub analysis
 ├── ocloud-ztp-inspect-install-upgrade-all.sh  # Orchestrates ocloud-deploy-load.py + post-test analysis + ocloud-pa
