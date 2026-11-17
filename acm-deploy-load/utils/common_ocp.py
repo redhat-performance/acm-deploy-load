@@ -178,6 +178,17 @@ def get_ocp_namespace_list(kubeconfig):
   return namespaces
 
 
+def get_ocp_node_list(kubeconfig):
+  logger.info("Getting OCP node list")
+  oc_cmd = ["oc", "--kubeconfig", kubeconfig, "get", "node", "-o", "json"]
+  rc, output = command(oc_cmd, False, no_log=True)
+  if rc != 0:
+    logger.error("oc get node rc: {}".format(rc))
+    sys.exit(1)
+  node_data = json.loads(output)
+  return [item["metadata"]["name"] for item in node_data["items"]]
+
+
 def get_ocp_version(kubeconfig):
   logger.info("Getting OCP version")
   version = {}

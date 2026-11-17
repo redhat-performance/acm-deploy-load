@@ -21,6 +21,7 @@ import argparse
 from collections import Counter, OrderedDict
 from datetime import datetime, timedelta, timezone
 from utils.common_ocp import get_base_ocp_namespaces
+from utils.common_ocp import get_ocp_node_list
 from utils.common_ocp import get_ocp_namespace_list
 from utils.common_ocp import get_ocp_version
 from utils.common_ocp import get_prometheus_token
@@ -58,7 +59,7 @@ def calculate_query_offset(end_ts):
 
 
 # ACS - Complete (rhacs-operator namespace)
-def acs_complete_queries(report_dir, route, token, end_ts, duration, w, h):
+def acs_complete_queries(report_dir, route, token, end_ts, duration, w, h, nodes):
   sub_report_dir = os.path.join(report_dir, "acs-complete")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
@@ -78,6 +79,20 @@ def acs_complete_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-pods", "ACS Pod CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-pods", "ACS Pod Memory Usage", "MEM", w, h, q_names)
+
+  # Separate read and write throughput graphs per node, with one series for
+  # every ACS pod. The PromQL expressions convert filesystem byte rates to MB/s.
+  for node in nodes:
+    q = ("sum by (pod, node) (rate(container_fs_reads_bytes_total{cluster='',namespace='rhacs-operator',node='" + node +
+        "'}[5m])) / 1000000")
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir,
+        "disk-read-tput-acs-pods-{}".format(node),
+        "ACS Pod Disk Read Throughput on {}".format(node), "MB/s", w, h, q_names)
+    q = ("sum by (pod, node) (rate(container_fs_writes_bytes_total{cluster='',namespace='rhacs-operator',node='" + node +
+        "'}[5m])) / 1000000")
+    query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir,
+        "disk-write-tput-acs-pods-{}".format(node),
+        "ACS Pod Disk Write Throughput on {}".format(node), "MB/s", w, h, q_names)
   return q_names
 
 
@@ -781,7 +796,8 @@ def main():
   # ACS (Advanced Cluster Security) Queries
   if "rhacs-operator" in namespaces:
     logger.info("rhacs-operator namespace found, querying for ACS metrics")
-    report_data["acs-complete"] = acs_complete_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
+    nodes = get_ocp_node_list(cliargs.kubeconfig)
+    report_data["acs-complete"] = acs_complete_queries(report_dir, route, token, q_end_ts, q_duration, w, h, nodes)
     report_data["acs-central"] = acs_central_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
     report_data["acs-scanner-indexer"] = acs_scanner_indexer_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
     report_data["acs-scanner-matcher"] = acs_scanner_matcher_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
