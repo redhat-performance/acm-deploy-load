@@ -1,0 +1,107 @@
+---
+# ocloud-vm-inventory generatecluster tasks
+#
+# Assembles cluster data for one ocloud_cluster_definitions entry.
+# Masters derived from profile; VIPs computed only for multi-node.
+
+- name: Derive master and worker counts for {{ cluster_def.profile }}
+  set_fact:
+    vm_offset: "{{ vm_offset | default(0) }}"
+    _standard_count: "{{ _standard_count | default(0) }}"
+    _compact_count: "{{ _compact_count | default(0) }}"
+    _masters: "{{ 1 if cluster_def.profile == 'sno-ran-du' else 3 }}"
+    _workers: "{{ 0 if cluster_def.profile in ['sno-ran-du', '3node-ran-du'] else (cluster_def.workers | default(0) | int) }}"
+    node_list: []
+
+- name: Assert sufficient hv_vm hosts for {{ cluster_def.profile }}
+  ansible.builtin.assert:
+    that:
+      - vm_offset|int + _masters|int + _workers|int <= groups['hv_vm'] | length
+    fail_msg: >-
+      Not enough hv_vm hosts: need {{ vm_offset|int + _masters|int + _workers|int }}
+      (offset {{ vm_offset }} + {{ _masters }} masters + {{ _workers }} workers)
+      but only {{ groups['hv_vm'] | length }} available.
+
+- name: Generate nodes array for {{ cluster_def.profile }}
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': groups['hv_vm'][vmIdx],
+        'role': 'master' if vmIdx - vm_offset|int < _masters|int else 'worker',
+        'bmc_address': 'redfish-virtualmedia+http://' ~ ('[' ~ hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] ~ ']' if hostvars[groups['hv_vm'][vmIdx]]['hv_ip'] | ansible.utils.ipv6 else hostvars[groups['hv_vm'][vmIdx]]['hv_ip']) ~ ':9000/redfish/v1/Systems/' ~ hostvars[groups['hv_vm'][vmIdx]]['domain_uuid'],
+        'bmc_user': bmc_username_base64,
+        'bmc_password': bmc_password_base64,
+        'mac_address': hostvars[groups['hv_vm'][vmIdx]]['mac_address'],
+        'ip_address': hostvars[groups['hv_vm'][vmIdx]]['ip'],
+        'prefix_length': hostvars[groups['hv_vm'][vmIdx]]['network_prefix'],
+        'dns_address': hostvars[groups['hv_vm'][vmIdx]]['hv_ip'],
+        'default_gateway_address': hostvars[groups['hv_vm'][vmIdx]]['gateway']
+      }
+    ] }}"
+  loop: "{{ range(vm_offset|int, vm_offset|int + _masters|int + _workers|int) | list }}"
+  loop_control:
+    loop_var: vmIdx
+
+- name: Append O-Cloud cluster data (SNO, no VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': groups['hv_vm'][vm_offset|int],
+        'profile': cluster_def.profile,
+        'cluster_type': 'SNO',
+        'topo_dir': 'sno',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int == 1
+
+- name: Append O-Cloud cluster data (compact/3node, with VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': 'compact-' ~ ('%05d' | format(_compact_count|int + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'HighlyAvailable',
+        'topo_dir': 'compact',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'api_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((_compact_count|int + 1 + standard_cluster_dns_count) * -2)),
+        'ingress_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((_compact_count|int + 1 + standard_cluster_dns_count) * -2) - 1),
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int > 1 and _workers|int == 0
+
+- name: Append O-Cloud cluster data (standard, with VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': 'standard-' ~ ('%05d' | format(_standard_count|int + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'HighlyAvailable',
+        'topo_dir': 'standard',
+        'machine_network': hostvars[groups['hv_vm'][vm_offset|int]]['machine_network'],
+        'ntp_source': hostvars[groups['hv_vm'][vm_offset|int]]['hv_ip'],
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'api_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((_standard_count|int + 1) * -2)),
+        'ingress_address': hostvars[groups['hv_vm'][0]]['machine_network'] | ansible.utils.nthhost(((_standard_count|int + 1) * -2) - 1),
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int > 1 and _workers|int > 0
+
+- name: Advance VM offset and per-type cluster counters
+  set_fact:
+    vm_offset: "{{ vm_offset|int + _masters|int + _workers|int }}"
+    _standard_count: "{{ _standard_count|int + (1 if _masters|int > 1 and _workers|int > 0 else 0) }}"
+    _compact_count: "{{ _compact_count|int + (1 if _masters|int > 1 and _workers|int == 0 else 0) }}"

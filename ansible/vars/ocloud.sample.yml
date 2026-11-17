@@ -1,0 +1,42 @@
+---
+# O-Cloud cluster definitions for ocloud-manifests.yml
+#
+# Each entry generates one cluster's ProvisioningRequest and inventory (BMH + secrets).
+# Profile controls topology and install type:
+#   std-ran-du:   3 masters + N workers (AI only)
+#   3node-ran-du: 3 schedulable masters (AI only)
+#   sno-ran-du:   1 master/SNO (AI and IBI)
+#
+# Optional 'count: N' repeats a definition N times (default 1).
+# Optional 'labels: {}' adds extra ManagedCluster labels.
+#
+# VMs are carved sequentially from hv_vm inventory group.
+# Apply inventory (ocloud/inventory/*.yaml) before ProvisioningRequests.
+
+# Each profile listed here must also be enabled in ocloud_clustertemplate_profiles
+# (all.yml) so the corresponding ClusterTemplate exists before provisioning.
+ocloud_cluster_definitions:
+- profile: std-ran-du
+  workers: 3
+  labels: {}
+
+# 3-node compact cluster example:
+# ocloud_cluster_definitions:
+# - profile: 3node-ran-du
+#   labels: {}
+
+# SNO cluster examples:
+# ocloud_cluster_definitions:
+# - profile: sno-ran-du
+#   labels: {}
+# - profile: sno-ran-du
+#   count: 5
+#   labels: {}
+
+# Mixed topology example (carved sequentially from hv_vm pool):
+# ocloud_cluster_definitions:
+# - profile: std-ran-du
+#   workers: 3
+# - profile: 3node-ran-du
+# - profile: sno-ran-du
+#   count: 2

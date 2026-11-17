@@ -28,6 +28,35 @@
   - src: hardwareprofiles/kustomization.yaml.j2
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/hardwareprofiles/kustomization.yaml"
 
+- name: Stat ocloud topology inventory directories
+  ansible.builtin.stat:
+    path: "{{ hv_vm_manifests_directory }}/{{ topo }}/ocloud-inventory"
+  loop: [sno, compact, standard]
+  loop_control:
+    loop_var: topo
+  register: _inv_stat
+
+- name: Find BMH files in existing ocloud inventory dirs
+  ansible.builtin.find:
+    paths: "{{ item.stat.path }}"
+    patterns: "*.yaml"
+  loop: "{{ _inv_stat.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | list }}"
+  loop_control:
+    label: "{{ item.stat.path }}"
+  register: _bmh_find
+
+- name: Build BMH filename list for resourcepool kustomization
+  ansible.builtin.set_fact:
+    ocloud_bmh_filenames: >-
+      {{ _bmh_find.results
+         | selectattr('files', 'defined')
+         | map(attribute='files')
+         | flatten
+         | map(attribute='path')
+         | map('basename')
+         | sort
+         | list }}
+
 - name: Template clustertemplates inventory resources
   ansible.builtin.template:
     src: "{{ item.src }}"
@@ -46,11 +75,14 @@
   - src: inventory/resourcepool-kustomization.yaml.j2
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/inventory/{{ ocloud_resourcepool_name }}/kustomization.yaml"
 
-- name: Copy pre-generated server resources from {{ ocloud_inventory_source }}
+- name: Copy ocloud inventory (BMH) files from existing topology dirs
   ansible.builtin.copy:
-    src: "{{ ocloud_inventory_source }}/"
+    src: "{{ item.stat.path }}/"
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/inventory/{{ ocloud_resourcepool_name }}/"
     remote_src: true
+  loop: "{{ _inv_stat.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | list }}"
+  loop_control:
+    label: "{{ item.stat.path }}"
 
 - name: Template top-level clustertemplates kustomization and namespace resources
   ansible.builtin.template:
@@ -82,16 +114,34 @@
   - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ai-provisioningrequests/"
   - "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ibi-provisioningrequests/"
 
-- name: Copy ProvisioningRequest manifests
+- name: Stat ocloud topology AI provisioningrequest directories
+  ansible.builtin.stat:
+    path: "{{ hv_vm_manifests_directory }}/{{ topo }}/ocloud-ai-provisioningrequest"
+  loop: [sno, compact, standard]
+  loop_control:
+    loop_var: topo
+  register: _ai_pr_stat
+
+- name: Copy AI ProvisioningRequest manifests from existing topology dirs
   ansible.builtin.copy:
-    src: "{{ item.src }}/"
-    dest: "{{ item.dest }}"
+    src: "{{ item.stat.path }}/"
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ai-provisioningrequests/"
     remote_src: true
-  loop:
-  - dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ai-provisioningrequests/"
-    src: "{{ ocloud_provisioningrequest_source }}/ocloud-ai-provisioningrequest/"
-  - dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ibi-provisioningrequests/"
-    src: "{{ ocloud_provisioningrequest_source }}/ocloud-ibi-provisioningrequest/"
+  loop: "{{ _ai_pr_stat.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | list }}"
+  loop_control:
+    label: "{{ item.stat.path }}"
+
+- name: Stat ocloud SNO IBI provisioningrequest directory
+  ansible.builtin.stat:
+    path: "{{ hv_vm_manifests_directory }}/sno/ocloud-ibi-provisioningrequest"
+  register: _ibi_pr_stat
+
+- name: Copy IBI ProvisioningRequest manifests (SNO only)
+  ansible.builtin.copy:
+    src: "{{ hv_vm_manifests_directory }}/sno/ocloud-ibi-provisioningrequest/"
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/ibi-provisioningrequests/"
+    remote_src: true
+  when: _ibi_pr_stat.stat.isdir | default(false)
 
 # Create O-Cloud clustertemplate and policytemplate application directories
 # The O-Cloud clustertemplate application manages the clustertemplates, not the provisioningrequests

@@ -3,14 +3,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 generators:
-- {{ ocloud_clustertemplate_name }}/{{ ocloud_clustertemplate_name }}-pg-{{ ocloud_clustertemplate_version }}.yaml
-# # SNO Full DU profile example:
-# - sno-ran-full-du/sno-ran-full-du-pg-v4-Y-Z-v1.yaml
-# # 3-node cluster:
-# - 3node-ran-du/3node-ran-du-pg-v4-Y-Z-v1.yaml
-# # Standard cluster:
-# - std-ran-du/std-ran-du-pg-v4-Y-Z-v1.yaml
+{% for prof in ocloud_clustertemplate_profiles %}
+- {{ prof.name }}/{{ prof.name }}-pg-{{ ocloud_clustertemplate_version }}.yaml
+{% endfor %}
 
 resources:
-- {{ ocloud_clustertemplate_name }}/ns.yaml
-- {{ ocloud_clustertemplate_name }}/msc-binding.yaml
+{% for prof in ocloud_clustertemplate_profiles %}
+- {{ prof.name }}/ns.yaml
+- {{ prof.name }}/msc-binding.yaml
+{% endfor %}

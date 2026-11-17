@@ -106,3 +106,33 @@ disconnected_certified_operator_index_tag: v4.22
 # oadp s3 credentials
 s3_access_key_id: rustfs
 s3_secret_access_key: rustfs123
+
+# PerformanceProfile and TunedPerformancePatch are disabled by default because
+# applying a PerformanceProfile to VMs changes CPU core partitioning and can break them.
+# Enable only on bare-metal clusters where CPU partitioning is intended.
+# Also gates the du-validator-policy, which checks for PerformanceProfile compliance.
+ocloud_performance_profile_enabled: false
+
+########################################################
+# ClusterTemplate profiles
+# Default: sno-ran-du only. Add std-ran-du and 3node-ran-du for MNO support.
+########################################################
+ocloud_clustertemplate_profiles:
+- name: sno-ran-du
+  cluster_type: SNO
+  node_groups: [master]
+  install_types: [ai, ibi]
+  pg_template: sno-ran-du-pg.yaml.j2
+  upgradeable: true
+# - name: std-ran-du
+#   cluster_type: HighlyAvailable
+#   node_groups: [master, worker]
+#   install_types: [ai]
+#   pg_template: std-ran-du-pg.yaml.j2
+#   upgradeable: false
+# - name: 3node-ran-du
+#   cluster_type: HighlyAvailable
+#   node_groups: [master]
+#   install_types: [ai]
+#   pg_template: 3node-ran-du-pg.yaml.j2
+#   upgradeable: false
