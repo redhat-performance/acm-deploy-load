@@ -524,10 +524,13 @@ def query_thanos(route, query, series_label, token, end_ts, duration, directory,
   # Determine query offset from end timestamp
   offset = calculate_query_offset(end_ts)
 
+  # Apply the subquery to the complete expression. Appending it directly can
+  # bind the range selector to a trailing scalar (for example, `/ 1000000`)
+  # instead of the instant vector returned by the query.
   if offset == 0:
-    query_complete = query + "[" + duration + ":" + resolution + "]"
+    query_complete = "(" + query + ")[" + duration + ":" + resolution + "]"
   else:
-    query_complete = query + "[" + duration + ":" + resolution + "] offset " + str(int(offset)) + "m"
+    query_complete = "(" + query + ")[" + duration + ":" + resolution + "] offset " + str(int(offset)) + "m"
   logger.info("Query: {}".format(query_complete))
   # Use POST body so the query is form-encoded; putting it in the URL unencoded breaks
   # complex queries (spaces, quotes, slashes, regex) and can return empty results.
