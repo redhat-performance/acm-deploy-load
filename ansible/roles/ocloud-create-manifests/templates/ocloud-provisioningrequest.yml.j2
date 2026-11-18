@@ -119,16 +119,30 @@ spec:
 {% endfor %}
 {% endif %}
     policyTemplateParameters:
-      install-plan-approval: "Automatic"
+{% if cluster.profile == 'sno-ran-du' %}
+      # Full SNO parameter set (matches sno-create-manifests). Uncomment any to override.
+      # cluster-log-fwd-filters-labels: '{"label1": "test1", "label2": "test2"}'
+      # cluster-log-fwd-outputs-url: "tcp://198.51.100.50:9092/test"
       # cpu-isolated: "2-31"
       # cpu-reserved: "0-1"
       # hugepages-count: "16"
       # hugepages-default: "1G"
       # hugepages-size: "1G"
-      # oadp-s3url: "http://bastion:9000"
+      install-plan-approval: "Automatic"
+      # oadp-s3url: ""
       # ptpcfgslave-profile-interface: ens15f1
       # sriov-network-vlan-1: "140"
       # sriov-network-pfNames-1: '["ens2f0"]'
       # storage-lv-devicePaths-1: '["/dev/disk/by-path/pci-0000:62:00.0-scsi-0:2:8:0"]'
-      # cluster-log-fwd-filters-labels: '{"label1": "test1"}'
-      # cluster-log-fwd-outputs-url: "tcp://198.51.100.50:9092/test"
+{% else %}
+      # MNO (3node/standard) parameter set. Only the keys consumed by the MNO
+      # policy are listed; the SR-IOV network, storage-lv, OADP and log-forwarder
+      # keys are omitted because those CRs are not part of the MNO config policy.
+      # cpu-isolated: "2-31"
+      # cpu-reserved: "0-1"
+      # hugepages-count: "16"
+      # hugepages-default: "1G"
+      # hugepages-size: "1G"
+      install-plan-approval: "Automatic"
+      # ptpcfgslave-profile-interface: ens15f1
+{% endif %}
