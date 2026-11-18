@@ -12,7 +12,7 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: ConfigurationPolicy
         metadata:
-          name: rhacs-namespace
+          name: rhacs-secured-cluster
         spec:
           remediationAction: enforce
           severity: high
@@ -23,32 +23,14 @@ spec:
                 kind: Namespace
                 metadata:
                   name: {{ rhacm_acs_namespace }}
-    # Ensure the namespace used for the RHACS Operator exists.
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: rhacs-operator-namespace
-        spec:
-          remediationAction: enforce
-          severity: high
-          object-templates:
+            # Ensure the namespace used for the RHACS Operator exists.
             - complianceType: musthave
               objectDefinition:
                 apiVersion: v1
                 kind: Namespace
                 metadata:
                   name: rhacs-operator
-    # Create an OperatorGroup for AllNamespaces (empty targetNamespaces)
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: rhacs-operator-group
-        spec:
-          remediationAction: enforce
-          severity: high
-          object-templates:
+            # Create an OperatorGroup for AllNamespaces (empty targetNamespaces)
             - complianceType: musthave
               objectDefinition:
                 apiVersion: operators.coreos.com/v1
@@ -58,15 +40,6 @@ spec:
                   namespace: rhacs-operator
                 spec:
                   targetNamespaces: []
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: rhacs-operator-subscription
-        spec:
-          remediationAction: enforce
-          severity: high
-          object-templates:
             - complianceType: musthave
               objectDefinition:
                 apiVersion: operators.coreos.com/v1alpha1
@@ -79,31 +52,10 @@ spec:
                   name: rhacs-operator
                   source: {{ rhacm_acs_operator_source }}
                   sourceNamespace: {{ rhacm_acs_operator_source_namespace }}
-    # CRS is a custom resource consumed by the RHACS Operator, not a Secret.
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: rhacs-cluster-registration-secret
-        spec:
-          remediationAction: enforce
-          severity: high
-          namespaceSelector:
-            include:
-              - stackrox
-          object-templates:
+            # CRS is a custom resource consumed by the RHACS Operator, not a Secret.
             - complianceType: musthave
               objectDefinition:
 {{ rhacm_acs_crs | indent(16, true) }}
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: ConfigurationPolicy
-        metadata:
-          name: rhacs-secured-cluster
-        spec:
-          remediationAction: enforce
-          severity: high
-          object-templates:
             - complianceType: musthave
               objectDefinition:
                 apiVersion: platform.stackrox.io/v1alpha1
