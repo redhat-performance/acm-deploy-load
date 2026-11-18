@@ -111,15 +111,15 @@ the Local Storage Operator namespace exists.
 The ACS sections include namespace and pod CPU/memory/network consumption;
 Central alert, scanning, Postgres, gRPC, HTTP, runtime, process, cache, and
 secured-cluster metrics; and Scanner V4 Indexer and Matcher workload,
-database-pool, and gRPC metrics. The Central section queries every metric
-family captured in `central-snippet.prom`; purpose-built charts are retained
-for the original key Central metrics, while the remaining families are emitted
-as `central-<metric-name>` artifacts.
+database-pool, and gRPC metrics. The Central and Scanner V4 Indexer sections
+query every metric family captured in `central-snippet.prom` and
+`scanner-v4-indexer-snippet.prom`; purpose-built charts are retained for the
+original key metrics, while the remaining families are emitted as
+`central-<metric-name>` or `indexer-<metric-name>` artifacts.
 `acs-complete` also creates separate read and write filesystem-throughput
 charts for every Hub node, with one line per `rhacs-operator` pod. These are
 named `disk-read-tput-acs-pods-<node>.png` and
 `disk-write-tput-acs-pods-<node>.png`, and report MB/s.
 
-The Indexer and Matcher sections intentionally select operationally useful
-metrics and do not query every family exposed in
-`scanner-v4-indexer-snippet.prom` or `scanner-v4-matcher-snippet.prom`.
+The Matcher section intentionally selects operationally useful metrics and
+does not query every family exposed in `scanner-v4-matcher-snippet.prom`.

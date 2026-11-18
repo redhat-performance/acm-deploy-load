@@ -216,6 +216,104 @@ tar_file_count_per_layer
 tar_matched_file_count_per_layer
 """.split()
 
+# Metric families exported by Scanner V4 Indexer in
+# scanner-v4-indexer-snippet.prom that do not have purpose-built queries.
+INDEXER_SNIPPET_EXTRA_METRICS = """
+claircore_indexer_deletemanifests_duration_seconds
+claircore_indexer_deletemanifests_total
+claircore_indexer_distributionbylayer_duration_seconds
+claircore_indexer_distributionbylayer_total
+claircore_indexer_filesbylayer_duration_seconds
+claircore_indexer_filesbylayer_total
+claircore_indexer_indexdistributions_duration_seconds
+claircore_indexer_indexdistributions_total
+claircore_indexer_indexfiles_duration_seconds
+claircore_indexer_indexfiles_total
+claircore_indexer_indexreport_duration_seconds
+claircore_indexer_indexreport_total
+claircore_indexer_indexrepositories_duration_seconds
+claircore_indexer_indexrepositories_total
+claircore_indexer_layerscanned_duration_seconds
+claircore_indexer_manifestscanned_duration_seconds
+claircore_indexer_manifestscanned_total
+claircore_indexer_packagesbylayer_duration_seconds
+claircore_indexer_packagesbylayer_total
+claircore_indexer_persistmanifest_duration_seconds
+claircore_indexer_persistmanifest_total
+claircore_indexer_registerscanners_duration_seconds
+claircore_indexer_registerscanners_total
+claircore_indexer_repositoriesbylayer_duration_seconds
+claircore_indexer_repositoriesbylayer_total
+claircore_indexer_setindexedfinished_total
+claircore_indexer_setindexfinished_duration_seconds
+claircore_indexer_setindexreport_duration_seconds
+claircore_indexer_setindexreport_total
+claircore_indexer_setlayerscanned_duration_seconds
+claircore_indexer_setlayerscanned_total
+file_extraction_count
+file_extraction_inaccessible_count
+file_extraction_match_count
+go_gc_duration_seconds
+go_gc_gogc_percent
+go_gc_gomemlimit_bytes
+go_goroutines
+go_info
+go_memstats_alloc_bytes
+go_memstats_alloc_bytes_total
+go_memstats_buck_hash_sys_bytes
+go_memstats_frees_total
+go_memstats_gc_sys_bytes
+go_memstats_heap_alloc_bytes
+go_memstats_heap_idle_bytes
+go_memstats_heap_inuse_bytes
+go_memstats_heap_objects
+go_memstats_heap_released_bytes
+go_memstats_heap_sys_bytes
+go_memstats_last_gc_time_seconds
+go_memstats_mallocs_total
+go_memstats_mcache_inuse_bytes
+go_memstats_mcache_sys_bytes
+go_memstats_mspan_inuse_bytes
+go_memstats_mspan_sys_bytes
+go_memstats_next_gc_bytes
+go_memstats_other_sys_bytes
+go_memstats_stack_inuse_bytes
+go_memstats_stack_sys_bytes
+go_memstats_sys_bytes
+go_sched_gomaxprocs_threads
+go_threads
+grpc_server_msg_received_total
+grpc_server_msg_sent_total
+grpc_server_started_total
+http_incoming_in_flight_requests
+http_incoming_request_duration_histogram_seconds
+http_incoming_request_size_histogram_bytes
+http_incoming_requests_total
+http_incoming_response_size_histogram_bytes
+pgxpool_acquire_duration_seconds_total
+pgxpool_acquired_conns
+pgxpool_canceled_acquire_count
+pgxpool_constructing_conns
+pgxpool_empty_acquire
+pgxpool_max_conns
+process_cpu_seconds_total
+process_max_fds
+process_network_receive_bytes_total
+process_network_transmit_bytes_total
+process_open_fds
+process_resident_memory_bytes
+process_start_time_seconds
+process_virtual_memory_bytes
+process_virtual_memory_max_bytes
+rox_scanner_process_cpu_nr_periods
+rox_scanner_process_cpu_nr_throttled
+rox_scanner_process_cpu_throttled_time
+rox_scanner_uptime_seconds
+tar_extracted_contents_bytes_per_layer
+tar_file_count_per_layer
+tar_matched_file_count_per_layer
+""".split()
+
 
 def calculate_query_offset(end_ts):
   cur_utc_unix_time = time.mktime(datetime.now(tz=timezone.utc).timetuple())
@@ -225,7 +323,7 @@ def calculate_query_offset(end_ts):
   return offset_minutes
 
 
-def central_metric_unit(metric):
+def metric_unit(metric):
   if metric.endswith("_bytes"):
     return "Bytes"
   if metric.endswith("_seconds") or metric.endswith("_duration"):
@@ -330,7 +428,7 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
     q = metric + "{namespace='rhacs-operator',pod=~'central-.*'}"
     query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
         "central-{}".format(metric), "ACS Central {}".format(metric),
-        central_metric_unit(metric), w, h, q_names)
+        metric_unit(metric), w, h, q_names)
 
   return q_names
 
@@ -376,6 +474,15 @@ def acs_scanner_indexer_queries(report_dir, route, token, end_ts, duration, w, h
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "indexer-grpc-duration", "ACS Indexer gRPC Handling Duration", "Seconds", w, h, q_names)
   q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "indexer-grpc-handled", "ACS Indexer gRPC Requests Rate", "Requests/s", w, h, q_names)
+
+  # Capture all remaining Indexer metric families in
+  # scanner-v4-indexer-snippet.prom. Target labels prevent common runtime,
+  # gRPC, HTTP, process, and tar metrics from mixing with Matcher or Central.
+  for metric in INDEXER_SNIPPET_EXTRA_METRICS:
+    q = metric + "{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}"
+    query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
+        "indexer-{}".format(metric), "ACS Scanner Indexer {}".format(metric),
+        metric_unit(metric), w, h, q_names)
 
   return q_names
 
