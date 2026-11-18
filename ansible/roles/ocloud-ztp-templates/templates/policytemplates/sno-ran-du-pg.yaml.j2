@@ -174,6 +174,7 @@ policies:
 - name: v1-config-policy
   manifests:
     - path: source-crs/cluster-tuning/DisableOLMPprof.yaml
+      complianceType: mustnothave
     - path: source-crs/cluster-tuning/disabling-network-diagnostics/DisableSnoNetworkDiag.yaml
     # REDUCE FOOTPRINT
     - path: source-crs/cluster-tuning/monitoring-configuration/ReduceMonitoringFootprint.yaml
@@ -235,12 +236,6 @@ policies:
 #            profile: ran-du-performance
 {% endif %}
     # PTP CONFIG
-    - path: source-crs/ptp-operator/PtpOperatorConfig.yaml
-      patches:
-      - spec:
-          daemonNodeSelector:
-            $patch: replace
-            node-role.kubernetes.io/master: ""
     - path: source-crs/ptp-operator/configuration/PtpConfigSlave.yaml
       openapi:
         path: {{ ocloud_clustertemplate_name }}/schema.openapi
@@ -257,14 +252,12 @@ policies:
               priority: 4
               profile: slave
     # SRIOV OPERATOR CONFIG
-    - path: source-crs/sriov-operator/SriovOperatorConfig.yaml
+    - path: source-crs/sriov-operator/SriovOperatorConfig-SetSelector.yaml
       complianceType: musthave
       patches:
       - spec:
           configDaemonNodeSelector:
-            $patch: replace
-            node-role.kubernetes.io/master: ""
-          disableDrain: true
+            node-role.kubernetes.io/worker: ""
     # LOCAL STORAGE CONFIG
     - path: source-crs/storage/StorageLV.yaml
       patches:

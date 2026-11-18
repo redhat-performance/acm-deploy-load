@@ -129,15 +129,31 @@ policies:
 # CONFIGURATION POLICY
 - name: v1-config-policy
   manifests:
+    # REDUCE FOOTPRINT
+    - path: source-crs/cluster-tuning/monitoring-configuration/ReduceMonitoringFootprint.yaml
+    # PTP CONFIG
+    - path: source-crs/ptp-operator/configuration/PtpConfigSlave.yaml
+      openapi:
+        path: {{ ocloud_clustertemplate_name }}/schema.openapi
+      patches:
+        - metadata:
+            name: du-ptp-slave
+          spec:
+            profile:
+            - interface: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "ptpcfgslave-profile-interface" hub}}{% endraw %}'
+              name: slave
+            recommend:
+            - match:
+              - nodeLabel: node-role.kubernetes.io/master
+              priority: 4
+              profile: slave
     # SRIOV OPERATOR CONFIG
-    - path: source-crs/sriov-operator/SriovOperatorConfig.yaml
+    - path: source-crs/sriov-operator/SriovOperatorConfig-SetSelector.yaml
       complianceType: musthave
       patches:
       - spec:
           configDaemonNodeSelector:
-            $patch: replace
             node-role.kubernetes.io/master: ""
-          disableDrain: true
 {% if ocloud_performance_profile_enabled %}
     # PERFORMANCE PROFILE
     - path: source-crs/node-tuning-operator/x86_64/PerformanceProfile-SetSelector.yaml
@@ -195,49 +211,6 @@ policies:
 #            priority: 18
 #            profile: ran-du-performance
 {% endif %}
-    # SRIOV NETWORKS
-    - path: source-crs/sriov-operator/SriovNetwork.yaml
-      patches:
-      - metadata:
-          name: sriov-nw-du-fh
-        spec:
-          resourceName: du_fh
-          vlan: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-vlan-1" | toInt hub}}{% endraw %}'
-    - path: source-crs/sriov-operator/SriovNetworkNodePolicy-SetSelector.yaml
-      patches:
-      - metadata:
-          name: sriov-nnp-du-fh
-        spec:
-          deviceType: netdevice
-          isRdma: false
-          nicSelector:
-            pfNames: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-pfNames-1" | toLiteral hub}}{% endraw %}'
-          nodeSelector:
-            node-role.kubernetes.io/master: ""
-          numVfs: 8
-          priority: 10
-          resourceName: du_fh
-    - path: source-crs/sriov-operator/SriovNetwork.yaml
-      patches:
-      - metadata:
-          name: sriov-nw-du-mh
-        spec:
-          resourceName: du_mh
-          vlan: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-vlan-2" | toInt hub}}{% endraw %}'
-    - path: source-crs/sriov-operator/SriovNetworkNodePolicy-SetSelector.yaml
-      patches:
-      - metadata:
-          name: sriov-nnp-du-mh
-        spec:
-          deviceType: vfio-pci
-          isRdma: false
-          nicSelector:
-            pfNames: '{% raw %}{{hub fromConfigMap "" (printf "%s-pg" .ManagedClusterName) "sriov-network-pfNames-2" | toLiteral hub}}{% endraw %}'
-          nodeSelector:
-            node-role.kubernetes.io/master: ""
-          numVfs: 8
-          priority: 10
-          resourceName: du_mh
 
 {% if ocloud_performance_profile_enabled %}
 # DU VALIDATOR
