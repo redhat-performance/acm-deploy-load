@@ -109,13 +109,17 @@ OpenShift sections. `acs-complete`, `acs-central`,
 the Local Storage Operator namespace exists.
 
 The ACS sections include namespace and pod CPU/memory/network consumption;
-Central alert, scanning, Postgres, gRPC, HTTP, and secured-cluster metrics;
-and Scanner V4 Indexer and Matcher workload, database-pool, and gRPC metrics.
+Central alert, scanning, Postgres, gRPC, HTTP, runtime, process, cache, and
+secured-cluster metrics; and Scanner V4 Indexer and Matcher workload,
+database-pool, and gRPC metrics. The Central section queries every metric
+family captured in `central-snippet.prom`; purpose-built charts are retained
+for the original key Central metrics, while the remaining families are emitted
+as `central-<metric-name>` artifacts.
 `acs-complete` also creates separate read and write filesystem-throughput
 charts for every Hub node, with one line per `rhacs-operator` pod. These are
 named `disk-read-tput-acs-pods-<node>.png` and
 `disk-write-tput-acs-pods-<node>.png`, and report MB/s.
 
-This analyzer intentionally selects operationally useful metrics; it does not
-query every metric family exposed in `central-snippet.prom`,
-`scanner-v4-indexer-snippet.prom`, or `scanner-v4-matcher-snippet.prom`.
+The Indexer and Matcher sections intentionally select operationally useful
+metrics and do not query every family exposed in
+`scanner-v4-indexer-snippet.prom` or `scanner-v4-matcher-snippet.prom`.

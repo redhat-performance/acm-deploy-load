@@ -49,6 +49,173 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s : %(levelname)s : %(
 logger = logging.getLogger("acs-prometheus-analysis")
 logging.Formatter.converter = time.gmtime
 
+# Metric families exported by Central in central-snippet.prom that do not
+# already have a purpose-built query below. Keep this list aligned with the
+# captured Central metrics when that reference file is refreshed.
+CENTRAL_SNIPPET_EXTRA_METRICS = """
+file_extraction_count
+file_extraction_inaccessible_count
+file_extraction_match_count
+go_gc_duration_seconds
+go_gc_gogc_percent
+go_gc_gomemlimit_bytes
+go_goroutines
+go_info
+go_memstats_alloc_bytes
+go_memstats_alloc_bytes_total
+go_memstats_buck_hash_sys_bytes
+go_memstats_frees_total
+go_memstats_gc_sys_bytes
+go_memstats_heap_alloc_bytes
+go_memstats_heap_idle_bytes
+go_memstats_heap_inuse_bytes
+go_memstats_heap_objects
+go_memstats_heap_released_bytes
+go_memstats_heap_sys_bytes
+go_memstats_last_gc_time_seconds
+go_memstats_mallocs_total
+go_memstats_mcache_inuse_bytes
+go_memstats_mcache_sys_bytes
+go_memstats_mspan_inuse_bytes
+go_memstats_mspan_sys_bytes
+go_memstats_next_gc_bytes
+go_memstats_other_sys_bytes
+go_memstats_stack_inuse_bytes
+go_memstats_stack_sys_bytes
+go_memstats_sys_bytes
+go_sched_gomaxprocs_threads
+go_threads
+grpc_server_msg_received_total
+grpc_server_msg_sent_total
+grpc_server_started_total
+http_incoming_in_flight_requests
+http_incoming_request_size_histogram_bytes
+http_incoming_response_size_histogram_bytes
+process_cpu_seconds_total
+process_max_fds
+process_network_receive_bytes_total
+process_network_transmit_bytes_total
+process_open_fds
+process_resident_memory_bytes
+process_start_time_seconds
+process_virtual_memory_bytes
+process_virtual_memory_max_bytes
+rox_base_image_watcher_metadata_fetch_errors
+rox_base_image_watcher_poll_duration_seconds
+rox_base_image_watcher_repositories_total
+rox_base_image_watcher_scan_duration_seconds
+rox_base_image_watcher_tags_listed
+rox_central_administration_events_queue_size_total
+rox_central_alert_and_notify_incoming_count
+rox_central_background_migration_complete
+rox_central_background_migration_seq_num
+rox_central_cache_bypass_total
+rox_central_cache_entries
+rox_central_cache_hit_total
+rox_central_cache_miss_total
+rox_central_cache_op_duration
+rox_central_cache_population_duration_seconds
+rox_central_cluster_metrics_cpu_capacity
+rox_central_cluster_metrics_node_count
+rox_central_complianceoperator_num_scans_running_in_parallel
+rox_central_complianceoperator_scan_watchers_active_time_minutes
+rox_central_complianceoperator_scan_watchers_current
+rox_central_complianceoperator_scan_watchers_finish_type_total
+rox_central_datastore_function_duration
+rox_central_deduping_hash_count
+rox_central_deduping_hash_size
+rox_central_deployment_enhancement_duration_ms
+rox_central_deployment_risk_semaphore_holding_size
+rox_central_deployment_risk_semaphore_queue_size
+rox_central_deployment_risk_semaphore_timeouts_total
+rox_central_function_segment_duration
+rox_central_graphql_op_duration
+rox_central_graphql_query_duration
+rox_central_grpc_last_message_size_received_bytes
+rox_central_grpc_last_message_size_sent_bytes
+rox_central_grpc_max_message_size_sent_bytes
+rox_central_grpc_message_size_sent_bytes
+rox_central_imageV2_upsert_deduper
+rox_central_image_vuln_retrieval_duration
+rox_central_info
+rox_central_internal_token_generation_duration_seconds
+rox_central_internal_token_generation_total
+rox_central_k8s_event_processing_duration
+rox_central_key_bundle_updater_download_duration_seconds
+rox_central_key_bundle_updater_downloads_total
+rox_central_key_bundle_updater_last_success_timestamp
+rox_central_key_bundle_watcher_file_errors_total
+rox_central_key_bundle_watcher_keys_count
+rox_central_key_bundle_watcher_last_success_timestamp
+rox_central_key_bundle_watcher_upserts_total
+rox_central_merge_many_alerts_duration_ms
+rox_central_merge_many_alerts_previous_count
+rox_central_metadata_cache_hits
+rox_central_metadata_cache_misses
+rox_central_node_scan_num_components
+rox_central_number_of_external_policies_current
+rox_central_orphaned_plop_total
+rox_central_postgres_acquire_conn_op_duration
+rox_central_postgres_available_size_bytes
+rox_central_postgres_connected
+rox_central_postgres_dead_tuples
+rox_central_postgres_live_tuples
+rox_central_postgres_maximum_db_connections
+rox_central_postgres_query_errors
+rox_central_postgres_table_data_bytes
+rox_central_postgres_table_index_bytes
+rox_central_postgres_table_size
+rox_central_postgres_table_toast_bytes
+rox_central_postgres_table_total_bytes
+rox_central_postgres_total_size_bytes
+rox_central_process_cpu_nr_periods
+rox_central_process_cpu_nr_throttled
+rox_central_process_cpu_throttled_time
+rox_central_process_filter
+rox_central_process_indicators_not_persisted
+rox_central_process_indicators_removed
+rox_central_process_indicators_removed_total
+rox_central_process_not_persisted_args_size
+rox_central_process_not_persisted_lineage_size
+rox_central_process_pruning_cache_hits
+rox_central_process_pruning_cache_misses
+rox_central_process_queue_length
+rox_central_process_upserted_args_size
+rox_central_process_upserted_args_size_total
+rox_central_process_upserted_count
+rox_central_process_upserted_lineage_size
+rox_central_process_upserted_lineage_size_total
+rox_central_prune_duration
+rox_central_rate_limiter_active_clients
+rox_central_rate_limiter_per_client_bucket_max_tokens
+rox_central_rate_limiter_per_client_bucket_refill_rate_per_second
+rox_central_rate_limiter_requests_total
+rox_central_registry_client_request_duration_seconds
+rox_central_registry_client_requests_total
+rox_central_reprocessor_duration_seconds
+rox_central_resource_processed_count
+rox_central_risk_processing_duration
+rox_central_secured_vcpus
+rox_central_sensor_connected
+rox_central_sensor_event_deduper
+rox_central_sensor_event_duration
+rox_central_sensor_event_queue
+rox_central_signature_verification_reprocessor_duration_seconds
+rox_central_total_external_policies_count
+rox_central_total_network_endpoints_received_counter
+rox_central_total_network_flows_central_received_counter
+rox_central_uptime_seconds
+rox_endpoint_tls_handshakes_with_negotiated_alp_total
+rox_image_scan_semaphore_holding_size
+rox_image_scan_semaphore_limit
+rox_image_scan_semaphore_queue_size
+rox_tls_check_count
+rox_tls_check_duration_seconds
+tar_extracted_contents_bytes_per_layer
+tar_file_count_per_layer
+tar_matched_file_count_per_layer
+""".split()
+
 
 def calculate_query_offset(end_ts):
   cur_utc_unix_time = time.mktime(datetime.now(tz=timezone.utc).timetuple())
@@ -56,6 +223,16 @@ def calculate_query_offset(end_ts):
   if offset_minutes < 1:
     offset_minutes = 0
   return offset_minutes
+
+
+def central_metric_unit(metric):
+  if metric.endswith("_bytes"):
+    return "Bytes"
+  if metric.endswith("_seconds") or metric.endswith("_duration"):
+    return "Seconds"
+  if metric.endswith("_ms"):
+    return "Milliseconds"
+  return "Count"
 
 
 # ACS - Complete (rhacs-operator namespace)
@@ -137,7 +314,7 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   # Central HTTP metrics
   q = "sum by (code) (rate(http_incoming_requests_total{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "code", token, end_ts, duration, sub_report_dir, "central-http-requests", "ACS Central HTTP Requests Rate", "Requests/s", w, h, q_names)
-  q = "http_incoming_request_duration_histogram_seconds"
+  q = "http_incoming_request_duration_histogram_seconds{namespace='rhacs-operator',pod=~'central-.*'}"
   query_thanos(route, q, "path", token, end_ts, duration, sub_report_dir, "central-http-duration", "ACS Central HTTP Request Duration", "Seconds", w, h, q_names)
 
   # Central resource metrics
@@ -145,6 +322,15 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "central-secured-clusters", "ACS Secured Clusters", "Count", w, h, q_names)
   q = "rox_central_secured_nodes"
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "central-secured-nodes", "ACS Secured Nodes", "Count", w, h, q_names)
+
+  # Capture all remaining Central metric families in central-snippet.prom.
+  # The target labels scope common Go, gRPC, HTTP, process, and tar metrics to
+  # Central rather than similarly named Scanner metrics.
+  for metric in CENTRAL_SNIPPET_EXTRA_METRICS:
+    q = metric + "{namespace='rhacs-operator',pod=~'central-.*'}"
+    query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
+        "central-{}".format(metric), "ACS Central {}".format(metric),
+        central_metric_unit(metric), w, h, q_names)
 
   return q_names
 
