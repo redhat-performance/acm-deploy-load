@@ -5,119 +5,102 @@ metadata:
   name: {{ inventory_hostname | to_uuid }}
 spec:
   name: "{{ inventory_hostname }}-provisioning"
-  description: "Provisioning request for SNO cluster {{ inventory_hostname }}"
+  description: "Provisioning request for {{ ocloud_clustertemplate_name }} cluster {{ inventory_hostname }}"
   templateName: {{ ocloud_clustertemplate_name }}
   templateVersion: {{ ocloud_clustertemplate_version }}-{{ item.type }}-{{ ocloud_clustertemplate_revision }}
   templateParameters:
     nodeClusterName: {{ inventory_hostname }}
     oCloudSiteId: {{ ocloud_site_name }}
-    # hwMgmtParameters allows overriding hardware management defaults.
     hwMgmtParameters:
       # Override the hardware provisioning timeout (optional)
       # hardwareProvisioningTimeout: "120m"
       nodeGroupData:
-        - name: master
-          role: master
+      - name: master
+        role: master
 {% if ocloud_hardware_mgmt_enabled %}
-          hwProfile: {{ ocloud_hardware_profile_name }}
+        hwProfile: {{ ocloud_hardware_profile_name }}
 {% endif %}
-          resourcePoolId: {{ ocloud_resourcepool_name }}
-          # Additional resource selector criteria (optional, merged with hwMgmtDefaults selectors)
-          resourceSelector:
-            resourceselector.clcm.openshift.io/server-id: {{ inventory_hostname }}
+        resourcePoolId: {{ ocloud_resourcepool_name }}
+        resourceSelector:
+          server-id: {{ inventory_hostname }}
     clusterInstanceParameters:
       additionalNTPSources:
-        - {{ hostvars[inventory_hostname]['hv_ip'] }}
+      - {{ hostvars[inventory_hostname]['hv_ip'] }}
       clusterName: {{ inventory_hostname }}
-      # extraAnnotations:
-      #   AgentClusterInstall:
-      #     extra-annotation-key: extra-annotation-value
       extraLabels:
         ManagedCluster:
           site: {{ inventory_hostname }}
 {% if ocloud_legacy_nodes_enabled %}
       nodes:
-        - bootMode: UEFI
-          # extraAnnotations:
-          #   BareMetalHost:
-          #     extra-annotation-key: extra-annotation-value
-          # extraLabels:
-          #   BareMetalHost:
-          #     extra-label-key: extra-label-value
-          hostName: {{ inventory_hostname }}
-          nodeLabels:
-            node-role.kubernetes.io/master: ""
-          nodeNetwork:
-            config:
-              dns-resolver:
-                config:
-                  server:
-                    - {{ hostvars[inventory_hostname]['hv_ip'] }}
-              interfaces:
+      - bootMode: UEFI
+        hostName: {{ inventory_hostname }}
+        nodeLabels:
+          node-role.kubernetes.io/master: ""
+        nodeNetwork:
+          config:
+            dns-resolver:
+              config:
+                server:
+                - {{ hostvars[inventory_hostname]['hv_ip'] }}
+            interfaces:
 {% if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv4 %}
-                - ipv4:
-                    address:
-                      - ip: {{ hostvars[inventory_hostname]['ip'] }}
-                        prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
-                    dhcp: false
-                    enabled: true
-                  ipv6:
-                    dhcp: false
-                    enabled: false
+            - ipv4:
+                address:
+                - ip: {{ hostvars[inventory_hostname]['ip'] }}
+                  prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+                dhcp: false
+                enabled: true
+              ipv6:
+                dhcp: false
+                enabled: false
 {% else %}
-                - ipv4:
-                    dhcp: false
-                    enabled: false
-                  ipv6:
-                    address:
-                      - ip: {{ hostvars[inventory_hostname]['ip'] }}
-                        prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
-                    dhcp: false
-                    enabled: true
+            - ipv4:
+                dhcp: false
+                enabled: false
+              ipv6:
+                address:
+                - ip: {{ hostvars[inventory_hostname]['ip'] }}
+                  prefix-length: {{ hostvars[inventory_hostname]['network_prefix'] }}
+                dhcp: false
+                enabled: true
 {% endif %}
-                  name: {{ sno_nic_interface }}
-                  type: ethernet
-              routes:
-                config:
-                  - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                    next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
-                    next-hop-interface: {{ sno_nic_interface }}
-                    table-id: 254
+              name: {{ sno_nic_interface }}
+              type: ethernet
+            routes:
+              config:
+              - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+                next-hop-interface: {{ sno_nic_interface }}
+                table-id: 254
 {% else %}
       nodeGroups:
-        - name: master
-          nodeLabels:
-            node-role.kubernetes.io/master: ""
-          # extraAnnotations:
-          #   BareMetalHost:
-          #     extra-annotation-key: extra-annotation-value
-          # extraLabels:
-          #   BareMetalHost:
-          #     extra-label-key: extra-label-value
+      - name: master
+        nodeLabels:
+          node-role.kubernetes.io/master: ""
+        nodeNetwork:
+          config:
+            dns-resolver:
+              config:
+                server:
+                - {{ hostvars[inventory_hostname]['hv_ip'] }}
+            routes:
+              config:
+              - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
+                next-hop-interface: {{ sno_nic_interface }}
+                table-id: 254
+        nodes:
+        - hostName: {{ inventory_hostname }}
           nodeNetwork:
-            config:
-              dns-resolver:
-                config:
-                  server:
-                    - {{ hostvars[inventory_hostname]['hv_ip'] }}
-              routes:
-                config:
-                  - destination: {{ "::/0" if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                    next-hop-address: {{ hostvars[inventory_hostname]['gateway'] }}
-                    next-hop-interface: {{ sno_nic_interface }}
-                    table-id: 254
-          nodes:
-            - hostName: {{ inventory_hostname }}
-              nodeNetwork:
-                interfaces:
-                  - name: {{ sno_nic_interface }}
-                    addresses:
+            interfaces:
+            - name: {{ sno_nic_interface }}
+              addresses:
 {% if hostvars[inventory_hostname]['ip'] | ansible.utils.ipv4 %}
-                      ipv4:
-                        - "{{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}"
+                ipv4:
+                - {{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}
 {% else %}
-                      ipv6:
-                        - "{{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}"
+                ipv6:
+                - {{ hostvars[inventory_hostname]['ip'] }}/{{ hostvars[inventory_hostname]['network_prefix'] }}
 {% endif %}
 {% endif %}
     policyTemplateParameters:
