@@ -48,6 +48,19 @@
   register: rhacm_acs_central_apply
   changed_when: rhacm_acs_central_apply.stdout is search('(created|configured)')
 
+- name: Wait for RHACS Central workloads to become available
+  ansible.builtin.shell: >-
+    oc get central {{ rhacm_acs_central_cr_name | quote }}
+    -n {{ rhacm_acs_central_namespace | quote }}
+    --output 'jsonpath={range .status.conditions[?(@.type=="Available")]}{.status} {.reason}{end}'
+  environment:
+    KUBECONFIG: "{{ hub_cluster_kubeconfig }}"
+  register: rhacm_acs_central_available
+  until: rhacm_acs_central_available.stdout == 'True WorkloadsReady'
+  retries: 100
+  delay: 3
+  changed_when: false
+
 - name: Remove temporary Central manifest directory
   ansible.builtin.file:
     path: "{{ rhacm_acs_central_manifest_dir.path }}"
