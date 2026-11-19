@@ -66,6 +66,40 @@
     oc --kubeconfig={{ seedcluster_kubeconfig }} delete -n openshift-monitoring {{ item }}
   loop: "{{ mon_obs_secrets.stdout_lines }}"
 
+# Check if cluster-monitoring-config references observability-related settings that must be
+# pruned before prometheus can reinitialize after the observability secrets are removed.
+# Covers both 4.22 and 5.0 DU profiles (fields absent → yq check returns false, tasks skip).
+- name: Check if cluster-monitoring-config requires observability settings pruning on seed cluster
+  shell: |
+    set -o pipefail
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc get cm cluster-monitoring-config \
+      -n openshift-monitoring \
+      -o jsonpath='{.data.config\.yaml}' 2>/dev/null | \
+      yq 'has("prometheusK8s") and (.prometheusK8s | (has("additionalAlertmanagerConfigs") or has("externalLabels")))' \
+      || echo "false"
+  register: monitoring_config_needs_prune
+  changed_when: false
+
+- name: Prune observability settings from cluster-monitoring-config on seed cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc get cm cluster-monitoring-config \
+      -n openshift-monitoring -o yaml | \
+      yq '.data["config.yaml"] |= (from_yaml | del(.prometheusK8s.additionalAlertmanagerConfigs, .prometheusK8s.externalLabels) | to_yaml)' | \
+      KUBECONFIG={{ seedcluster_kubeconfig }} oc replace -f -
+  when: monitoring_config_needs_prune.stdout == "true"
+
+- name: Wait for prometheus pods to be Ready on seed cluster
+  shell: |
+    KUBECONFIG={{ seedcluster_kubeconfig }} oc wait pod -n openshift-monitoring \
+      -l app.kubernetes.io/name=prometheus \
+      --for=condition=Ready \
+      --timeout=60s
+  register: prom_ready
+  until: prom_ready.rc == 0
+  retries: 10
+  delay: 0
+  when: monitoring_config_needs_prune.stdout == "true"
+
 # ignore_errors in the event the prometheusrules have already been removed
 - name: Delete acm prometheusrules from seed cluster
   shell: |
