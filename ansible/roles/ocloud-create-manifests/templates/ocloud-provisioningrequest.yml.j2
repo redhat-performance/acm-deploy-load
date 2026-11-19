@@ -14,26 +14,28 @@ spec:
     nodeClusterName: {{ cluster.cluster_name }}
     oCloudSiteId: {{ ocloud_site_name }}
     hwMgmtParameters:
+      # Override the hardware provisioning timeout (optional)
+      # hardwareProvisioningTimeout: "120m"
       nodeGroupData:
-        - name: master
-          role: master
+      - name: master
+        role: master
 {% if ocloud_hardware_mgmt_enabled %}
-          hwProfile: {{ ocloud_hardware_profile_name }}
+        hwProfile: {{ ocloud_hardware_profile_name }}
 {% endif %}
-          resourcePoolId: {{ ocloud_resourcepool_name }}
-          resourceSelector:
-            cluster-id: {{ cluster.cluster_name }}
-            node-role: master
+        resourcePoolId: {{ ocloud_resourcepool_name }}
+        resourceSelector:
+          cluster-id: {{ cluster.cluster_name }}
+          node-role: master
 {% if worker_nodes | length > 0 %}
-        - name: worker
-          role: worker
+      - name: worker
+        role: worker
 {% if ocloud_hardware_mgmt_enabled %}
-          hwProfile: {{ ocloud_hardware_profile_name }}
+        hwProfile: {{ ocloud_hardware_profile_name }}
 {% endif %}
-          resourcePoolId: {{ ocloud_resourcepool_name }}
-          resourceSelector:
-            cluster-id: {{ cluster.cluster_name }}
-            node-role: worker
+        resourcePoolId: {{ ocloud_resourcepool_name }}
+        resourceSelector:
+          cluster-id: {{ cluster.cluster_name }}
+          node-role: worker
 {% endif %}
     clusterInstanceParameters:
       additionalNTPSources:
@@ -48,7 +50,7 @@ spec:
 {%   endfor %}
 {% endif %}
       machineNetwork:
-        - cidr: {{ cluster.machine_network }}
+      - cidr: {{ cluster.machine_network }}
 {% if cluster.masters > 1 %}
       apiVIPs:
       - {{ cluster.api_address }}
@@ -56,65 +58,65 @@ spec:
       - {{ cluster.ingress_address }}
 {% endif %}
       nodeGroups:
-        - name: master
-          nodeLabels:
-            node-role.kubernetes.io/master: ""
-          nodeNetwork:
-            config:
-              dns-resolver:
-                config:
-                  server:
-                  - {{ master_nodes[0].dns_address }}
-              routes:
-                config:
-                - destination: {{ "::/0" if master_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                  next-hop-interface: {{ ocloud_nic_interface }}
-                  next-hop-address: {{ master_nodes[0].default_gateway_address }}
-                  table-id: 254
-          nodes:
+      - name: master
+        nodeLabels:
+          node-role.kubernetes.io/master: ""
+        nodeNetwork:
+          config:
+            dns-resolver:
+              config:
+                server:
+                - {{ master_nodes[0].dns_address }}
+            routes:
+              config:
+              - destination: {{ "::/0" if master_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                next-hop-address: {{ master_nodes[0].default_gateway_address }}
+                next-hop-interface: {{ ocloud_nic_interface }}
+                table-id: 254
+        nodes:
 {% for node in master_nodes %}
-          - hostName: {{ node.hostname }}
-            nodeNetwork:
-              interfaces:
-              - name: {{ ocloud_nic_interface }}
-                addresses:
+        - hostName: {{ node.hostname }}
+          nodeNetwork:
+            interfaces:
+            - name: {{ ocloud_nic_interface }}
+              addresses:
 {% if node.ip_address | ansible.utils.ipv4 %}
-                  ipv4:
-                  - {{ node.ip_address }}/{{ node.prefix_length }}
+                ipv4:
+                - {{ node.ip_address }}/{{ node.prefix_length }}
 {% else %}
-                  ipv6:
-                  - {{ node.ip_address }}/{{ node.prefix_length }}
+                ipv6:
+                - {{ node.ip_address }}/{{ node.prefix_length }}
 {% endif %}
 {% endfor %}
 {% if worker_nodes | length > 0 %}
-        - name: worker
-          nodeLabels:
-            node-role.kubernetes.io/worker: ""
-          nodeNetwork:
-            config:
-              dns-resolver:
-                config:
-                  server:
-                  - {{ worker_nodes[0].dns_address }}
-              routes:
-                config:
-                - destination: {{ "::/0" if worker_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                  next-hop-interface: {{ ocloud_nic_interface }}
-                  next-hop-address: {{ worker_nodes[0].default_gateway_address }}
-                  table-id: 254
-          nodes:
+      - name: worker
+        nodeLabels:
+          node-role.kubernetes.io/worker: ""
+        nodeNetwork:
+          config:
+            dns-resolver:
+              config:
+                server:
+                - {{ worker_nodes[0].dns_address }}
+            routes:
+              config:
+              - destination: {{ "::/0" if worker_nodes[0].ip_address | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                next-hop-address: {{ worker_nodes[0].default_gateway_address }}
+                next-hop-interface: {{ ocloud_nic_interface }}
+                table-id: 254
+        nodes:
 {% for node in worker_nodes %}
-          - hostName: {{ node.hostname }}
-            nodeNetwork:
-              interfaces:
-              - name: {{ ocloud_nic_interface }}
-                addresses:
+        - hostName: {{ node.hostname }}
+          nodeNetwork:
+            interfaces:
+            - name: {{ ocloud_nic_interface }}
+              addresses:
 {% if node.ip_address | ansible.utils.ipv4 %}
-                  ipv4:
-                  - {{ node.ip_address }}/{{ node.prefix_length }}
+                ipv4:
+                - {{ node.ip_address }}/{{ node.prefix_length }}
 {% else %}
-                  ipv6:
-                  - {{ node.ip_address }}/{{ node.prefix_length }}
+                ipv6:
+                - {{ node.ip_address }}/{{ node.prefix_length }}
 {% endif %}
 {% endfor %}
 {% endif %}
