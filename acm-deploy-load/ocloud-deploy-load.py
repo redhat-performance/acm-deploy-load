@@ -174,6 +174,10 @@ def main():
   # Timing
   parser.add_argument("--start-delay", type=int, default=15,
                       help="Phase 1 / Idle Baseline delay before starting (seconds)")
+  parser.add_argument("--inspect-cooldown", type=int, default=300,
+                      help="Cooldown seconds after inspection completes before starting install (0=none)")
+  parser.add_argument("--install-cooldown", type=int, default=300,
+                      help="Cooldown seconds after install completes before starting upgrade (0=none)")
   parser.add_argument("--end-delay", type=int, default=120,
                       help="Phase 5 / Soak Baseline delay after all phases (seconds)")
   parser.add_argument("-i", "--monitor-interval", type=int, default=60,
@@ -448,6 +452,17 @@ def main():
     if not cliargs.no_prometheus_analysis:
       launch_prometheus_analysis(report_dir, "phase2-inspection",
           inspect_start_time, inspect_end_time, cliargs.kubeconfig, base_dir)
+
+    if not cliargs.skip_install and cliargs.inspect_cooldown > 0:
+      logger.info("Post-inspect cooldown: {}s :: {}".format(
+          cliargs.inspect_cooldown, str(timedelta(seconds=cliargs.inspect_cooldown))))
+      remaining = cliargs.inspect_cooldown
+      while remaining > 300:
+        time.sleep(300)
+        remaining -= 300
+        logger.info("{}s :: {} remaining in post-inspect cooldown".format(
+            remaining, str(timedelta(seconds=remaining))))
+      time.sleep(remaining)
   else:
     logger.info("Phase 2 (Inspection) skipped")
 
@@ -514,6 +529,23 @@ def main():
 
     install_end_time = time.time()
 
+    run_analyzer("analyze-provisioningrequests.py", [], report_dir, base_dir, cliargs.dry_run)
+
+    if not cliargs.no_prometheus_analysis:
+      launch_prometheus_analysis(report_dir, "phase3-install",
+          install_start_time, install_end_time, cliargs.kubeconfig, base_dir)
+
+    if not cliargs.skip_upgrade and cliargs.install_cooldown > 0:
+      logger.info("Post-install cooldown: {}s :: {}".format(
+          cliargs.install_cooldown, str(timedelta(seconds=cliargs.install_cooldown))))
+      remaining = cliargs.install_cooldown
+      while remaining > 300:
+        time.sleep(300)
+        remaining -= 300
+        logger.info("{}s :: {} remaining in post-install cooldown".format(
+            remaining, str(timedelta(seconds=remaining))))
+      time.sleep(remaining)
+
     rc, output = command(
         ["oc", "--kubeconfig", cliargs.kubeconfig,
          "get", "provisioningrequests.clcm.openshift.io", "-o", "json"],
@@ -522,17 +554,24 @@ def main():
       try:
         pr_data = json.loads(output)
         for item in pr_data.get("items", []):
+          name = item["metadata"]["name"]
           conditions = item.get("status", {}).get("conditions", [])
           if any(c.get("type") == "ConfigurationApplied" and c.get("status") == "True"
                  for c in conditions):
-            installed_pr_uuids.append(item["metadata"]["name"])
+            installed_pr_uuids.append(name)
+          else:
+            spec_name = item.get("spec", {}).get("name", "unknown")
+            logger.warning("PR not in upgrade list (ConfigurationApplied not True): {} ({})".format(
+                name, spec_name))
+        logger.info("PRs with ConfigurationApplied=True: {}".format(len(installed_pr_uuids)))
+        if len(installed_pr_uuids) != total_prs_installed:
+          logger.warning(
+              "Upgrade list count ({}) differs from monitor install count ({}); "
+              "{} PR(s) may have flapped".format(
+                  len(installed_pr_uuids), total_prs_installed,
+                  total_prs_installed - len(installed_pr_uuids)))
       except json.decoder.JSONDecodeError:
         logger.error("Failed to parse PR data for upgrade list")
-    run_analyzer("analyze-provisioningrequests.py", [], report_dir, base_dir, cliargs.dry_run)
-
-    if not cliargs.no_prometheus_analysis:
-      launch_prometheus_analysis(report_dir, "phase3-install",
-          install_start_time, install_end_time, cliargs.kubeconfig, base_dir)
   else:
     logger.info("Phase 3 (Install) skipped")
 
