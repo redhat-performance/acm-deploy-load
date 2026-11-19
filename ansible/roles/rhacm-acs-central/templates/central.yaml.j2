@@ -1,0 +1,47 @@
+---
+apiVersion: platform.stackrox.io/v1alpha1
+kind: Central
+metadata:
+  finalizers:
+    - uninstall-helm-release
+  name: {{ rhacm_acs_central_cr_name }}
+  namespace: {{ rhacm_acs_central_namespace }}
+spec:
+  customize:
+    envVars:
+      - name: ROX_AUTOGENERATE_GLOBAL_PULLSEC_REGISTRIES
+        value: "false"
+  central:
+    db:
+      persistence:
+        persistentVolumeClaim:
+          claimName: central-db
+          storageClassName: {{ rhacm_acs_central_storage_class_name }}
+    exposure:
+      route:
+        enabled: true
+        reencrypt:
+          enabled: true
+    monitoring:
+      exposeEndpoint: Enabled
+  egress:
+    connectivityPolicy: Offline
+  scannerV4:
+    matcher: 
+      resources: 
+        requests: 
+          cpu: "1" 
+          memory: "3Gi" 
+        limits: 
+          cpu: "4" 
+          memory: "8Gi"
+      scaling:
+        minReplicas: 2
+        maxReplicas: 5
+    db:
+      persistence:
+        persistentVolumeClaim:
+          claimName: scanner-v4-db
+          size: {{ rhacm_acs_central_scanner_v4_db_size }}
+          storageClassName: {{ rhacm_acs_central_storage_class_name }}
+    scannerComponent: Enabled
