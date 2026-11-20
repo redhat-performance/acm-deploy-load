@@ -6,6 +6,16 @@
 # topologies: sno-ran-du (1 master), 3node-ran-du (3 schedulable masters),
 # std-ran-du (3 masters + N workers).
 #
+# Two mutually exclusive inventory sources:
+#
+# Bare Metal: set ocp_inventory in vars/all.yml to a local path or quads URL.
+#   Nodes are carved from the ocp_inventory JSON after auto-excluding the bastion
+#   and hub controlplane machines. Set ocloud_bm_* network vars accordingly.
+#   Set quads_api_token when downloading from a QUADS 3+ server.
+#
+# Virtual Machine: omit ocp_inventory (or leave it None) and run with a jetlag
+#   inventory that has a populated hv_vm group. Nodes are carved from that group.
+#
 # Example Usage:
 #
 # time ansible-playbook -i ansible/inventory/cloud30.local ansible/ocloud-manifests.yml
@@ -20,7 +30,9 @@
   vars:
     ocloud_clusters: []
   roles:
+  - role: ocloud-bm-inventory
+    when: ocp_inventory is defined and ocp_inventory is not none
   - role: ocloud-vm-inventory
-    when: '"hv_vm" in groups'
+    when: '"hv_vm" in groups and (ocp_inventory is not defined or ocp_inventory is none)'
   - role: ocloud-create-manifests
     when: ocloud_clusters | length > 0

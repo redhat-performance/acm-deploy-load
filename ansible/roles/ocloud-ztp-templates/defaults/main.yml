@@ -59,8 +59,10 @@ ocloud_ibu_auto_rollback_timeout: 1800
 ########################################################
 # Clustertemplate GitOps directory vars
 ########################################################
-# NIC interface in clusterinstance defaults
-sno_nic_interface: enp1s0
+# NIC interface in clusterinstance defaults.
+# Must match ocloud_nic_interface set in ocloud.sample.yml / ocloud-create-manifests
+# so the ClusterTemplate defaults and ProvisioningRequest agree on the interface name.
+ocloud_nic_interface: enp1s0
 
 # O-Cloud Manager 5.0+ uses nodeGroups in ClusterTemplate defaults and ProvisioningRequests.
 # Set to true only when targeting O-Cloud Manager 4.22.x, which uses the legacy flat nodes list.

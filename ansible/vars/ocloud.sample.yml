@@ -1,7 +1,43 @@
 ---
-# O-Cloud cluster definitions for ocloud-manifests.yml
-#
-# Each entry generates one cluster's ProvisioningRequest and inventory (BMH + secrets).
+# O-Cloud vars for ocloud-manifests.yml
+
+# Common vars
+# NIC interface name used in BMH preprovisioningNetworkDataName and ProvisioningRequest nodeNetwork config
+# Examples Libvirt VM - enp1s0, Dell R660 (Public VLAN) - eno12409np1
+ocloud_nic_interface: enp1s0
+# Revision suffix appended to the ClusterTemplate templateVersion (e.g. v1 → v4-22-0-ai-v1)
+ocloud_clustertemplate_revision: v1
+# Directory on the bastion where generated manifests are written
+hv_vm_manifests_directory: /root/hv-vm
+
+# BM O-Cloud vars
+# Set ocp_inventory to a local path or quads URL to use BM nodes.
+# Leave unset (or None) to use VM nodes from the hv_vm inventory group instead.
+ocp_inventory:
+# Bearer token for QUADS 3+ authenticated downloads (leave empty for local file or unauthenticated URL)
+quads_api_token: ''
+
+# Nodes to exclude beyond those auto-derived from the bastion and controlplane ansible groups
+ocloud_bm_extra_denylist_nodes: []
+
+# Network settings
+ocloud_bm_dns_address: 198.18.0.1
+ocloud_bm_default_gateway_address: 198.18.0.1
+
+# Cluster network settings
+ocloud_bm_machine_network: 198.18.0.0/16
+# Number of host addresses to skip from network base before assigning IPs to spoke nodes
+# (must clear bastion and all hub controlplane addresses)
+ocloud_bm_node_ip_offset: 7
+
+ocloud_bm_ntp_source: clock.redhat.com
+
+# Corresponds to the index of the ocp_inventory file mac address array, -1 selects last mac address
+ocloud_bm_network_interface_idx: 0
+
+# VM O-Cloud vars - None
+# VM network vars are determined by the hv_vm inventory group rather than this vars file.
+
 # Profile controls topology and install type:
 #   std-ran-du:   3 masters + N workers (AI only)
 #   3node-ran-du: 3 schedulable masters (AI only)
@@ -9,10 +45,8 @@
 #
 # Optional 'count: N' repeats a definition N times (default 1).
 # Optional 'labels: {}' adds extra ManagedCluster labels.
-#
-# VMs are carved sequentially from hv_vm inventory group.
-# Apply inventory (ocloud/inventory/*.yaml) before ProvisioningRequests.
 
+# Cluster definitions (apply to both BM and VM inventory sources)
 # Each profile listed here must also be enabled in ocloud_clustertemplate_profiles
 # (all.yml) so the corresponding ClusterTemplate exists before provisioning.
 ocloud_cluster_definitions:
@@ -33,7 +67,7 @@ ocloud_cluster_definitions:
 #   count: 5
 #   labels: {}
 
-# Mixed topology example (carved sequentially from hv_vm pool):
+# Mixed topology example:
 # ocloud_cluster_definitions:
 # - profile: std-ran-du
 #   workers: 3

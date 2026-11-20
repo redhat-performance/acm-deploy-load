@@ -1,0 +1,37 @@
+---
+# ocloud-bm-inventory default vars
+
+# Path or URL to the ocp_inventory JSON file produced by jetlag's create-inventory playbook.
+# Required; no default.
+# ocp_inventory: /path/to/cloud17_ocpinventory.json
+
+# CIDR for the spoke machine network, e.g. "10.1.50.0/23".
+ocloud_bm_machine_network: ""
+
+# Number of host addresses to skip from the network base before assigning IPs to
+# spoke nodes. Set this high enough to clear the bastion and all hub control-plane
+# node addresses. E.g. if hub nodes are at .5/.6/.7, use 7.
+ocloud_bm_node_ip_offset: 10
+
+# Index into each node's mac list from ocp_inventory for the boot / BMH interface.
+# -1 selects the last MAC (matches jetlag convention for Dell nodes).
+ocloud_bm_network_interface_idx: -1
+
+# DNS server address for spoke node NMState config.
+ocloud_bm_dns_address: ""
+
+# Default gateway address for spoke node NMState config.
+ocloud_bm_default_gateway_address: ""
+
+# NTP source for spoke clusters. When empty, auto-derived from the bastion
+# group's lab_ip hostvars field.
+ocloud_bm_ntp_source: ""
+
+# Additional pm_addr values to exclude beyond those auto-derived from the
+# bastion and controlplane ansible groups. Use for failed or reserved nodes.
+ocloud_bm_extra_denylist_nodes: []
+
+# Bearer token for QUADS 3+ authenticated downloads. Set in all.yml when
+# ocp_inventory is an https:// URL pointing at a quads server. Leave empty
+# for local file paths or unauthenticated URLs.
+quads_api_token: ''
