@@ -1,6 +1,6 @@
 ---
-# Uses the first host in the hv_vm group to determine the IP address type and network configuration
-# IP Used: {{ hostvars[groups['hv_vm'][0]]['ip'] }}
+# Network configuration derived from the jetlag inventory's controlplane_network list.
+# controlplane_network[0] is used as the machine network CIDR and for IPv4/IPv6 detection.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,8 +11,8 @@ data:
     baseDomain: {{ ocloud_base_domain }}
     clusterImageSetNameRef: {{ cluster_image_set }}
     clusterNetwork:
-      - cidr: {{ "fd01::/48" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "10.128.0.0/14" }}
-        hostPrefix: {{ 64 if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else 23 }}
+      - cidr: {{ "fd01::/48" if controlplane_network[0] | ansible.utils.ipv6 else "10.128.0.0/14" }}
+        hostPrefix: {{ 64 if controlplane_network[0] | ansible.utils.ipv6 else 23 }}
     clusterType: {{ profile.cluster_type }}
     cpuPartitioningMode: AllNodes
     # extraAnnotations:
@@ -39,7 +39,7 @@ data:
     installConfigOverrides: '{"capabilities": {"baselineCapabilitySet": "None", "additionalEnabledCapabilities": ["NodeTuning", "OperatorLifecycleManager", "Ingress", "baremetal", "MachineAPI"]}}'
 {% endif %}
     machineNetwork:
-      - cidr: {{ hostvars[groups['hv_vm'][0]]['machine_network'] }}
+      - cidr: {{ controlplane_network[0] }}
     networkType: OVNKubernetes
 {% if ocloud_legacy_nodes_enabled %}
     nodes:
@@ -49,7 +49,7 @@ data:
         nodeNetwork:
           config:
             interfaces:
-{% if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv4 %}
+{% if controlplane_network[0] | ansible.utils.ipv4 %}
               - ipv4:
                   enabled: true
                 ipv6:
@@ -68,7 +68,7 @@ data:
                 type: ethernet
             routes:
               config:
-                - destination: {{ "::/0" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                - destination: {{ "::/0" if controlplane_network[0] | ansible.utils.ipv6 else "0.0.0.0/0" }}
                   next-hop-interface: {{ sno_nic_interface }}
                   table-id: 254
           interfaces:
@@ -99,7 +99,7 @@ data:
               label: boot-interface
           config:
             interfaces:
-{% if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv4 %}
+{% if controlplane_network[0] | ansible.utils.ipv4 %}
               - ipv4:
                   dhcp: false
                   enabled: true
@@ -121,7 +121,7 @@ data:
                 type: ethernet
             routes:
               config:
-                - destination: {{ "::/0" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "0.0.0.0/0" }}
+                - destination: {{ "::/0" if controlplane_network[0] | ansible.utils.ipv6 else "0.0.0.0/0" }}
                   next-hop-interface: {{ sno_nic_interface }}
                   table-id: 254
         # rootDeviceHints:
@@ -139,7 +139,7 @@ data:
     pullSecretRef:
       name: pull-secret
     serviceNetwork:
-      - cidr: {{ "fd02::/112" if hostvars[groups['hv_vm'][0]]['ip'] | ansible.utils.ipv6 else "172.30.0.0/16" }}
+      - cidr: {{ "fd02::/112" if controlplane_network[0] | ansible.utils.ipv6 else "172.30.0.0/16" }}
     sshPublicKey: {{ lookup('file', ssh_public_key_file) }}
     templateRefs:
 {% if item.type == "ai" %}
