@@ -9,6 +9,8 @@ core_boot_mode: UEFI
 
 # BM Telco Core vars
 ocp_inventory:
+# Bearer token for QUADS 3+ authenticated downloads (leave empty for local file or unauthenticated URL)
+quads_api_token: ''
 
 # Nodes you do not want included in the manifests (Ex: Bastion, hub machines etc)
 denylist_nodes: []

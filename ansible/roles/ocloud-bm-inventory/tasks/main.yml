@@ -1,0 +1,76 @@
+---
+# ocloud-bm-inventory tasks
+#
+# Assembles ocloud_clusters from bare-metal nodes in an ocp_inventory JSON file.
+# Machines already used by the bastion and hub control-plane are excluded
+# automatically; additional nodes can be denied via ocloud_bm_extra_denylist_nodes.
+
+- name: Download {{ ocp_inventory }}
+  uri:
+    url: "{{ ocp_inventory }}"
+    return_content: true
+    validate_certs: false
+    headers: "{{ {'Authorization': 'Bearer ' + quads_api_token} if quads_api_token | default('') | length > 0 else {} }}"
+  register: _ocpinventory_result
+  when: '"http" in ocp_inventory'
+
+- name: Load {{ ocp_inventory }}
+  set_fact:
+    _ocpinventory_result:
+      json: "{{ lookup('file', ocp_inventory) | from_json }}"
+  when: '"http" not in ocp_inventory'
+
+- name: Build denylist from bastion and controlplane ansible groups
+  set_fact:
+    _auto_denylist: >-
+      {{
+        (groups['bastion'] | default([]) + groups['controlplane'] | default([]))
+        | map('extract', hostvars, 'bmc_address') | select | list
+      }}
+
+- name: Merge auto denylist with extra denylist nodes
+  set_fact:
+    _bm_denylist: "{{ (_auto_denylist + ocloud_bm_extra_denylist_nodes) | unique }}"
+
+- name: Derive NTP source from bastion lab_ip
+  set_fact:
+    _bm_ntp_source: >-
+      {{
+        ocloud_bm_ntp_source
+        if ocloud_bm_ntp_source | length > 0
+        else hostvars[groups['bastion'][0]]['lab_ip']
+      }}
+
+- name: Filter available BM nodes (remove denylist)
+  set_fact:
+    available_bm_nodes: >-
+      {{
+        _ocpinventory_result.json.nodes
+        | rejectattr('pm_addr', 'in', _bm_denylist)
+        | list
+      }}
+
+- name: Report node counts
+  debug:
+    msg: >-
+      ocp_inventory total={{ _ocpinventory_result.json.nodes | length }},
+      denied={{ _bm_denylist | length }},
+      available={{ available_bm_nodes | length }}
+
+- name: Initialize expanded cluster definitions
+  set_fact:
+    _ocloud_bm_expanded_defs: []
+
+- name: Expand cluster definitions by count
+  set_fact:
+    _ocloud_bm_expanded_defs: "{{ _ocloud_bm_expanded_defs + ([cluster_def] * (cluster_def.count | default(1) | int)) }}"
+  loop: "{{ ocloud_cluster_definitions }}"
+  loop_control:
+    loop_var: cluster_def
+
+- name: Generate each BM cluster definition
+  include_tasks: generatecluster.yml
+  loop: "{{ _ocloud_bm_expanded_defs }}"
+  loop_control:
+    loop_var: cluster_def
+    index_var: cluster_index
