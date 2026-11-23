@@ -12,7 +12,18 @@ configMapGenerator:
   - extra-manifest/enable-crun-master.yaml
   - extra-manifest/enable-crun-worker.yaml
 {% endif %}
+{% if ocloud_disable_lab_dhcp_interface %}
+  - extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml
+  - extra-manifest/50-worker-disable-lab-dhcp-interface.yaml
+{% endif %}
   name: {{ prof.name }}-extra-manifest-v1
+  namespace: version-{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}-{{ prof.name }}
+{% endif %}
+{% if 'ibi' in prof.install_types and ocloud_disable_lab_dhcp_interface %}
+- files:
+  - extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml
+  - extra-manifest/50-worker-disable-lab-dhcp-interface.yaml
+  name: {{ prof.name }}-ibi-extra-manifest-v1
   namespace: version-{{ ocloud_clustertemplate_ocp_version | replace('.', '-') }}-{{ prof.name }}
 {% endif %}
 {% if prof.upgradeable | default(false) %}

@@ -91,6 +91,14 @@ ibi_clusterinstance_node_templates: ibi-node-templates-v1
 # Include the crun container runtime manifest with day-0 install via clustertemplates extra-manifest directory
 include_crun_extra_manifests: true
 
+# Disable auto-DHCP on bare metal spoke nodes at install time via a MachineConfig extra-manifest
+# that sets NetworkManager no-auto-default=* in a conf.d file. This prevents NM from assigning
+# a DHCP address to any interface that does not already have an explicit connection profile,
+# which suppresses the lab public DHCP NIC without needing to know its name.
+# Set to true only for bare metal deployments. Not needed for VM-based deployments
+# (VM nodes are on a private network with no spurious DHCP interface).
+ocloud_disable_lab_dhcp_interface: false
+
 # Clustertemplate's Policytemplate default of oadp S3 URL to match where the object store is accessible
 oadp_s3Url: http://{{ groups['bastion'][0] }}:9000
 

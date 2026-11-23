@@ -1,0 +1,17 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: 50-controlplane-no-auto-default
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            source: "data:text/plain;charset=utf-8;base64,W21haW5dCm5vLWF1dG8tZGVmYXVsdD0qCg=="
+          filesystem: root
+          mode: 420
+          path: /etc/NetworkManager/conf.d/99-no-auto-default.conf
