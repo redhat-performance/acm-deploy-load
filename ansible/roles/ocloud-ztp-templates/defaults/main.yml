@@ -91,6 +91,16 @@ ibi_clusterinstance_node_templates: ibi-node-templates-v1
 # Include the crun container runtime manifest with day-0 install via clustertemplates extra-manifest directory
 include_crun_extra_manifests: true
 
+# Disable the lab public DHCP NIC on bare metal spoke nodes at install time via a MachineConfig
+# extra-manifest. Set to true only for bare metal deployments where nodes have an unmanaged
+# lab DHCP interface that causes network instability. Not needed for VM-based deployments
+# (VM nodes are on a private network with no spurious DHCP interface).
+# When enabled, ocloud_lab_dhcp_interface must also be set.
+ocloud_disable_lab_dhcp_interface: false
+# Name of the lab public DHCP interface to disable (varies by hardware model).
+# See ansible/vars/lab.yml hw_nic_name[lab][hw_model][0] for the correct name per hardware.
+ocloud_lab_dhcp_interface: ""
+
 # Clustertemplate's Policytemplate default of oadp S3 URL to match where the object store is accessible
 oadp_s3Url: http://{{ groups['bastion'][0] }}:9000
 

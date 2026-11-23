@@ -4,6 +4,29 @@
 # O-Cloud Manager GitOps repo. Generates templates for all configured profiles
 # (ocloud_clustertemplate_profiles). Can be run multiple times for different versions.
 
+# Auto-derive ocloud_lab_dhcp_interface from lab.yml when not explicitly set
+- name: Auto-configure ocloud_lab_dhcp_interface from lab.yml hw_nic_name
+  ansible.builtin.set_fact:
+    ocloud_lab_dhcp_interface: "{{ hw_nic_name[lab][hw_model][0] }}"
+  when:
+  - ocloud_disable_lab_dhcp_interface
+  - ocloud_lab_dhcp_interface | length == 0
+  - lab is defined
+  - hw_model is defined
+  - hw_nic_name is defined
+  - lab in hw_nic_name
+  - hw_model in hw_nic_name[lab]
+
+# Fail early if the auto-configure above could not resolve an interface name
+- name: Assert ocloud_lab_dhcp_interface is set when ocloud_disable_lab_dhcp_interface is true
+  ansible.builtin.assert:
+    that: ocloud_lab_dhcp_interface | length > 0
+    fail_msg: >-
+      ocloud_disable_lab_dhcp_interface is true but ocloud_lab_dhcp_interface could not be
+      resolved. Either set ocloud_lab_dhcp_interface explicitly, or ensure lab and hw_model
+      are defined and present in ansible/vars/lab.yml hw_nic_name.
+  when: ocloud_disable_lab_dhcp_interface
+
 # Set pull-secret for disconnected registry if configured
 - name: Set pull-secret for disconnected registry
   ansible.builtin.set_fact:
@@ -37,6 +60,17 @@
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/enable-crun-master.yaml"
   - src: clustertemplates/extra-manifest/enable-crun-worker.yaml
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/enable-crun-worker.yaml"
+
+- name: Template lab DHCP interface disable extra-manifests for version {{ ocloud_clustertemplate_ocp_version }}
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: clustertemplates/extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml"
+  - src: clustertemplates/extra-manifest/50-worker-disable-lab-dhcp-interface.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/50-worker-disable-lab-dhcp-interface.yaml"
+  when: ocloud_disable_lab_dhcp_interface
 
 - name: Copy telco-reference extra-manifest content into version {{ ocloud_clustertemplate_ocp_version }} extra-manifest directory
   ansible.builtin.copy:

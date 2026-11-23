@@ -18,5 +18,6 @@
   hosts: bastion
   vars_files:
   - vars/all.yml
+  - vars/lab.yml
   roles:
   - ocloud-ztp-templates

@@ -14,6 +14,7 @@
   hosts: bastion
   vars_files:
   - vars/all.yml
+  - vars/lab.yml
   roles:
   - rhacm-ztp-setup
   - role: telco-core-ztp

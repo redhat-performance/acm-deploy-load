@@ -1,0 +1,194 @@
+---
+# Lab hardware reference data (You should not have to edit this file)
+# Mirrors jetlag's ansible/vars/lab.yml hw_nic_name structure.
+
+# hw_nic_name maps each hardware model to its ordered NIC list.
+# Index [0] is the public lab DHCP interface — this is what must be disabled
+# on bare metal spoke nodes/clusters/environments.
+# Set ocloud_lab_dhcp_interface: "{{ hw_nic_name[lab][hw_model][0] }}" in all.yml,
+# or look up the correct name here and set it directly.
+#
+#   lab:
+#     hw_model:
+#     - (nic 0 - public lab DHCP NIC)
+#     - (nic 1 - provisioning/controlplane NIC)
+#     - (nic 2+  - additional NICs)
+hw_nic_name:
+  scalelab:
+    r630:
+    - enp3s0f0
+    - eno1
+    - eno2
+    - eno3
+    - eno4
+    r640:
+    - eno1np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    - eno2np1
+    r650:
+    - eno12399np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    - eno12409np1
+    r660:
+    - eno12399np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    - eno12409np1
+    r670:
+    - eno16795np0
+    - eno16595np0
+    - eno16605np1
+    - eno16895np0
+    - eno16905np1
+    - eno16805np1
+    r6625:
+    - eno12399np0
+    - ens2f0
+    - ens2f1
+    - ens1f0np0
+    - ens1f1np1
+    - eno12409np1
+    r730xd:
+    - eno3
+    - eno1
+    - eno2
+    - enp130s0f0
+    - enp130s0f1
+    r750:
+    - eno8303
+    - ens3f0
+    - ens3f1
+    - ens6f0
+    - ens6f1
+    r760:
+    - eno12399
+    - ens3f0
+    - ens3f1
+    - ens6f0
+    - ens6f1
+    r930:
+    - em3
+    - eno1
+    - eno2
+    - enp10s0f0
+    - enp10s0f1
+    fc640:
+    - eno1
+    - eno2
+    - ens2f0
+    - ens2f1
+    r6526:
+    - eno12399np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    r7425:
+    - eno1
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    r7525:
+    - eno1
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    r7625:
+    - eno12399np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    r7725:
+    - eno12399np0
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    1029u:
+    - eno1
+    - ens1f0
+    - ens1f1
+    - ens2f0
+    - ens2f1
+    1029p:
+    - eno1
+    - ens2f0
+    - ens2f1
+    - ens2f2
+    - ens2f3
+    5039ms:
+    - enp2s0f0
+    - enp1s0f0
+    - enp1s0f1
+    - enp2s0f1
+    6018r:
+    - eno1
+    - enp4s0f0
+    - enp4s0f1
+    - enp4s0f2
+    - enp4s0f3
+    6048r:
+    - eno1
+    - enp4s0f0
+    - enp4s0f1
+    - enp131s0f0
+    - enp131s0f1
+    6049p:
+    - eno1
+    - ens3f0
+    - ens3f1
+    - ens2f0
+    - ens2f1
+    dl360:
+    - eno5np0
+    - ens2f0
+    - ens2f1
+    - ens1f0
+    - ens1f1
+  performancelab:
+    r650:
+    - eno12399
+    - ens2f0np0
+    - ens2f1np1
+    r740xd:
+    - eno3
+    - eno1
+    - eno2
+    - ens7f0
+    - ens7f1
+    r750:
+    - eno8303
+    - ens3f0
+    - ens3f1
+    - ens6f0
+    - ens6f1
+    r760:
+    - eno12399
+    - ens3f0
+    - ens3f1
+    - ens6f0
+    - ens6f1
+    r770:
+    - eno17395np0
+    - eno17095np0
+    - eno16695np0
+    - eno16705np1
+    - eno17415np2
+    - eno17425np3
+    r7725:
+    - eno17395np0
+    - eno16595np0
+    - eno16605np1
+    - eno16695np0
+    - eno16705np1

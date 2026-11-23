@@ -2,6 +2,12 @@
 # Common AAP/ACM/ZTP vars
 install_directory: /root
 
+# Lab and hardware model — used to auto-derive ocloud_lab_dhcp_interface from lab.yml.
+# lab: matches a top-level key in ansible/vars/lab.yml hw_nic_name (e.g. scalelab, performancelab)
+# hw_model: hardware model short name (e.g. r660, r750) matching the hw_nic_name[lab] sub-key
+lab: scalelab
+hw_model: r660
+
 # Leave blank if not doing disconnected
 rhacm_disconnected_registry:
 rhacm_disconnected_registry_port: 5000
