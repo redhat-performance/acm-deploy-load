@@ -38,6 +38,17 @@
   - src: clustertemplates/extra-manifest/enable-crun-worker.yaml
     dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/enable-crun-worker.yaml"
 
+- name: Template lab DHCP interface disable extra-manifests for version {{ ocloud_clustertemplate_ocp_version }}
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+  - src: clustertemplates/extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/50-controlplane-disable-lab-dhcp-interface.yaml"
+  - src: clustertemplates/extra-manifest/50-worker-disable-lab-dhcp-interface.yaml
+    dest: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_argocd_base_path }}/clustertemplates/{{ ocloud_clustertemplate_folder }}/extra-manifest/50-worker-disable-lab-dhcp-interface.yaml"
+  when: ocloud_disable_lab_dhcp_interface
+
 - name: Copy telco-reference extra-manifest content into version {{ ocloud_clustertemplate_ocp_version }} extra-manifest directory
   ansible.builtin.copy:
     src: "{{ install_directory }}/rhacm-ztp/{{ ztp_repo_name }}/{{ ztp_source_crs_path }}/extra-manifest/"
