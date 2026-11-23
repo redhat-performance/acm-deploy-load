@@ -1,0 +1,37 @@
+---
+# Lab hardware data for bare metal operations
+# Paths sourced from jetlag's ansible/vars/lab.yml
+
+# Populate with lab in use
+lab: scalelab
+
+# Default disk device for IBI installation, keyed by lab and hardware model.
+# Hardware model is extracted from the hostname (e.g. d38-h14-000-r660 -> r660).
+hw_install_disk:
+  scalelab:
+    r750: /dev/disk/by-path/pci-0000:05:00.0-ata-1
+    r670: /dev/disk/by-path/pci-0000:d4:00.0-scsi-0:0:1:0
+    r660: /dev/disk/by-path/pci-0000:4a:00.0-scsi-0:0:1:0
+    r650: /dev/disk/by-path/pci-0000:67:00.0-scsi-0:2:0:0
+    r640: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    r630: /dev/disk/by-path/pci-0000:02:00.0-scsi-0:2:0:0
+    r6625: /dev/disk/by-path/pci-0000:41:00.0-scsi-0:0:1:0
+  performancelab:
+    r650: /dev/disk/by-path/pci-0000:65:00.0-scsi-0:3:104:0
+    r740xd: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    y37-r740xd: /dev/disk/by-path/pci-0000:86:00.0-scsi-0:2:0:0
+    y37-h01-r740xd: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    y37-h03-r740xd: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    y37-h05-r740xd: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    y37-h07-r740xd: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:0:0
+    r750: /dev/disk/by-path/pci-0000:05:00.0-ata-1
+    r7425: /dev/disk/by-path/pci-0000:e2:00.0-scsi-0:2:0:0
+    r7525: /dev/disk/by-path/pci-0000:01:00.0-scsi-0:2:0:0
+    r7725: /dev/disk/by-path/pci-0000:81:00.0-nvme-1
+    r760: /dev/disk/by-path/pci-0000:3f:00.0-scsi-0:0:1:0
+    r770: /dev/disk/by-path/pci-0000:41:00.0-nvme-1
+    6029p: /dev/disk/by-path/pci-0000:00:11.5-ata-5
+    xe8640: /dev/disk/by-path/pci-0000:01:00.0-nvme-1
+    xe9680: /dev/disk/by-path/pci-0000:01:00.0-nvme-1
+    bb37-r750: /dev/disk/by-path/pci-0000:05:00.0-ata-1.0
+    cc37-r750: /dev/disk/by-path/pci-0000:05:00.0-ata-1.0

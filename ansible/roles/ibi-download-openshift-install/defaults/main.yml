@@ -1,0 +1,10 @@
+---
+# ibi-download-openshift-install default vars
+
+# Version of OpenShift which has an openshift-install binary capable of generating IBI ISO images
+ocp_ibi_version: quay.io/openshift-release-dev/ocp-release:4.22.0-x86_64
+
+# Possible HTTP store paths (checked in order, defaults to first if neither exists)
+http_store_paths:
+- /opt/jetlag/http_store
+- /opt/http_store

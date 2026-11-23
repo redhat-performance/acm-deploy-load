@@ -1,0 +1,6 @@
+---
+# ibi-install-bm-prep default vars
+
+# This should be your bastion machine
+http_store_host: "{{ hostvars[groups['bastion'][0]]['lab_ip'] }}"
+http_store_port: 8081

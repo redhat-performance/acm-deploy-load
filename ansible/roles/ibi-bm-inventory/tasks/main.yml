@@ -1,0 +1,60 @@
+---
+# ibi-bm-inventory tasks
+# Reads ocp_inventory, filters denylist, and populates the bm_ibi_prep dynamic
+# inventory group with one host per available bare metal node.
+
+- name: Download ocp_inventory from URL
+  ansible.builtin.uri:
+    url: "{{ ocp_inventory }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ quads_api_token }}"
+    return_content: yes
+  register: _ocpinventory_result
+  when: ocp_inventory.startswith('http')
+
+- name: Load ocp_inventory from file
+  ansible.builtin.set_fact:
+    _ocpinventory_result:
+      json: "{{ lookup('file', ocp_inventory) | from_json }}"
+  when: not ocp_inventory.startswith('http')
+
+- name: Build denylist from bastion and controlplane ansible groups
+  ansible.builtin.set_fact:
+    _auto_denylist: >-
+      {{ groups['bastion'] | default([]) | map('extract', hostvars, 'bmc_address') | select('defined') | list
+       + groups['controlplane'] | default([]) | map('extract', hostvars, 'bmc_address') | select('defined') | list }}
+
+- name: Merge auto denylist with extra denylist nodes
+  ansible.builtin.set_fact:
+    _bm_denylist: "{{ (_auto_denylist + ibi_bm_extra_denylist_nodes) | unique }}"
+
+- name: Filter available BM nodes
+  ansible.builtin.set_fact:
+    _available_bm_nodes: "{{ _ocpinventory_result.json.nodes | rejectattr('pm_addr', 'in', _bm_denylist) | list }}"
+
+- name: Report node counts
+  ansible.builtin.debug:
+    msg: "Total nodes: {{ _ocpinventory_result.json.nodes | length }}, Denied: {{ _bm_denylist | length }}, Available for IBI prep: {{ _available_bm_nodes | length }}"
+
+- name: Add each available BM node to bm_ibi_prep group
+  ansible.builtin.add_host:
+    name: "{{ node.name | split('.') | first }}"
+    groups: bm_ibi_prep
+    bmc_address: "{{ node.pm_addr }}"
+    bmc_user: "{{ node.pm_user }}"
+    bmc_password: "{{ node.pm_password }}"
+    mac_address: "{{ node.mac[ocloud_bm_network_interface_idx] }}"
+    ip_address: "{{ ocloud_bm_machine_network | ansible.utils.nthhost(ocloud_bm_node_ip_offset + idx + 1) }}"
+    prefix_length: "{{ ocloud_bm_machine_network | ansible.utils.ipaddr('prefix') }}"
+    gateway: "{{ ocloud_bm_default_gateway_address }}"
+    dns_address: "{{ ocloud_bm_dns_address if ocloud_bm_dns_address else hostvars[groups['bastion'][0]]['lab_ip'] }}"
+    install_disk: >-
+      {{ (_lab_data.hw_install_disk[lab] | default({}))[node.name.split('.')[0].split('-') | last]
+         | default('/dev/sda') }}
+    hostname: "{{ node.name | split('.') | first }}"
+  loop: "{{ _available_bm_nodes }}"
+  loop_control:
+    loop_var: node
+    index_var: idx
+  no_log: true

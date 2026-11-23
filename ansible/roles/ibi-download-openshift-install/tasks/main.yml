@@ -1,0 +1,30 @@
+---
+# ibi-download-openshift-install tasks
+
+- name: Determine http_store_path
+  ansible.builtin.set_fact:
+    http_store_path: "{{ lookup('first_found', http_store_paths, errors='ignore') | default(http_store_paths[0], true) }}"
+
+- name: Create base directories for IBI operations
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ install_directory }}/rhacm-ztp"
+  - "{{ install_directory }}/rhacm-ztp/ibi"
+  - "{{ http_store_path }}/data/ibi"
+
+- name: Check if openshift-install already extracted
+  ansible.builtin.stat:
+    path: "{{ install_directory }}/rhacm-ztp/ibi/openshift-install"
+  register: stat_openshift_install
+
+# Extracts openshift-install binary from the release image for IBI operations
+# Removes any old tarballs to ensure a clean extraction
+- name: Extract/Download the openshift-install binary for an OCP Version compatible with IBI
+  ansible.builtin.shell: |
+    cd {{ install_directory }}/rhacm-ztp/ibi
+    rm -rf openshift-install-linux-*.tar.gz openshift-client-linux-*.tar.gz ccoctl-linux-*.tar.gz
+    oc adm release extract --tools {{ ocp_ibi_version }}
+    tar -xvf openshift-install-linux-*.tar.gz openshift-install
+  when: not stat_openshift_install.stat.exists or force_extract | default(false)

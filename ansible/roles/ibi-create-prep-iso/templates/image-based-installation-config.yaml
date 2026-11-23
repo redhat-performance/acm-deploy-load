@@ -31,14 +31,13 @@ ImageDigestSources:
   - {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}
   source: registry-proxy.engineering.redhat.com
 {% endif %}
-# The following fields are required
-seedImage: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/ocp-ibu:{{ seed_image_version }}.ibu-x86_64
+seedImage: {{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}/openshift-kni/ocp-ibu:{{ seed_image_tag }}.ibu-x86_64
 seedVersion: "{{ seed_image_version }}"
 extraPartitionStart: "50G"
 {% if ibi_prep_iso_ignitionConfigOverride|length > 2 %}
 ignitionConfigOverride: '{{ ibi_prep_iso_ignitionConfigOverride }}'
 {% endif %}
-installationDisk: "/dev/sda"
+installationDisk: "{{ ibi_iso_node_install_disk }}"
 sshKey: "{{ lookup('file', ssh_public_key_file) }}"
 pullSecret: '{"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected_registry_port }}": {"auth": "{{ (registry_user + ':' + registry_password) | b64encode }}"}}}'
 #rhcosLiveIso: "https://mirror.openshift.com/pub/openshift-v4/amd64/dependencies/rhcos/latest/rhcos-live.x86_64.iso"
@@ -46,17 +45,17 @@ pullSecret: '{"auths": {"{{ rhacm_disconnected_registry }}:{{ rhacm_disconnected
 shutdown: true
 networkConfig:
   interfaces:
-  - name: {{ ibi_config_nic_interface }}
+  - name: {{ ibi_iso_node_nic }}
     identifier: mac-address
-    mac-address: {{ hostvars[hv_vm_target].mac_address  }}
+    mac-address: {{ ibi_iso_node_mac }}
     type: ethernet
     state: up
-{% if hostvars[hv_vm_target].ip | ansible.utils.ipv4 %}
+{% if ibi_iso_node_ip | ansible.utils.ipv4 %}
     ipv4:
       enabled: true
       address:
-      - ip: "{{ hostvars[hv_vm_target].ip }}"
-        prefix-length: {{ hostvars[hv_vm_target].network_prefix }}
+      - ip: "{{ ibi_iso_node_ip }}"
+        prefix-length: {{ ibi_iso_node_prefix }}
     ipv6:
       enabled: false
 {% else %}
@@ -65,16 +64,16 @@ networkConfig:
     ipv6:
       enabled: true
       address:
-      - ip: "{{ hostvars[hv_vm_target].ip }}"
-        prefix-length: {{ hostvars[hv_vm_target].network_prefix }}
+      - ip: "{{ ibi_iso_node_ip }}"
+        prefix-length: {{ ibi_iso_node_prefix }}
 {% endif %}
   dns-resolver:
     config:
       server:
-      - {{ hostvars[hv_vm_target].hv_ip }}
+      - {{ ibi_iso_node_dns }}
   routes:
     config:
-    - destination: {{ "::/0" if hostvars[hv_vm_target].ip | ansible.utils.ipv6 else "0.0.0.0/0" }}
+    - destination: {{ "::/0" if ibi_iso_node_ip | ansible.utils.ipv6 else "0.0.0.0/0" }}
       metric: 150
-      next-hop-address: {{ hostvars[hv_vm_target].gateway }}
-      next-hop-interface: {{ ibi_config_nic_interface }}
+      next-hop-address: {{ ibi_iso_node_gateway }}
+      next-hop-interface: {{ ibi_iso_node_nic }}
