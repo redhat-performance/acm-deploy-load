@@ -63,16 +63,16 @@ data:
 {% endif %}
                   enabled: true
 {% endif %}
-                name: {{ sno_nic_interface }}
+                name: {{ ocloud_nic_interface }}
                 state: up
                 type: ethernet
             routes:
               config:
                 - destination: {{ "::/0" if controlplane_network[0] | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                  next-hop-interface: {{ sno_nic_interface }}
+                  next-hop-interface: {{ ocloud_nic_interface }}
                   table-id: 254
           interfaces:
-            - name: {{ sno_nic_interface }}
+            - name: {{ ocloud_nic_interface }}
               label: boot-interface
         role: master
         # rootDeviceHints:
@@ -95,7 +95,7 @@ data:
         automatedCleaningMode: disabled
         nodeNetwork:
           interfaces:
-            - name: {{ sno_nic_interface }}
+            - name: {{ ocloud_nic_interface }}
               label: boot-interface
           config:
             interfaces:
@@ -117,12 +117,12 @@ data:
                   dhcp: false
                   enabled: true
 {% endif %}
-                name: {{ sno_nic_interface }}
+                name: {{ ocloud_nic_interface }}
                 type: ethernet
             routes:
               config:
                 - destination: {{ "::/0" if controlplane_network[0] | ansible.utils.ipv6 else "0.0.0.0/0" }}
-                  next-hop-interface: {{ sno_nic_interface }}
+                  next-hop-interface: {{ ocloud_nic_interface }}
                   table-id: 254
         # rootDeviceHints:
         #   deviceName: /dev/disk/by-path/pci-0000:01:00.0-nvme-1

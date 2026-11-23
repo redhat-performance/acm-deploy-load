@@ -1,0 +1,139 @@
+---
+# ocloud-bm-inventory generatecluster tasks
+#
+# Assembles cluster data for one ocloud_cluster_definitions entry using
+# bare-metal nodes from available_bm_nodes (pre-filtered ocp_inventory list).
+#
+# Two independent counters are maintained across iterations:
+#   bm_offset    - index into available_bm_nodes (machines only)
+#   bm_ip_offset - addresses consumed so far (nodes + VIP pairs for MNO clusters)
+#
+# IP layout (linear, relative to ocloud_bm_node_ip_offset + bm_ip_offset):
+#   SNO:              +1 = node
+#   compact/standard: +1 = API VIP, +2 = Ingress VIP, +3..N = nodes
+
+- name: Derive master and worker counts for {{ cluster_def.profile }}
+  set_fact:
+    bm_offset: "{{ bm_offset | default(0) }}"
+    bm_ip_offset: "{{ bm_ip_offset | default(0) }}"
+    _bm_standard_count: "{{ _bm_standard_count | default(0) }}"
+    _bm_compact_count: "{{ _bm_compact_count | default(0) }}"
+    _masters: "{{ 1 if cluster_def.profile == 'sno-ran-du' else 3 }}"
+    _workers: "{{ 0 if cluster_def.profile in ['sno-ran-du', '3node-ran-du'] else (cluster_def.workers | default(0) | int) }}"
+    node_list: []
+
+- name: Assert sufficient BM nodes available for {{ cluster_def.profile }}
+  ansible.builtin.assert:
+    that:
+      - bm_offset|int + _masters|int + _workers|int <= available_bm_nodes | length
+    fail_msg: >-
+      Not enough BM nodes: need {{ bm_offset|int + _masters|int + _workers|int }}
+      (offset {{ bm_offset }} + {{ _masters }} masters + {{ _workers }} workers)
+      but only {{ available_bm_nodes | length }} available after denylist filtering.
+
+- name: Generate nodes array for SNO
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': available_bm_nodes[bm_offset|int + nodeIdx].name | split('.') | first,
+        'role': 'master',
+        'bmc_address': 'idrac-virtualmedia+https://' ~ available_bm_nodes[bm_offset|int + nodeIdx].pm_addr ~ '/redfish/v1/Systems/System.Embedded.1/',
+        'bmc_user': available_bm_nodes[bm_offset|int + nodeIdx].pm_user | b64encode,
+        'bmc_password': available_bm_nodes[bm_offset|int + nodeIdx].pm_password | b64encode,
+        'mac_address': available_bm_nodes[bm_offset|int + nodeIdx].mac[ocloud_bm_network_interface_idx | int],
+        'ip_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + nodeIdx + 1),
+        'prefix_length': ocloud_bm_machine_network | ansible.utils.ipaddr('prefix'),
+        'dns_address': ocloud_bm_dns_address,
+        'default_gateway_address': ocloud_bm_default_gateway_address
+      }
+    ] }}"
+  loop: "{{ range(0, _masters|int) | list }}"
+  loop_control:
+    loop_var: nodeIdx
+  when: _masters|int == 1
+
+- name: Generate nodes array for compact/standard (nodes start after 2 VIP addresses)
+  set_fact:
+    node_list: "{{ node_list + [
+      {
+        'hostname': available_bm_nodes[bm_offset|int + nodeIdx].name | split('.') | first,
+        'role': 'master' if nodeIdx < _masters|int else 'worker',
+        'bmc_address': 'idrac-virtualmedia+https://' ~ available_bm_nodes[bm_offset|int + nodeIdx].pm_addr ~ '/redfish/v1/Systems/System.Embedded.1/',
+        'bmc_user': available_bm_nodes[bm_offset|int + nodeIdx].pm_user | b64encode,
+        'bmc_password': available_bm_nodes[bm_offset|int + nodeIdx].pm_password | b64encode,
+        'mac_address': available_bm_nodes[bm_offset|int + nodeIdx].mac[ocloud_bm_network_interface_idx | int],
+        'ip_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + nodeIdx + 3),
+        'prefix_length': ocloud_bm_machine_network | ansible.utils.ipaddr('prefix'),
+        'dns_address': ocloud_bm_dns_address,
+        'default_gateway_address': ocloud_bm_default_gateway_address
+      }
+    ] }}"
+  loop: "{{ range(0, _masters|int + _workers|int) | list }}"
+  loop_control:
+    loop_var: nodeIdx
+  when: _masters|int > 1
+
+- name: Append O-Cloud BM cluster data (SNO, no VIPs)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': available_bm_nodes[bm_offset|int].name | split('.') | first,
+        'profile': cluster_def.profile,
+        'cluster_type': 'SNO',
+        'topo_dir': 'sno',
+        'machine_network': ocloud_bm_machine_network,
+        'ntp_source': _bm_ntp_source,
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int == 1
+
+- name: Append O-Cloud BM cluster data (compact/3node, VIPs at +1/+2 before first master)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': 'compact-' ~ ('%05d' | format(_bm_compact_count|int + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'HighlyAvailable',
+        'topo_dir': 'compact',
+        'machine_network': ocloud_bm_machine_network,
+        'ntp_source': _bm_ntp_source,
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'api_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + 1),
+        'ingress_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + 2),
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int > 1 and _workers|int == 0
+
+- name: Append O-Cloud BM cluster data (standard, VIPs at +1/+2 before first master)
+  set_fact:
+    ocloud_clusters: "{{ ocloud_clusters + [
+      {
+        'cluster_name': 'standard-' ~ ('%05d' | format(_bm_standard_count|int + 1)),
+        'profile': cluster_def.profile,
+        'cluster_type': 'HighlyAvailable',
+        'topo_dir': 'standard',
+        'machine_network': ocloud_bm_machine_network,
+        'ntp_source': _bm_ntp_source,
+        'masters': _masters|int,
+        'workers': _workers|int,
+        'api_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + 1),
+        'ingress_address': ocloud_bm_machine_network | ansible.utils.nthhost((ocloud_bm_node_ip_offset | int) + (bm_ip_offset | int) + 2),
+        'nodes': node_list,
+        'labels': cluster_def.labels | default({})
+      }
+    ] }}"
+  when: _masters|int > 1 and _workers|int > 0
+
+- name: Advance BM node offset, IP offset, and per-type cluster counters
+  set_fact:
+    bm_offset: "{{ bm_offset|int + _masters|int + _workers|int }}"
+    bm_ip_offset: "{{ bm_ip_offset|int + (2 if _masters|int > 1 else 0) + _masters|int + _workers|int }}"
+    _bm_standard_count: "{{ _bm_standard_count|int + (1 if _masters|int > 1 and _workers|int > 0 else 0) }}"
+    _bm_compact_count: "{{ _bm_compact_count|int + (1 if _masters|int > 1 and _workers|int == 0 else 0) }}"
