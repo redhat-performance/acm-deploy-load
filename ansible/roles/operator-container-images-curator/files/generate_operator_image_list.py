@@ -99,7 +99,14 @@ def get_random_operator_images(target_count: int, validate: bool = True) -> list
     """Retrieves images for `target_count` unique operators, formatted with SHA digests."""
     log(f"Fetching Operator packages from Pyxis (Target count: {target_count})...")
 
-    packages = fetch_pyxis_data("operators/packages", {"page_size": 500, "page": 0})
+    packages = fetch_pyxis_data(
+        "operators/packages",
+        {
+            "page_size": 500,
+            "page": 0,
+            "sort_by": "last_update_date[desc],creation_date[desc]",
+        },
+    )
     if not packages:
         log("No operator packages retrieved from Pyxis.")
         return []
