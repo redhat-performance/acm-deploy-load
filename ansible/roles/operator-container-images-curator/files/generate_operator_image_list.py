@@ -115,7 +115,11 @@ def get_random_operator_images(target_count: int, validate: bool = True) -> list
 
         bundles = fetch_pyxis_data(
             "operators/bundles",
-            {"filter": f'package=="{pkg_name}"', "page_size": 1},
+            {
+                "filter": f'package=="{pkg_name}" and latest_in_channel==true',
+                "page_size": 1,
+                "sort_by": "last_update_date[desc],creation_date[desc]",
+            },
         )
 
         if not bundles:
