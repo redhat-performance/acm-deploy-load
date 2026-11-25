@@ -7,7 +7,6 @@
   ansible.builtin.set_fact:
     http_store_path: "{{ lookup('first_found', http_store_paths, errors='ignore') | default(http_store_paths[0], true) }}"
 
-# Task must be run from bastion (or localhost via connection: local) due to first_found lookup
 - name: Get bastion registry certificate
   ansible.builtin.slurp:
     src: "{{ lookup('first_found', registry_cert_paths, errors='ignore') | default(registry_cert_paths[0], true) }}"
