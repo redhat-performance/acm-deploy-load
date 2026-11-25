@@ -13,7 +13,6 @@ upgrade_ocp_version="4.22.3"           # target OCP version for IBU upgrade
 upgrade_revision="v3"                  # v2=full upgrade with AbortOnFailure+Finalize, v3=Prep+Upgrade (no finalize)
 test_ver="test-00"
 kubeconfig="/root/mno/kubeconfig"
-spoke_kc_dir="/root/hv-vm/kc"          # analyze-ocloud-ibu.py -k argument
 
 # Phase 1 - Idle baseline
 # Idle baseline for 15 seconds for faster test run
@@ -148,7 +147,7 @@ echo "##########################################################################
 echo "$(date -u) :: Running analyze-ocloud-ibu.py" 2>&1 | tee -a ${log_file}
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
-time ./acm-deploy-load/analyze-ocloud-ibu.py "${upgrade_ocp_version}" ${results_dir} -k "${spoke_kc_dir}" 2>&1 | tee -a ${log_file}
+time ./acm-deploy-load/analyze-ocloud-ibu.py "${upgrade_ocp_version}" ${results_dir} 2>&1 | tee -a ${log_file}
 
 echo "################################################################################" 2>&1 | tee -a ${log_file}
 
