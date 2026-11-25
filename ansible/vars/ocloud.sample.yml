@@ -11,6 +11,8 @@ ocloud_clustertemplate_revision: v1
 hv_vm_manifests_directory: /root/hv-vm
 
 # BM O-Cloud vars
+# Lab name — matches jetlag's lab var; used to look up disk data in vars/lab.yml
+lab: scalelab
 # Set ocp_inventory to a local path or quads URL to use BM nodes.
 # Leave unset (or None) to use VM nodes from the hv_vm inventory group instead.
 ocp_inventory:

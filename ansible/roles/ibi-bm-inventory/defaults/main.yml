@@ -1,0 +1,26 @@
+---
+# ibi-bm-inventory default vars
+
+# Path or URL to the ocp_inventory JSON (same source as ocloud-bm-inventory)
+ocp_inventory: ""
+
+# Bearer token for QUADS 3+ HTTP inventory downloads
+quads_api_token: ""
+
+# Additional pm_addr values to exclude beyond auto-detected bastion/controlplane
+ibi_bm_extra_denylist_nodes: []
+
+# Machine network CIDR used to assign prep-time IPs
+ocloud_bm_machine_network: 198.18.0.0/16
+
+# Number of host addresses to skip from the network base before assigning node IPs
+ocloud_bm_node_ip_offset: 7
+
+# Index into each node's mac list to select the provisioning NIC
+ocloud_bm_network_interface_idx: 0
+
+# DNS server for prep ISO network config (auto-derived from bastion lab_ip if empty)
+ocloud_bm_dns_address: 198.18.0.1
+
+# Default gateway for prep ISO network config
+ocloud_bm_default_gateway_address: 198.18.0.1

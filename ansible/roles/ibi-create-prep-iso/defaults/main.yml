@@ -1,30 +1,36 @@
 ---
 # ibi-create-prep-iso default vars
 
-# Version of OpenShift which has an openshift-install binary capable of generating IBI ISO images
-ocp_ibi_version: quay.io/openshift-release-dev/ocp-release:4.19.14-x86_64
-
 # Version of the seed image we are using for this ibi iso file
-seed_image_version: 4.19.14
+seed_image_version: 4.22.0
 
-# Possible registry certificate paths (checked in order)
-registry_cert_paths:
-  - /opt/jetlag/registry/certs/domain.crt
-  - /opt/registry/certs/domain.crt
+# Allow the seed image tag to be overriden (Ex bm-4.22.0)
+seed_image_tag: "{{ seed_image_version }}"
 
 # Possible HTTP store paths (checked in order, defaults to first if neither exists)
 http_store_paths:
-  - /opt/jetlag/http_store
-  - /opt/http_store
+- /opt/jetlag/http_store
+- /opt/http_store
 
-# SSH Key to access machine thathas booted IBI Prep ISO
+# Possible registry certificate paths (checked in order)
+registry_cert_paths:
+- /opt/jetlag/registry/certs/domain.crt
+- /opt/registry/certs/domain.crt
+
+# SSH Key to access machine that has booted IBI Prep ISO
 ssh_public_key_file: ~/.ssh/id_rsa.pub
 
-# SNO to prepare, data is sourced from jetlag inventory file
-hv_vm_target: vm00006
+# ISO filename without .iso extension — set by the caller to identify this node's ISO
+ibi_iso_name: rhcos-ibi-prep
 
-# Typical VM NIC Interface name
-ibi_config_nic_interface: enp1s0
+# Node-specific vars — set by the caller for each node being prepared
+ibi_iso_node_mac: ""
+ibi_iso_node_ip: ""
+ibi_iso_node_prefix: 64
+ibi_iso_node_gateway: ""
+ibi_iso_node_dns: ""
+ibi_iso_node_nic: enp1s0
+ibi_iso_node_install_disk: /dev/sda
 
 # Add ignition config overrides to the preparation ISO
 ibi_prep_iso_ignitionConfigOverride: ""

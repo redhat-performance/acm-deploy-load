@@ -1,21 +1,32 @@
 ---
-# Playbook to prepare an IBI disk file and propgate that disk file to all available VM SNOs
+# Playbook to prepare an IBI disk file and propagate that disk file to all available VM SNOs
 #
 # Note: This playbook runs with Jetlag's inventory so it knows all the SNO details to use
 #
 # Example Usage:
 #
-# time ansible-playbook -i ../jetlag/ansible/inventory/cloud30.local ansible/ibi-prepare-snos.yml
+# time ansible-playbook -i ../jetlag/ansible/inventory/cloud30.local ansible/ibi-prepare-vm-snos.yml
 #
 
-- name: Prepare an IBI disk file by preparing a single SNO for IBI
+- name: Prepare an IBI disk file by preparing a single VM SNO for IBI
   hosts: bastion
   vars_files:
   - vars/all.yml
   roles:
-  - role: ibi-create-prep-iso
+  - role: ibi-download-openshift-install
     when: ibi_prepare_disk_file | default(true)
-  - role: ibi-install-prep
+  - role: ibi-create-prep-iso
+    vars:
+      ibi_iso_node_mac: "{{ hostvars[hv_vm_target].mac_address }}"
+      ibi_iso_node_ip: "{{ hostvars[hv_vm_target].ip }}"
+      ibi_iso_node_prefix: "{{ hostvars[hv_vm_target].network_prefix }}"
+      ibi_iso_node_gateway: "{{ hostvars[hv_vm_target].gateway }}"
+      ibi_iso_node_dns: "{{ hostvars[hv_vm_target].hv_ip }}"
+      ibi_iso_node_nic: "{{ ibi_config_nic_interface | default('enp1s0') }}"
+      ibi_iso_node_install_disk: "/dev/sda"
+      ibi_iso_name: "{{ hv_vm_target }}-{{ seed_image_version }}"
+    when: ibi_prepare_disk_file | default(true)
+  - role: ibi-install-vm-prep
     when: ibi_prepare_disk_file | default(true)
 
 - name: Copy prepared IBI SNO disk file to all hypervisors
@@ -24,7 +35,7 @@
   vars_files:
   - vars/all.yml
   roles:
-  - role: ibi-copy-disk-file
+  - role: ibi-copy-vm-disk-file
     when: ibi_hv_copy_disk_file | default(true)
 
 - name: Replace all SNO disk files with prepared IBI disk file
@@ -32,7 +43,7 @@
   gather_facts: false
   vars:
     hv_ibi_disk_dir: /mnt/disk2/libvirt/ibi-disk
-    seed_image_version: 4.19.14
+    seed_image_version: 4.22.0
   vars_files:
   - vars/all.yml
   tasks:

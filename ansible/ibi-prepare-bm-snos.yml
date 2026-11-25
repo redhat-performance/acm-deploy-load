@@ -1,0 +1,49 @@
+---
+# Playbook to prepare IBI disks on bare metal SNOs
+#
+# Reads the same ocp_inventory used by ocloud-bm-inventory to discover BM nodes.
+# Nodes in ibi_bm_extra_denylist_nodes are skipped. Generates a per-node IBI prep
+# ISO concurrently, then boots each node from its ISO via Dell iDRAC Redfish
+# concurrently and waits for each to power off (IBI prep completion).
+#
+# To prep a single machine: add all other pm_addr values to ibi_bm_extra_denylist_nodes.
+#
+# Forks controls concurrency for ISO generation and Redfish boot (e.g. -f 50).
+#
+# Example Usage:
+#
+# time ansible-playbook -i ansible/inventory ansible/ibi-prepare-bm-snos.yml
+
+- name: Discover BM nodes and download openshift-install binary
+  hosts: bastion
+  vars_files:
+  - vars/lab.yml
+  - vars/all.yml
+  - vars/ocloud.yml
+  roles:
+  - ibi-bm-inventory
+  - ibi-download-openshift-install
+
+- name: Generate per-node IBI prep ISO and boot via iDRAC Redfish concurrently
+  hosts: bm_ibi_prep
+  gather_facts: false
+  # strategy: free
+  vars_files:
+  - vars/all.yml
+  - vars/ocloud.yml
+  roles:
+  - role: ibi-create-prep-iso
+    delegate_to: "{{ groups['bastion'][0] }}"
+    vars:
+      ibi_iso_node_mac: "{{ mac_address }}"
+      ibi_iso_node_ip: "{{ ip_address }}"
+      ibi_iso_node_prefix: "{{ prefix_length }}"
+      ibi_iso_node_gateway: "{{ gateway }}"
+      ibi_iso_node_dns: "{{ dns_address }}"
+      ibi_iso_node_nic: "{{ ocloud_nic_interface }}"
+      ibi_iso_node_install_disk: "{{ install_disk }}"
+      ibi_iso_name: "{{ inventory_hostname }}-{{ seed_image_version }}"
+  - role: ibi-install-bm-prep
+    vars:
+      ibi_iso_name: "{{ inventory_hostname }}-{{ seed_image_version }}"
+    delegate_to: "{{ groups['bastion'][0] }}"

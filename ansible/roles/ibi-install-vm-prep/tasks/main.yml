@@ -16,7 +16,7 @@
     url: "{{ base_url }}/Actions/ComputerSystem.Reset"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Post
+    method: POST
     headers:
       content-type: application/json
       Accept: application/json
@@ -30,11 +30,11 @@
     url: "{{ base_url }}/VirtualMedia/Cd/Actions/VirtualMedia.InsertMedia"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Post
+    method: POST
     headers:
       content-type: application/json
       Accept: application/json
-    body: {"Image":"http://{{ http_store_host }}:{{ http_store_port }}/ibi/rhcos-ibi-prep-{{ hv_vm_target }}-{{ seed_image_version }}.iso", "Inserted": true}
+    body: {"Image":"http://{{ http_store_host }}:{{ http_store_port }}/ibi/{{ hv_vm_target }}-{{ seed_image_version }}.iso", "Inserted": true}
     body_format: json
     status_code: [204]
     return_content: yes
@@ -44,7 +44,7 @@
     url: "{{ base_url }}"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Patch
+    method: PATCH
     headers:
       content-type: application/json
       Accept: application/json
@@ -58,7 +58,7 @@
     url: "{{ base_url }}/Actions/ComputerSystem.Reset"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Post
+    method: POST
     headers:
       content-type: application/json
       Accept: application/json
@@ -72,7 +72,7 @@
     url: "{{ base_url }}"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Get
+    method: GET
     headers:
       content-type: application/json
       Accept: application/json
@@ -90,7 +90,7 @@
     url: "{{ base_url }}"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Get
+    method: GET
     headers:
       content-type: application/json
       Accept: application/json
@@ -108,7 +108,7 @@
     url: "{{ base_url }}/VirtualMedia/Cd/Actions/VirtualMedia.EjectMedia"
     user: "{{ redfish_user }}"
     password: "{{ redfish_password }}"
-    method: Post
+    method: POST
     headers:
       content-type: application/json
       Accept: application/json

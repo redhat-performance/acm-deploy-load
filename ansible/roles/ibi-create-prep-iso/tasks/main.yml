@@ -1,64 +1,43 @@
 ---
 # ibi-create-prep-iso tasks
+# Generates a single RHCOS IBI prep ISO for one node
+# Caller must set ibi_iso_name and ibi_iso_node_* vars (see defaults/main.yml).
 
 - name: Determine http_store_path
   ansible.builtin.set_fact:
     http_store_path: "{{ lookup('first_found', http_store_paths, errors='ignore') | default(http_store_paths[0], true) }}"
 
-- name: Create directories for IBI Prep ISO generation
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-  loop:
-  - "{{ install_directory }}/rhacm-ztp"
-  - "{{ install_directory }}/rhacm-ztp/ibi"
-  - "{{ install_directory }}/rhacm-ztp/ibi/prep-iso"
-  - "{{ http_store_path }}/data/ibi"
-
-# Task must be run from bastion due to first_found lookup
+# Task must be run from bastion (or localhost via connection: local) due to first_found lookup
 - name: Get bastion registry certificate
   ansible.builtin.slurp:
-    src: "{{ lookup('first_found', registry_cert_paths, errors='ignore') }}"
+    src: "{{ lookup('first_found', registry_cert_paths, errors='ignore') | default(registry_cert_paths[0], true) }}"
   register: mirror_cert
   when:
   - rhacm_disconnected_registry is defined
   - rhacm_disconnected_registry is not none
   - rhacm_disconnected_registry | length > 1
-  - lookup('first_found', registry_cert_paths, errors='ignore') | length > 0
 
-- name: Template the IBI Prep ISO file
-  ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-  loop:
-  - src: image-based-installation-config.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso/image-based-installation-config.yaml"
-  - src: image-based-installation-config.yaml
-    dest: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso/image-based-installation-config.yaml.{{ hv_vm_target }}.backup"
-
-- name: Check if openshift-install already extracted
-  ansible.builtin.stat:
-    path: "{{ install_directory }}/rhacm-ztp/ibi/openshift-install"
-  register: stat_openshift_install
-
-# Extracts openshift-install binary from the release image for IBI operations
-# Removes any old tarballs to ensure a clean extraction
-- name: Extract/Download the openshift-install binary for an OCP Version compatiable with IBI
-  ansible.builtin.shell: |
-    cd {{ install_directory }}/rhacm-ztp/ibi
-    rm -rf openshift-install-linux-*.tar.gz openshift-client-linux-*.tar.gz ccoctl-linux-*.tar.gz
-    oc adm release extract --tools {{ ocp_ibi_version }}
-    tar -xvf openshift-install-linux-*.tar.gz openshift-install
-  when: not stat_openshift_install.stat.exists or force_extract | default(false)
+- name: Create working directory for ISO generation
+  ansible.builtin.file:
+    path: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}"
+    state: directory
 
 # Generates the RHCOS IBI prep ISO using openshift-install image-based workflow
+- name: Template the IBI Prep ISO configuration
+  ansible.builtin.template:
+    src: image-based-installation-config.yaml
+    dest: "{{ item.dest }}"
+  loop:
+  - dest: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/image-based-installation-config.yaml"
+  - dest: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/image-based-installation-config.yaml.backup"
+
 - name: Create IBI Prep ISO file
   ansible.builtin.shell: |
     cd {{ install_directory }}/rhacm-ztp/ibi
-    ./openshift-install image-based create image --dir {{ install_directory }}/rhacm-ztp/ibi/prep-iso/ --log-level debug
+    ./openshift-install image-based create image --dir {{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/ --log-level debug
 
 - name: Copy IBI Prep ISO into http server directory
   ansible.builtin.copy:
-    src: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso/rhcos-ibi.iso"
-    dest: "{{ http_store_path }}/data/ibi/rhcos-ibi-prep-{{ hv_vm_target }}-{{ seed_image_version }}.iso"
+    src: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/rhcos-ibi.iso"
+    dest: "{{ http_store_path }}/data/ibi/{{ ibi_iso_name }}.iso"
     remote_src: true
