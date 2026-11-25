@@ -86,7 +86,13 @@ def compute_x_range(phases, df):
 
 
 def add_phase_lines(fig, phases):
-  """Add a vertical dashed line and top annotation for each phase start."""
+  """Add phase boundary lines with annotations in two separate chart regions.
+
+  Phase start lines are dashed, labelled at 'top left' (upper chart region).
+  Phase done lines (phases 2 and 3) are dotted, labelled at 'bottom right'
+  (lower chart region), so start and done labels never share vertical space
+  and cannot overlap regardless of cooldown length.
+  """
   for num, label, start, end in phases:
     display_label, color = PHASE_DISPLAY.get(num, (label, "#374151"))
     ts = start.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -100,17 +106,41 @@ def add_phase_lines(fig, phases):
         annotation_font_size=9,
         annotation_font_color=color,
     )
+    if num in ("2", "3"):
+      end_ts = end.strftime("%Y-%m-%dT%H:%M:%SZ")
+      fig.add_vline(
+          x=end_ts,
+          line_dash="dot",
+          line_color=color,
+          line_width=1.5,
+          annotation_text="<b>{} Done</b>".format(display_label),
+          annotation_position="bottom right",
+          annotation_font_size=9,
+          annotation_font_color=color,
+      )
 
 
 def make_graph(df, x, y_cols, labels, title, phases, x_range, width, height, out_path):
   fig = px.line(df, x=x, y=y_cols, labels=labels, width=width, height=height)
-  fig.update_layout(title=title, legend_orientation="v")
+  fig.update_layout(title=title, legend_orientation="v", margin=dict(t=120))
   if x_range:
     fig.update_xaxes(range=list(x_range))
   if phases:
     add_phase_lines(fig, phases)
   logger.info("Creating Graph - {}".format(out_path))
-  fig.write_image(out_path, width=width, height=height)
+  # kaleido 1.x has an intermittent race where the Chromium tab initializes before
+  # kaleido_scopes is defined. Each write_image call spawns a fresh process, so a
+  # single retry is sufficient.
+  for attempt in range(3):
+    try:
+      fig.write_image(out_path, width=width, height=height)
+      return
+    except Exception as e:
+      if attempt < 2:
+        logger.warning("Graph write attempt {} failed ({}), retrying".format(attempt + 1, type(e).__name__))
+        time.sleep(1)
+      else:
+        raise
 
 
 def main():
