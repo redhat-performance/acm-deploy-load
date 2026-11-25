@@ -405,37 +405,37 @@ def metric_unit(metric):
   return "Count"
 
 
-# ACS - Complete (rhacs-operator namespace)
+# ACS - Complete (stackrox or rhacs-operator namespace)
 def acs_complete_queries(report_dir, route, token, end_ts, duration, w, h, nodes):
   sub_report_dir = os.path.join(report_dir, "acs-complete")
   make_report_directories(sub_report_dir)
   q_names = OrderedDict()
 
-  # ACS rhacs-operator namespace CPU/Memory/Network
-  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='rhacs-operator'})"
-  query_thanos(route, q, "rhacs-operator", token, end_ts, duration, sub_report_dir, "cpu-acs", "ACS rhacs-operator CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator'})"
-  query_thanos(route, q, "rhacs-operator", token, end_ts, duration, sub_report_dir, "mem-acs", "ACS rhacs-operator Memory Usage", "MEM", w, h, q_names)
-  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace='rhacs-operator'}[5m]))"
-  query_thanos(route, q, "rhacs-operator", token, end_ts, duration, sub_report_dir, "net-rcv-acs", "ACS rhacs-operator Network Receive Throughput", "NET", w, h, q_names)
-  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace='rhacs-operator'}[5m]))"
-  query_thanos(route, q, "rhacs-operator", token, end_ts, duration, sub_report_dir, "net-xmt-acs", "ACS rhacs-operator Network Transmit Throughput", "NET", w, h, q_names)
+  # ACS namespace CPU/Memory/Network
+  q = "sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator'})"
+  query_thanos(route, q, "acs", token, end_ts, duration, sub_report_dir, "cpu-acs", "ACS CPU Cores Usage", "CPU", w, h, q_names)
+  q = "sum(container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator'})"
+  query_thanos(route, q, "acs", token, end_ts, duration, sub_report_dir, "mem-acs", "ACS Memory Usage", "MEM", w, h, q_names)
+  q = "sum(irate(container_network_receive_bytes_total{cluster='',namespace=~'stackrox|rhacs-operator'}[5m]))"
+  query_thanos(route, q, "acs", token, end_ts, duration, sub_report_dir, "net-rcv-acs", "ACS Network Receive Throughput", "NET", w, h, q_names)
+  q = "sum(irate(container_network_transmit_bytes_total{cluster='',namespace=~'stackrox|rhacs-operator'}[5m]))"
+  query_thanos(route, q, "acs", token, end_ts, duration, sub_report_dir, "net-xmt-acs", "ACS Network Transmit Throughput", "NET", w, h, q_names)
 
   # ACS pods
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='rhacs-operator'})"
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-pods", "ACS Pod CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator'})"
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-pods", "ACS Pod Memory Usage", "MEM", w, h, q_names)
 
   # Separate read and write throughput graphs per node, with one series for
   # every ACS pod. The PromQL expressions convert filesystem byte rates to MB/s.
   for node in nodes:
-    q = ("sum by (pod, node) (rate(container_fs_reads_bytes_total{cluster='',namespace='rhacs-operator',node='" + node +
+    q = ("sum by (pod, node) (rate(container_fs_reads_bytes_total{cluster='',namespace=~'stackrox|rhacs-operator',node='" + node +
         "'}[5m])) / 1000000")
     query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir,
         "disk-read-tput-acs-pods-{}".format(node),
         "ACS Pod Disk Read Throughput on {}".format(node), "MB/s", w, h, q_names)
-    q = ("sum by (pod, node) (rate(container_fs_writes_bytes_total{cluster='',namespace='rhacs-operator',node='" + node +
+    q = ("sum by (pod, node) (rate(container_fs_writes_bytes_total{cluster='',namespace=~'stackrox|rhacs-operator',node='" + node +
         "'}[5m])) / 1000000")
     query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir,
         "disk-write-tput-acs-pods-{}".format(node),
@@ -450,9 +450,9 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   q_names = OrderedDict()
 
   # Central pod CPU/Memory
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='rhacs-operator',pod=~'central-.*'})"
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-central", "ACS Central CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator',pod=~'central-.*'})"
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-central", "ACS Central Memory Usage", "MEM", w, h, q_names)
 
   # Central alert processing metrics
@@ -476,15 +476,15 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "state", token, end_ts, duration, sub_report_dir, "central-postgres-connections", "ACS Central Postgres Connections", "Count", w, h, q_names)
 
   # Central gRPC metrics
-  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "central-grpc-duration", "ACS Central gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "central-grpc-handled", "ACS Central gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   # Central HTTP metrics
-  q = "sum by (code) (rate(http_incoming_requests_total{namespace='rhacs-operator',pod=~'central-.*'}[5m]))"
+  q = "sum by (code) (rate(http_incoming_requests_total{namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}[5m]))"
   query_thanos(route, q, "code", token, end_ts, duration, sub_report_dir, "central-http-requests", "ACS Central HTTP Requests Rate", "Requests/s", w, h, q_names)
-  q = "http_incoming_request_duration_histogram_seconds{namespace='rhacs-operator',pod=~'central-.*'}"
+  q = "http_incoming_request_duration_histogram_seconds{namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}"
   query_thanos(route, q, "path", token, end_ts, duration, sub_report_dir, "central-http-duration", "ACS Central HTTP Request Duration", "Seconds", w, h, q_names)
 
   # Central resource metrics
@@ -497,7 +497,7 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   # The target labels scope common Go, gRPC, HTTP, process, and tar metrics to
   # Central rather than similarly named Scanner metrics.
   for metric in CENTRAL_SNIPPET_EXTRA_METRICS:
-    q = metric + "{namespace='rhacs-operator',pod=~'central-.*'}"
+    q = metric + "{namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}"
     query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
         "central-{}".format(metric), "ACS Central {}".format(metric),
         metric_unit(metric), w, h, q_names)
@@ -512,9 +512,9 @@ def acs_scanner_indexer_queries(report_dir, route, token, end_ts, duration, w, h
   q_names = OrderedDict()
 
   # Scanner Indexer pod CPU/Memory
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'})"
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-indexer-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-scanner-indexer", "ACS Scanner Indexer CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'})"
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-indexer-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-scanner-indexer", "ACS Scanner Indexer Memory Usage", "MEM", w, h, q_names)
 
   # Indexer operation metrics
@@ -542,16 +542,16 @@ def acs_scanner_indexer_queries(report_dir, route, token, end_ts, duration, w, h
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "indexer-pg-total-conns", "ACS Indexer Postgres Total Connections", "Count", w, h, q_names)
 
   # Indexer gRPC metrics
-  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "indexer-grpc-duration", "ACS Indexer gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-indexer-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "indexer-grpc-handled", "ACS Indexer gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   # Capture all remaining Indexer metric families in
   # scanner-v4-indexer-snippet.prom. Target labels prevent common runtime,
   # gRPC, HTTP, process, and tar metrics from mixing with Matcher or Central.
   for metric in INDEXER_SNIPPET_EXTRA_METRICS:
-    q = metric + "{namespace='rhacs-operator',pod=~'scanner-v4-indexer-.*'}"
+    q = metric + "{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-indexer-.*'}"
     query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
         "indexer-{}".format(metric), "ACS Scanner Indexer {}".format(metric),
         metric_unit(metric), w, h, q_names)
@@ -566,9 +566,9 @@ def acs_scanner_matcher_queries(report_dir, route, token, end_ts, duration, w, h
   q_names = OrderedDict()
 
   # Scanner Matcher pod CPU/Memory
-  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'})"
+  q = "sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-matcher-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-scanner-matcher", "ACS Scanner Matcher CPU Cores Usage", "CPU", w, h, q_names)
-  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'})"
+  q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-matcher-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-scanner-matcher", "ACS Scanner Matcher Memory Usage", "MEM", w, h, q_names)
 
   # Matcher vulnerability store metrics
@@ -598,16 +598,16 @@ def acs_scanner_matcher_queries(report_dir, route, token, end_ts, duration, w, h
   query_thanos(route, q, "instance", token, end_ts, duration, sub_report_dir, "matcher-pg-total-conns", "ACS Matcher Postgres Total Connections", "Count", w, h, q_names)
 
   # Matcher gRPC metrics
-  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
+  q = "sum by (grpc_method) (rate(grpc_server_handling_seconds_sum{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
   query_thanos(route, q, "grpc_method", token, end_ts, duration, sub_report_dir, "matcher-grpc-duration", "ACS Matcher gRPC Handling Duration", "Seconds", w, h, q_names)
-  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
+  q = "sum by (grpc_code) (rate(grpc_server_handled_total{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-matcher-.*'}[5m]))"
   query_thanos(route, q, "grpc_code", token, end_ts, duration, sub_report_dir, "matcher-grpc-handled", "ACS Matcher gRPC Requests Rate", "Requests/s", w, h, q_names)
 
   # Capture all remaining Matcher metric families in
   # scanner-v4-matcher-snippet.prom. Target labels prevent common runtime,
   # gRPC, HTTP, process, and tar metrics from mixing with Indexer or Central.
   for metric in MATCHER_SNIPPET_EXTRA_METRICS:
-    q = metric + "{namespace='rhacs-operator',pod=~'scanner-v4-matcher-.*'}"
+    q = metric + "{namespace=~'stackrox|rhacs-operator',pod=~'scanner-v4-matcher-.*'}"
     query_thanos(route, q, "__name__", token, end_ts, duration, sub_report_dir,
         "matcher-{}".format(metric), "ACS Scanner Matcher {}".format(metric),
         metric_unit(metric), w, h, q_names)
@@ -1171,8 +1171,8 @@ def main():
   report_data["core-ocp"] = core_ocp_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
 
   # ACS (Advanced Cluster Security) Queries
-  if "rhacs-operator" in namespaces:
-    logger.info("rhacs-operator namespace found, querying for ACS metrics")
+  if {"stackrox", "rhacs-operator"}.intersection(namespaces):
+    logger.info("ACS namespace found, querying for ACS metrics")
     nodes = get_ocp_node_list(cliargs.kubeconfig)
     report_data["acs-complete"] = acs_complete_queries(report_dir, route, token, q_end_ts, q_duration, w, h, nodes)
     report_data["acs-central"] = acs_central_queries(report_dir, route, token, q_end_ts, q_duration, w, h)
