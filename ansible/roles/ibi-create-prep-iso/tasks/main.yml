@@ -41,3 +41,8 @@
     src: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/rhcos-ibi.iso"
     dest: "{{ http_store_path }}/data/ibi/{{ ibi_iso_name }}.iso"
     remote_src: true
+
+- name: Remove source rhcos-ibi.iso file
+  ansible.builtin.file:
+    path: "{{ install_directory }}/rhacm-ztp/ibi/prep-iso-{{ ibi_iso_name }}/rhcos-ibi.iso"
+    state: absent
