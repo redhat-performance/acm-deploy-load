@@ -236,3 +236,8 @@
     status_code: [204]
     validate_certs: false
     return_content: true
+
+- name: Remove the ibi preparation iso file
+  ansible.builtin.file:
+    path: "{{ http_store_path }}/data/ibi/{{ ibi_iso_name }}.iso"
+    state: absent
