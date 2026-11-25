@@ -267,12 +267,18 @@ def main():
     logger.info(" * Phase 2 (Inspection): batch={}, interval={}s, timeout={}s".format(
         cliargs.inspect_batch, cliargs.inspect_interval, cliargs.inspect_timeout))
     logger.info("   * BMH manifests: {}".format(cliargs.baremetalhost_manifests))
+    if not cliargs.skip_install:
+      logger.info("   * Post-inspect cooldown: {}s :: {}".format(
+          cliargs.inspect_cooldown, str(timedelta(seconds=cliargs.inspect_cooldown))))
   else:
     logger.info(" * Phase 2 (Inspection): SKIPPED")
   if not cliargs.skip_install:
     logger.info(" * Phase 3 (Install): batch={}, interval={}s, timeout={}s".format(
         cliargs.install_batch, cliargs.install_interval, cliargs.install_timeout))
     logger.info("   * PR manifests: {}".format(cliargs.provisioningrequest_manifests))
+    if not cliargs.skip_upgrade:
+      logger.info("   * Post-install cooldown: {}s :: {}".format(
+          cliargs.install_cooldown, str(timedelta(seconds=cliargs.install_cooldown))))
   else:
     logger.info(" * Phase 3 (Install): SKIPPED")
   if not cliargs.skip_upgrade:
