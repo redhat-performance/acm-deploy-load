@@ -20,12 +20,12 @@ This tool automates workload image preparation for Red Hat Advanced Cluster Secu
 
 ### The image list generator script
 
-The `operator-container-images-curator` role uses the `generate_operator_image_list.py` script to fetch and test images that are accessible publicly. It is used in the role to generate a list and sets stdout to capture them for use in the registry sync task. Here's some of the params and env vars it supports:
+The `operator-container-images-curator` role uses the `generate_operator_image_list.py` script to fetch current Operator bundles from Pyxis that are hosted by Red Hat (`registry.redhat.io` or `registry.access.redhat.com`). It is used in the role to generate a list and sets stdout to capture them for use in the registry sync task. `skopeo` must be authenticated to `registry.redhat.io` on the host that runs the role.
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--count` | `-c` | `50` | Number of random operator packages to retrieve. |
-| `--stdout` | `-s` | `False` | Outputs raw Quay image specs to `stdout`. Debug logs are routed to `stderr`. |
+| `--stdout` | `-s` | `False` | Outputs raw Red Hat source image specs to `stdout`. Debug logs are routed to `stderr`. |
 | `--no-files` | | `False` | Disables writing `.txt` and `.json` artifacts to disk. |
 
 ### Environment Variables
@@ -33,7 +33,6 @@ The `operator-container-images-curator` role uses the `generate_operator_image_l
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
 | `PYXIS_BASE_URL` | `https://catalog.redhat.com/api/containers/v1` | Pyxis REST API endpoint URL. |
-| `TARGET_REGISTRY` | `quay.io` | Destination registry domain prepended to image specs. |
 | `OUTPUT_PREFIX` | `deployable_operator_images` | Prefix used for generated output filenames. |
 | `OUTPUT_TXT_FILE` | *None* | Explicit override for the plain text output path. |
 | `OUTPUT_JSON_FILE` | *None* | Explicit override for the JSON metadata output path. |
