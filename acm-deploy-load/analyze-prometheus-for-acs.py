@@ -454,6 +454,10 @@ def acs_central_queries(report_dir, route, token, end_ts, duration, w, h):
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-acs-central", "ACS Central CPU Cores Usage", "CPU", w, h, q_names)
   q = "sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*'})"
   query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-acs-central", "ACS Central Memory Usage", "MEM", w, h, q_names)
+  q = "100 * (sum by (pod) (node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}) / sum by (pod) (kube_pod_container_resource_requests{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*',resource='cpu'}))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "cpu-util-acs-central", "ACS Central CPU Request Utilization", "Percent", w, h, q_names)
+  q = "100 * (sum by (pod) (container_memory_working_set_bytes{cluster='',container!='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*'}) / sum by (pod) (kube_pod_container_resource_requests{cluster='',namespace=~'stackrox|rhacs-operator',pod=~'central-.*',resource='memory'}))"
+  query_thanos(route, q, "pod", token, end_ts, duration, sub_report_dir, "mem-util-acs-central", "ACS Central Memory Request Utilization", "Percent", w, h, q_names)
 
   # Central alert processing metrics
   q = "rox_central_alert_and_notify_duration_ms"
